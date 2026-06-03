@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HÄTÄKESKUS - dispatch sim v77 (Firebase-tilit: Google-kirjautuminen + pilvitallennus per käyttäjä; korvaa JSONBin) -->
+<!-- HÄTÄKESKUS - dispatch sim v78 (balanssi: tahti skaalautuu kalustoon + maxTaskGap-lattia korjattu; radio/johtaja-realismi; myy-nappi; miehitys 1+X; tauolla hälytettävissä; kohteessa/matkalla-lokerot; hälytysääni; partiopolygonit näkyvät; offline-rahakatto) -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <!-- Puhelin: "Lisää aloitusnäyttöön" avaa pelin täysruudussa kuin oikea sovellus -->
@@ -1987,16 +1987,24 @@ window.toggleStationDisabled=(sid)=>{
 const mapCircles={};
 window.showPatrolAreaOnMap=(sid)=>{
   const s=G.stations.find(x=>x.id===sid);if(!s)return;
-  const r=getPatrolRadiusByStation(sid);
   const pa=G.patrolAreas&&G.patrolAreas[sid];
-  const cLat=(pa&&pa.lat!=null)?pa.lat:s.lat, cLng=(pa&&pa.lat!=null)?pa.lng:s.lng;
-  if(mapCircles['patrol_'+sid])map.removeLayer(mapCircles['patrol_'+sid]);
-  mapCircles['patrol_'+sid]=L.circle([cLat,cLng],{radius:r*1000,color:'#3f7bff',fillColor:'#3f7bff',fillOpacity:0.08,dashArray:'8,6',weight:2}).addTo(map);
-  map.panTo([cLat,cLng]);
+  if(mapCircles['patrol_'+sid]){map.removeLayer(mapCircles['patrol_'+sid]);delete mapCircles['patrol_'+sid];}
+  // Piirrä PIIRRETYT MONIKULMIOT jos niitä on (korjaa: ennen näkyi vain ympyrä, ei polygoneja).
+  let polys=[];try{polys=(typeof stationPolys==='function')?stationPolys(sid):((pa&&pa.polys)||[]).filter(p=>p&&p.length>=3);}catch(e){}
+  const grp=L.layerGroup();
+  if(polys.length){
+    polys.forEach(poly=>L.polygon(poly,{color:'#3f7bff',fillColor:'#3f7bff',fillOpacity:0.08,weight:2,dashArray:'8,6'}).addTo(grp));
+    let la=0,ln=0,nn=0;polys.forEach(p=>p.forEach(pt=>{la+=pt[0];ln+=pt[1];nn++;}));if(nn)map.panTo([la/nn,ln/nn]);
+  } else {
+    const r=getPatrolRadiusByStation(sid);
+    const cLat=(pa&&pa.lat!=null)?pa.lat:s.lat, cLng=(pa&&pa.lat!=null)?pa.lng:s.lng;
+    L.circle([cLat,cLng],{radius:r*1000,color:'#3f7bff',fillColor:'#3f7bff',fillOpacity:0.08,dashArray:'8,6',weight:2}).addTo(grp);
+    map.panTo([cLat,cLng]);
+  }
+  grp.addTo(map);mapCircles['patrol_'+sid]=grp;
   document.getElementById('smod').classList.remove('open');
   setNav('map');
-  toast('Partioalue näkyy kartalla — avaa asema uudelleen sulkeaksesi');
-  // Poistetaan 20s kuluttua
+  toast(polys.length?('Partioalue ('+polys.length+' monikulmio'+(polys.length>1?'ta':'')+') näkyy kartalla'):'Partioalue näkyy kartalla — avaa asema uudelleen sulkeaksesi');
   setTimeout(()=>{if(mapCircles['patrol_'+sid]){map.removeLayer(mapCircles['patrol_'+sid]);delete mapCircles['patrol_'+sid];}},20000);
 };
 function getPatrolRadiusByStation(sid){return (G.patrolAreas&&G.patrolAreas[sid]&&G.patrolAreas[sid].radius)||1.5;}
@@ -2482,6 +2490,10 @@ function refreshUnitMarker(u){
 
 /* ===== SPAWNAUS ===== */
 function activeStations(){return G.stations.filter(s=>['pelastus','ensihoito','poliisi'].includes(s.t)&&!(G.disabledStations&&G.disabledStations[s.id]));}
+// Kaluston kapasiteetti = dispatchattavissa olevien yksiköiden määrä (ei vara-autoja eikä
+// pois käytöstä otettujen asemien yksiköitä). Tehtävätahti skaalataan tähän, jotta vaikeus
+// seuraa pelaajan resursseja (pieni laitos ei huku, iso saa töitä).
+function fleetCapacity(){return G.units.filter(u=>u&&!u.spare&&!(G.disabledStations&&G.disabledStations[u.stationId])&&u.toimi&&['pelastus','ensihoito','poliisi'].includes(u.toimi)).length;}
 // ===== KOHDEPISTEET (POI) — pelaaja merkitsee ympäristöä, jonka mukaan tiettyjä tehtäviä syntyy =====
 const POI_TYPES={
   juna:{label:'Juna-asema / ratapiha',icon:'🚉',codes:['745','702','032','341','381','770','212','211']},
@@ -2890,7 +2902,7 @@ function dStatusInner(tk){
   const us=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean);
   if(!us.length)return '';
   us.sort((a,b)=>a.name.localeCompare(b.name)); // järjestä tunnuksen mukaan (esim. RHE105 ennen RHE201)
-  const rows=us.map(u=>{let s;if(u.status==='otettu'){
+  function rowFor(u){let s;if(u.status==='otettu'){
     if(u.departAt&&G.clock<u.departAt){s='asemalla, lähtee ~'+Math.ceil((u.departAt-G.clock)/60)+' min';}
     else s='lähdössä';
   }else if(u.status==='matka'){
@@ -2905,7 +2917,14 @@ function dStatusInner(tk){
     }
   }else if(u.status==='kohde')s='✓ kohteessa';else if(u.status==='paluu')s='paluumatkalla';else s=u.status;
     return `<div style="font-size:12px;display:flex;align-items:center;gap:6px;padding:3px 0"><span class="mono" style="flex:1">${u.name}</span><span style="color:${unitColor(u)}">${s}</span><button class="btn-x" style="padding:6px 14px;font-size:12px;min-width:68px;touch-action:manipulation" data-act="cancelunit" data-uid="${u.id}">Peruuta</button></div>`;
-  }).join('');
+  }
+  // Kaksi lokeroa: kohteessa olevat ja vielä matkalla olevat (selkeämpi kuin yksi lista)
+  const onScene=us.filter(u=>u.status==='kohde');
+  const enRoute=us.filter(u=>u.status!=='kohde');
+  const grpHead=(txt,col)=>`<div style="font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:${col};margin:7px 0 2px">${txt}</div>`;
+  let rows='';
+  if(onScene.length)rows+=grpHead('🔴 Kohteessa ('+onScene.length+')','var(--D)')+onScene.map(rowFor).join('');
+  if(enRoute.length)rows+=grpHead('🚗 Matkalla ('+enRoute.length+')','var(--N)')+enRoute.map(rowFor).join('');
   let prog;
   if(tk.onScene){const left=Math.max(0,Math.round((tk.workNeeded-tk.work)/60));const enough=needMetBy(tk,us.filter(u=>u.status==='kohde'));const pct=Math.min(100,Math.round(tk.work/tk.workNeeded*100));
     if(enough)prog=`<div class="smallnote" style="margin-top:7px">⏳ Aikaa jäljellä n. ${left} min</div><div style="height:8px;background:var(--bg3);border-radius:5px;margin-top:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--D);transition:width .3s"></div></div>`;
@@ -3083,7 +3102,7 @@ function mergedUnitRows(tk){
   return list.slice(0,50).map(x=>{const u=x.u;const sel=dSel.has(u.id);
     let stxt,scol;
     // Toisilla tehtävillä olevat yksiköt voi nyt siirtää klikkaamalla — pullToHere
-    const isNonDispatch=u.status==='huolto'||(u.status==='muu'&&u.omamieli==='harjoitus')||x.transp;
+    const isNonDispatch=u.status==='huolto'||x.transp; // harjoitus EI enää estä hälytystä (tositilanne edelle)
     const isBusyTransferable=x.busy&&!isNonDispatch;
     if(x.transp){stxt='🏥 kuljetus sairaalaan';scol='#c79a16';}
     else if(x.busy){const ot=G.tasks.find(t=>t.id===u.taskId);const onScene=u.status==='kohde';stxt=(onScene?'🔴 jo kohteessa ':'⚠ ')+(ot?ot.c+(ot.urg||''):'tehtävällä');scol=onScene?'#f88':'#e6a23c';}
@@ -3267,13 +3286,30 @@ function announceDispatch(tk,newUnits){
   }
   tk.initialAnnounced=true;
 }
+let _audioCtx=null;
+// Hälytysääni (WebAudio): kaksi nopeaa piippua. Asetuksista pois/päälle (G.settings.dispatchSound).
+// AudioContext luodaan vasta käyttäjän eleestä (hälytysklikkaus) → selaimen autoplay-policy ok.
+function playDispatchSound(){
+  if(G.settings&&G.settings.dispatchSound===false)return;
+  try{
+    _audioCtx=_audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(_audioCtx.state==='suspended')_audioCtx.resume();
+    const ctx=_audioCtx,t=ctx.currentTime;
+    [0,0.16].forEach((off,i)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='square';o.frequency.value=i?988:784;
+      g.gain.setValueAtTime(0.0001,t+off);g.gain.exponentialRampToValueAtTime(0.16,t+off+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+off+0.13);
+      o.connect(g);g.connect(ctx.destination);o.start(t+off);o.stop(t+off+0.15);
+    });
+  }catch(e){}
+}
 async function sendDispatch(next){
   const tk=dCur;if(!tk.urg){toast('Valitse ensin kiireellisyys (A/B/C/D)');return;}if(dSel.size===0&&!next)return;
   const names=[];const ids=[...dSel];
   // Suodata pois ei-hälytettävissä olevat (mutta salli partioivat)
   const validIds=ids.filter(id=>{const u=G.units.find(x=>x.id===id);if(!u)return false;
     if(u.status==='huolto'){toast(u.name+' on huollossa');return false;}
-    if(u.status==='muu'&&u.omamieli!=='partio'){toast(u.name+' ei hälytettävissä juuri nyt');return false;}
+    if(u.status==='muu'&&!['partio','kauppa','harjoitus'].includes(u.omamieli)){toast(u.name+' ei hälytettävissä juuri nyt');return false;} // tauko/harjoitus EIVÄT enää estä (korjaa: yksikkö ei lähtenytkään tehtävälle)
     return true;});
   validIds.forEach(id=>{
     const u=G.units.find(x=>x.id===id);if(!u)return;
@@ -3328,6 +3364,7 @@ async function sendDispatch(next){
   // Pelaaja vastasi → poista ❗ jos tarpeet nyt katettu (assigned-yksiköillä)
   clearAlertIfResolved(tk);
   announceDispatch(tk,names);
+  if(names.length)playDispatchSound(); // äänimerkki hälytyksestä (asetuksista pois/päälle)
   // Lisähälytysviesti vain uusille yksiköille (ei koko annolle uudelleen jos vain yksi)
   refreshTaskLabel(tk);dSel=new Set();renderList();updateBadge();
   if(next){const nx=G.tasks.find(t=>t.status==='avoin');document.getElementById('disp').classList.remove('open');if(nx)openDispatch(nx.id);else toast('Ei muita avoimia tehtäviä');}
@@ -3573,25 +3610,27 @@ function tick(dt){G.clock+=dt;
   // Kalenteripäivän boosti (Vappu, juhannus jne.) sekä juhannus/jne. vaikutus spawniin
   const dayBoost=todaySpawnBoost();
   if(n>0&&G.spawnRate>0){
+    // TASAPAINO (v78): tehtävätahti seuraa KALUSTON kokoa (dispatchattavat yksiköt), ei pelkkää
+    // asemamäärää eikä kiinteää lukua. ~0.6 tehtävää/h per yksikkö = haastava mutta voitettava.
+    // spawnRate-liukuri (oletus 1×) kertoo tämän; kalenteriboosti tihentää. Näin pieni laitos ei
+    // huku (sai ennen saman ~16/h kuin iso verkosto) eikä iso jää tyhjäkäynnille.
+    const cap=fleetCapacity();
+    const perHour=Math.max(1.5,Math.min(45,cap*0.5*G.spawnRate*dayBoost)); // ~0.5 tehtävää/h per yksikkö normaalipäivänä; juhlaboost (dayBoost) ja liukuri kiristävät
+    const baseInterval=3600/perHour;
     if(G.realisticSpawn){
       // Realistinen rytmi: TASAINEN, vaihteleva virta YKSITTÄISIÄ tehtäviä — EI ryppäitä.
-      // (Aiemmat klusterit poistettu — ne tekivät tehtävistä piikkimäisiä.)
-      if(!G._burst){G._burst={nextAt:G.clock+rnd(120,360)};}
+      if(!G._burst){G._burst={nextAt:G.clock+baseInterval*rnd(0.5,1.4)};}
       const b=G._burst;
-      if(G.clock>=b.nextAt){
-        lastSpawn=G.clock;spawnTask();
-        b.nextAt=G.clock+rnd(150,560); // luonnollinen vaihtelu väleissä, yksi kerrallaan
-      }
+      if(G.clock>=b.nextAt){lastSpawn=G.clock;spawnTask();b.nextAt=G.clock+baseInterval*rnd(0.5,1.6);}
     } else {
-      // Tehtäväväli: tiheämpi kuin ennen. Perustaso + asemamäärä. Kalenteriboosti tihentää.
-      // 1× & 1 asema ≈ 5 min, 1× & 4 asemaa ≈ 3 min, 5× & 4 asemaa ≈ 35 s.
-      const interval=Math.max(30,600/(G.spawnRate*(0.7+0.45*n)*dayBoost));
-      if(G.clock-lastSpawn>interval){lastSpawn=G.clock;spawnTask();}
+      if(G.clock-lastSpawn>baseInterval){lastSpawn=G.clock;spawnTask();}
     }
-    // VARMUUSRAJA: ei koskaan liian pitkää taukoa tehtävien välillä (myös realistisen "hiljaisen
-    // jakson" aikana). Asetus G.settings.maxTaskGap = sekunteina peliaikaa, 0 = ei rajaa.
-    const maxGap=G.settings.maxTaskGap??300;
-    if(maxGap>0&&G.clock-lastSpawn>maxGap){lastSpawn=G.clock;spawnTask();if(G._burst)G._burst.nextAt=G.clock+rnd(40,Math.max(80,maxGap*0.6));}
+    // VARMUUSRAJA (maxTaskGap): EI saa pakottaa luonnollista tahtia tiheämmäksi — muuten pieni
+    // laitos hukkuu eikä liukurin laskeminen rauhoita peliä (vanha bugi). Lattia relaksoituu aina
+    // vähintään luonnolliseen väliin. Asetus = sekunteja peliaikaa, 0 = ei rajaa.
+    const setGap=G.settings.maxTaskGap??300;
+    const effGap=setGap>0?Math.max(setGap,baseInterval*1.5):0;
+    if(effGap>0&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;spawnTask();if(G._burst)G._burst.nextAt=G.clock+baseInterval*rnd(0.5,1.2);}
   }
   // VPK-liikenne — vähennetty rajusti (oli liian usein). Vain ~5% entisestä.
   if(Math.random()<0.00002*dt){const vpkUnits=G.units.filter(u=>{const s=G.stations.find(x=>x.id===u.stationId);return s&&s.muoto==='vpk'&&u.toimi==='pelastus'&&u.status==='asema'&&!u.taskId;});if(vpkUnits.length){const u=vpkUnits[Math.floor(Math.random()*vpkUnits.length)];const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';const lines=['pyydämme lupaa kalustoharjoitukseen','pyydämme lupaa lähteä huoltoajolle'];const line=lines[Math.floor(Math.random()*lines.length)];radio(reg+' VPK',u.name,line);pendingVpkEvent(u,st,line);}}
@@ -3762,6 +3801,7 @@ function isDispatchable(u){
   if(['asema','paluu','vapaa_valmius'].includes(u.status))return true;
   if(u.status==='muu'&&u.omamieli==='partio')return true;
   if(u.status==='muu'&&u.omamieli==='kauppa')return true;
+  if(u.status==='muu'&&u.omamieli==='harjoitus')return true; // harjoituksessakin hälytettävissä (sendDispatch lisää vasteaikaa) — tositilanne menee harjoituksen edelle
   return false;
 }
 // Näytä vapaa_valmius "Vapaa (asemalla)" -tekstillä
@@ -4534,16 +4574,18 @@ function missingRequestPhrase(tk){
   return {phrase,reqKey};
 }
 function requestMissing(tk,leadName){
-  // Ilmoitetaan radiolla VAIN kun puuttuva kokoonpano OIKEASTI muuttuu. Käytetään _reqAnnounced-
-  // kenttää (EI reqKey, jonka peruutus/lähetys nollaa) → ei toisteta samaa pyyntöä kun perutaan
-  // tarpeettomia yksiköitä (puuttuva tarve pysyy samana → ei uutta radiopyyntöä).
+  // REALISMI: lisäpyyntö tulee VAIN oman toimialan johtajalta joka on OIKEASTI kohteessa
+  // arvioimassa (incidentCommander). Ei geneeristä "tilannepaikan johtaja" -haamua, eikä pyyntöä
+  // jo päättyneelle tehtävälle. Dedup _reqAnnounced + ~5 min throttle estävät spämmin/toiston.
+  if(tk.status==='valmis')return false;
+  const cmd=incidentCommander(tk);
+  if(!cmd)return false; // ei oman alan johtajaa kohteessa → ei kukaan vielä arvioi → ei radiopyyntöä
   const r=missingRequestPhrase(tk);
   if(!r){tk._reqAnnounced=null;tk.reqMsg=null;return false;}
   if(tk._reqAnnounced===r.reqKey)return true; // tämä puuttuva kokoonpano jo ilmoitettu
-  tk._reqAnnounced=r.reqKey;tk.requestedOnInfo=true;
-  // Oikean toimialan johtaja puhuu oikealla kanavalla (palossa pelastusjohtaja, ei ambulanssi)
-  const cmd=incidentCommander(tk);
-  const speaker=cmd?cmd.name:(leadName||tk.lead||'tilannepaikan johtaja');
+  if(tk._reqLastAt&&G.clock-tk._reqLastAt<300)return true; // throttle: korkeintaan ~5 min välein
+  tk._reqAnnounced=r.reqKey;tk._reqLastAt=G.clock;tk.requestedOnInfo=true;
+  const speaker=cmd.name;
   const ch=chFor(tk.toimi,'INFO',tk);
   // Johtaja ei aina ole varma — ~30% pyynnöistä on epävarmasti muotoiltu.
   let said=r.phrase;
@@ -4661,6 +4703,20 @@ function maybeRequestSuoja(tk,u){
 }
 const ESC_REASON={'401':['voimakasta savunmuodostusta ikkunasta','liekit levinneet yläpohjaan','tuli levinnyt viereiseen huoneistoon'],'402':['palo levinnyt useaan kerrokseen','katto syttynyt, leviämisvaara','useita henkilöitä pelastettavana'],'411':['palo levinnyt useampaan ajoneuvoon','tuli tarttunut rakennukseen'],'421':['maastopalo levinnyt nopeasti','tuuli yltynyt, rintama kasvaa'],'431':['palo levinnyt viereiseen rakennukseen'],'202':['useita loukkaantuneita','henkilö puristuksissa'],'203':['useita autoja osallisena, lisää loukkaantuneita'],'451':['vuoto laajentunut, evakuointitarve'],'444':['sortumavaara kasvanut']};
 function _escWhy(old){const r=ESC_REASON[old]||['tilanne laajentunut'];return r[Math.floor(Math.random()*r.length)];}
+// Yksiköt jotka voi AIDOSTI vapauttaa ILMAN että vaste menee vajaaksi. neededKeep suojaa
+// tyyppitarpeet; lisäksi varmistetaan needMetBy poistamalla yksi kerrallaan. Korjaa bugin jossa
+// johtaja vapautti juuri pyydetyn/tarvitun yksikön (esim. säiliö) → tehtävä jäi jumiin.
+function releasableExtras(tk){
+  const keep=neededKeep(tk);
+  const cand=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&!keep.has(u.id)&&(u.status==='matka'||u.status==='otettu'));
+  let remaining=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean);
+  const out=[];
+  for(const u of cand){
+    const test=remaining.filter(x=>x.id!==u.id);
+    if(needMetBy(tk,test)){out.push(u);remaining=test;}
+  }
+  return out;
+}
 function maybeEscalate(tk,arriving){
   if(tk.escDone||!G.settings.autoEsc)return;
   const onsc=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
@@ -4679,8 +4735,7 @@ function maybeEscalate(tk,arriving){
   }
   // 2) Vapauta AIDOSTI ylimääräiset (kuka tahansa kohteessa voi todeta tilanteen hallinnan)
   if(Math.random()<0.18){
-    const keep=neededKeep(tk);
-    const extras=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&!keep.has(u.id)&&(u.status==='matka'||u.status==='otettu'));
+    const extras=releasableExtras(tk);
     if(extras.length){
       extras.forEach(u=>{freeUnit(u);tk.assigned=tk.assigned.filter(i=>i!==u.id);});
       tk.escDone=true;
@@ -4707,14 +4762,17 @@ function maybeEscalate(tk,arriving){
 function maybeReleaseExtras(tk){
   if(!tk.onScene)return;
   if(tk._relT&&G.clock-tk._relT<25)return;
-  const keep=neededKeep(tk);
-  const extras=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&!keep.has(u.id)&&(u.status==='matka'||u.status==='otettu'));
+  const extras=releasableExtras(tk);
   if(!extras.length)return;
   tk._relT=G.clock;
   if(Math.random()>0.5)return; // ei joka kerta — luonnollinen viive
   const u=extras[0];
+  // Älä ilmoita samaa yksikköä kahdesti (esti toistuvan "X voi peruuttaa" -viestin)
+  tk._relNames=tk._relNames||[];if(tk._relNames.includes(u.name))return;tk._relNames.push(u.name);
   freeUnit(u);tk.assigned=tk.assigned.filter(i=>i!==u.id);
-  const cmd=incidentCommander(tk);const speaker=cmd?cmd.name:(tk.lead||'tilannepaikan johtaja');
+  // Puhuja = oman alan johtaja kohteessa, EI vapautettava yksikkö itse
+  const cmd=incidentCommander(tk);let speaker=cmd?cmd.name:null;
+  if(!speaker||speaker===u.name){const onsc=tk.assigned.map(id=>G.units.find(x=>x.id===id)).filter(x=>x&&x.status==='kohde'&&x.name!==u.name);speaker=onsc.length?onsc[0].name:'HÄKE';}
   const lines=['ei tarvita, voi kääntyä takaisin','ei taida tarvita, kääntykää takaisin','voi peruuttaa, pärjäämme näillä','ei tarvetta täällä, palatkaa asemalle'];
   radio(chFor(tk.toimi,'INFO',tk),speaker,`${tk.addr} — ${u.name} ${lines[Math.floor(Math.random()*lines.length)]}`);
   renderList();updateBadge();if(dCur&&dCur.id===tk.id)renderDispatch();
@@ -4747,10 +4805,16 @@ function midTaskRelease(tk){
   if(tk.work<tk.workNeeded*0.5)return;if(tk.midDone)return;if(Math.random()>0.004)return;tk.midDone=true;
   const keep=neededKeep(tk);const onsc=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
   const extras=onsc.filter(u=>!keep.has(u.id));if(!extras.length)return;
-  const drop=extras.slice(0,Math.max(1,Math.floor(extras.length/2)));const freed=drop.map(u=>u.name);
+  const drop=extras.slice(0,Math.max(1,Math.floor(extras.length/2)));
+  const remainOnsc=onsc.filter(u=>!drop.includes(u));
+  if(!needMetBy(tk,remainOnsc))return; // varmuus: älä pudota jos kohteessa ei enää riittäisi
+  const freed=drop.map(u=>u.name);
   drop.forEach(u=>{freeUnit(u);tk.assigned=tk.assigned.filter(i=>i!==u.id);});
-  const ch=chFor(tk.toimi,'INFO',tk);const leadName=tk.lead||'tilannepaikan johtaja';const msg=`${tk.addr} — tilanne rauhoittunut, vapautan ${freed.join(', ')} asemalle`;
-  radio(ch,leadName,msg);renderList();
+  // Puhuja = paikalle JÄÄVÄ johtaja (ei vapautettava). Yksikkö ei vapauta itseään nimellään.
+  const remain=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
+  const ch=chFor(tk.toimi,'INFO',tk);const speaker=(tk.lead&&!freed.includes(tk.lead))?tk.lead:(remain[0]?remain[0].name:'HÄKE');
+  const msg=`${tk.addr} — tilanne rauhoittunut, ${freed.join(', ')} ${freed.length>1?'voivat palata':'voi palata'} asemalle`;
+  radio(ch,speaker,msg);renderList();
 }
 /* ===== POTILAAN TILA / LOPPUTULOS =====
   Lasketaan vasteajan ja kiireellisyyden perusteella, kuinka potilaalle kävi.
@@ -5205,12 +5269,24 @@ function finalizeBuy(sid,vt,nm,customValues){
   const u=addUnit(s,vt,nm);
   // Sovella muokatut arvot
   if(customValues.water!=null)u.water=customValues.water;
-  if(customValues.crewN!=null)u.crew='1+'+(customValues.crewN-1);
+  if(customValues.crewN!=null)u.crew='1+'+customValues.crewN; // crewN on jo "1+X":n X (luettu näytöltä) — EI vähennetä toista kertaa (korjaa 1+3 → 1+2 -bugin)
   refreshUnitMarker(u);
   toast('Ostit: '+u.name+(u.water?' ('+u.water+'L)':''));
   if(document.getElementById('p-build').classList.contains('open'))renderBuild();
   if(document.getElementById('smod').classList.contains('open'))renderStation(sid);
 }
+// MYY YKSIKKÖ: irrota tehtävältä, poista kartalta, palauta ~50% hankintahinnasta. (Korjaa rikkinäisen
+// "Myy"-napin — sellUnit puuttui kokonaan → ReferenceError eikä mitään tapahtunut.)
+window.sellUnit=(id)=>{
+  const u=G.units.find(x=>x.id===id);if(!u)return;
+  if(u.taskId){const t=G.tasks.find(x=>x.id===u.taskId);if(t){t.assigned=(t.assigned||[]).filter(i=>i!==id);if(t.lead===u.name)setLead(t);if(t.assigned.length===0&&t.status!=='valmis'){t.status='avoin';t.onScene=false;}}}
+  try{if(u.marker)map.removeLayer(u.marker);}catch(e){}
+  const price=(VTYPES[u.vt]&&VTYPES[u.vt].price)||0;const refund=Math.round(price*0.5);
+  G.units=G.units.filter(x=>x.id!==id);
+  if(refund){G.money+=refund;updateMoney();}
+  toast('Myit yksikön '+u.name+(refund?' (+'+refund.toLocaleString('fi-FI')+'€)':''));
+  try{renderList();updateBadge();saveGame(false);}catch(e){}
+};
 
 /* ===== TAVOITTEET ===== */
 /* ===== TAVOITEJÄRJESTELMÄ — kompakti ja arvottavat tavoitteet =====
@@ -5373,7 +5449,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 
 /* ===== ASETUKSET ===== */
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
-function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 77 · Asetukset</div>';
+function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 78 · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="3" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
@@ -5382,6 +5458,7 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
   h+=`<div class="toggle"><span>Vuodenaika / sää</span><select class="inp" style="width:auto;margin:0" onchange="G.season=this.value;toast('Sää: '+this.value)">${['kesä','talvi','myrsky'].map(s=>`<option ${G.season===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
   h+=sw('Tehtävät voivat laajentua',G.settings.autoEsc,"G.settings.autoEsc=!G.settings.autoEsc;renderSet()");
   h+=sw('Näytä ponnahdusilmoitukset',G.settings.showCallouts,"G.settings.showCallouts=!G.settings.showCallouts;renderSet()");
+  h+=sw('🔊 Äänimerkki kun hälytät yksikön',G.settings.dispatchSound!==false,"G.settings.dispatchSound=(G.settings.dispatchSound===false);try{if(G.settings.dispatchSound)playDispatchSound();}catch(e){}saveGame(false);renderSet()");
   // OPT-OUT: kytke pois spontaaneja tapahtumia (toggle ON = ominaisuus käytössä). saveGame jotta säilyy.
   h+=`<div style="font-size:11px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;font-weight:700;margin:14px 0 4px">Tapahtumat — kytke pois jos et halua</div>`;
   h+=sw('Potilas voi mennä elottomaksi (→ 701 elvytys)',!G.settings.noDeteriorate,"G.settings.noDeteriorate=!G.settings.noDeteriorate;saveGame(false);renderSet()");
@@ -5614,7 +5691,7 @@ function serializeGame(){
     spare:u.spare||false,spareScope:u.spareScope||null,spareCanDispatch:u.spareCanDispatch||false,_coverFor:u._coverFor||null,_origName:u._origName||null,_origStation:u._origStation||null,canSukellus:u.canSukellus||false,
     transport:u.transport||null,
     lat:u.lat,lng:u.lng,hx:u.hx,hy:u.hy})),
-  tasks:G.tasks.filter(t=>t.status!=='valmis').map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||'any',shore:t.shore||null,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null})),
+  tasks:G.tasks.filter(t=>t.status!=='valmis').map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||'any',shore:t.shore||null,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null,_leadAssessAt:t._leadAssessAt??null,_reqAnnounced:t._reqAnnounced||null,_reqLastAt:t._reqLastAt||null,_relNames:t._relNames||null,_relT:t._relT||null,_escT:t._escT||null})),
   packages:G.packages||[],cloudId:G.cloudId||null,cloudEnabled:G.cloudEnabled||false,readyMigrated:true};
 }
 async function saveGame(manual){const json=JSON.stringify({...serializeGame(),lastSaveTs:Date.now()});try{localStorage.setItem('hatakeskus_code',btoa(unescape(encodeURIComponent(json))));}catch(e){}try{await window.storage.set('hatakeskus_v2',json);if(manual)toast('💾 Tallennettu');}catch(e){if(manual)toast('Tallennettu paikallisesti');}
@@ -6078,7 +6155,7 @@ function spawnCatchUp(){
   simulateOffline(gameGapSec);
   // OFFLINE-TULO: myönnä valtion tuki kuluneilta peli-tunneilta (et menetä rahaa poissa ollessa).
   // Katto 48 peli-tuntia jottei kerry valtavia summia pitkästä tauosta.
-  const offHours=Math.min(48,Math.floor(gameGapSec/3600));
+  const offHours=Math.min(3,Math.floor(gameGapSec/3600)); // KATTO 3 peli-tuntia (oli 48) — ei valtavia passiivisia summia poissaolosta; raha tulee pääosin offline-suoritetuista tehtävistä
   if(offHours>0){
     let perH=0;
     G.stations.forEach(s=>{
