@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HÄTÄKESKUS - dispatch sim v78 (balanssi: tahti skaalautuu kalustoon + maxTaskGap-lattia korjattu; radio/johtaja-realismi; myy-nappi; miehitys 1+X; tauolla hälytettävissä; kohteessa/matkalla-lokerot; hälytysääni; partiopolygonit näkyvät; offline-rahakatto) -->
+<!-- HÄTÄKESKUS - dispatch sim v79 (KORJAUKSET: 1) tehtävän epäonnistuminen perustuu nyt tehtävän SISÄISEEN kiireellisyyteen (timeCrit/sev), ei pelaajan triagaamaan urg:iin → triagaamaton tehtävä ei ole enää ikuisesti suojassa eikä vanhan tehtävän triagaaminen epäonnistuta sitä heti; 2) ei voi enää hälyttää poistettuun tehtävään (haamuhälytys estetty); 3) osoitteeseen liitetään oikea kunta + yleiset kadunnimet; 4) vuodenaika seuraa päivämäärää (1.1. = talvi); 5) tehtävälistassa näkyy "odottaa lisäyksikköä"; 6) varustelu (vesi/miehistö) vaikuttaa hintaan; 7) aseman paneeli sulkee päällekkäiset välilehtipaneelit; 8) MOBIILI: yläpalkki ei enää vuoda ruudun yli (vieritettävä, ei koko sivun vaakavieritystä); 9) CROSSPLAY: varoitus kun samaa tiliä pelataan kahdella laitteella yhtä aikaa (estää hiljaisen edistymisen häviämisen)) -->
+<!-- v78 (balanssi: tahti skaalautuu kalustoon + maxTaskGap-lattia korjattu; radio/johtaja-realismi; myy-nappi; miehitys 1+X; tauolla hälytettävissä; kohteessa/matkalla-lokerot; hälytysääni; partiopolygonit näkyvät; offline-rahakatto) -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <!-- Puhelin: "Lisää aloitusnäyttöön" avaa pelin täysruudussa kuin oikea sovellus -->
@@ -96,7 +97,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
   :root{--nav-h:60px}
   /* YLÄPALKKI: logoteksti piiloon (jää vain "live"-piste) ja pillit tiiviiksi, jotta KAIKKI
      mahtuu — etenkin raha. Leaflet-zoom siirretään ettei jää logon/piste päälle. */
-  #top{gap:6px;padding:0 8px}
+  /* KORJAUS (mobiili): yläpalkki vieritettävissä vaakaan, ettei sisältö (Ruuhka/tapahtuma/tehtävätahti)
+     vuoda ruudun ulkopuolelle ja aiheuta koko sivun vaakavieritystä. Aika/pvm/raha näkyvät heti. */
+  #top{gap:6px;padding:0 8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #top::-webkit-scrollbar{display:none}
   #top .logo{font-size:0;gap:0;letter-spacing:0;flex:none}
   #top .pill{padding:4px 7px;font-size:12px;gap:3px}
   /* Isommat kosketusalueet */
@@ -402,7 +406,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 
 <script>
 /* ===== TILA ===== */
-const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'kesä',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:3,jsonbinKey:'',maxTaskGap:300}};
+const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:3,jsonbinKey:'',maxTaskGap:300}};
 
 /* ===== KALENTERI / AIKAJÄRJESTELMÄ =====
    G.clock = sekunnit vuorokauden alusta (0-86400)
@@ -414,6 +418,10 @@ function gameDate(dayOffset=0){
   base.setDate(base.getDate()+(G.dayCount||0)+dayOffset);
   return base;
 }
+// Vuodenaika pelipäivän mukaan (KORJAUS: ennen 'kesä' oli kovakoodattu oletus → uudenvuodenpäivänä
+// 1.1. näytti "kesä". Nyt johdetaan kuukaudesta. Marras–maalis = talvi, muuten kesä. 'myrsky' on
+// pelaajan valitsema säätapahtuma eikä sitä ylikirjoiteta automaattisesti.)
+function seasonForDate(){const m=gameDate().getMonth()+1;return (m>=11||m<=3)?'talvi':'kesä';}
 const FIN_DAYS=['su','ma','ti','ke','to','pe','la'];
 const FIN_DAYS_LONG=['sunnuntai','maanantai','tiistai','keskiviikko','torstai','perjantai','lauantai'];
 const FIN_MONTHS=['tammikuu','helmikuu','maaliskuu','huhtikuu','toukokuu','kesäkuu','heinäkuu','elokuu','syyskuu','lokakuu','marraskuu','joulukuu'];
@@ -1419,6 +1427,7 @@ function addStationMarker(st){
 }
 function openStation(sid){
   smTab='units';smUnit=null;
+  closePanels(); // KORJAUS: sulje auki oleva välilehtipaneeli (esim. Asetukset) ettei jää päällekkäin aseman paneelin kanssa
   document.getElementById('disp').classList.remove('open');
   document.getElementById('uinfo').classList.remove('open');
   renderStation(sid);
@@ -2771,9 +2780,21 @@ async function pickLocationForTask(t){
 }
 
 // Kadunnimet paikan typin mukaan
+// Lähin kunta tehtävän koordinaateista (KORJAUS: ennen katuosoite arvottiin ilman yhteyttä
+// sijaintiin → esim. "Suomenojantie 60" saattoi sijaita Pasilassa. Nyt osoitteeseen liitetään
+// oikea kunta, ja kaupunkikohtaiset kadunnimet on korvattu yleisillä, jottei katu ole ristiriidassa.)
+const MUNIS=[
+  ['Helsinki',60.1699,24.9384],['Espoo',60.2055,24.6559],['Vantaa',60.2934,25.0378],
+  ['Kauniainen',60.2118,24.7290],['Kirkkonummi',60.1233,24.4389],['Kerava',60.4036,25.1050],
+  ['Järvenpää',60.4731,25.0896],['Tuusula',60.4028,25.0289],['Sipoo',60.3780,25.2620],
+  ['Nurmijärvi',60.4640,24.8090],['Hyvinkää',60.6305,24.8597],['Vihti',60.4170,24.3210],
+  ['Lohja',60.2486,24.0655],['Porvoo',60.3920,25.6650],['Mäntsälä',60.6340,25.3170],
+  ['Riihimäki',60.7370,24.7770]
+];
+function municipalityFor(lat,lng){let best='Helsinki',bd=1e9;for(const[n,la,lo]of MUNIS){const d=km(lat,lng,la,lo);if(d<bd){bd=d;best=n;}}return best;}
 function randAddrFor(where){
-  const URBAN=['Kauppakatu','Asemakuja','Kirkkotie','Mäntyrinne','Koivutie','Rantatie','Pellontie'];
-  const ROAD=['Turuntie','Länsiväylä','Vanha valtatie','Kalkkerintie','Suomenojantie','Hämeentie'];
+  const URBAN=['Kauppakatu','Asemakuja','Kirkkotie','Mäntyrinne','Koivutie','Rantatie','Pellontie','Puistokatu','Koulukatu'];
+  const ROAD=['Vanha valtatie','Teollisuustie','Asematie','Tehtaankatu','Kirkkotie','Rantatie'];
   const INDUSTRIAL=['Teollisuuskatu','Konepajantie','Tehdasalueentie','Satamakatu','Varastotie'];
   const FOREST=['Metsätie','Polku','Mäkitie','Korventie','Luontopolku'];
   const WATER=['Rantatie','Satamankatu','Laiturinkuja','Venelaituri','Uimarantakuja'];
@@ -2854,6 +2875,8 @@ async function spawnTask(){
       taskAddr=base+' lähistö';
     }
   }
+  // Liitä oikea kunta osoitteeseen, jotta osoite vastaa kartalla näkyvää sijaintia (KORJAUS)
+  taskAddr+=', '+municipalityFor(loc.lat,loc.lng);
   const tk={id:'T'+(G.tidc++),c:shownC,base:shownC,realCode:realT.c,n:t.n,toimi:t.toimi,need:JSON.parse(JSON.stringify(realT.need)),minCrew:realT.minCrew,rew:realT.rew,info:desc,patients:realT.patients,sev:realT.sev||'none',timeCrit:realT.timeCrit||null,esc:t.esc||0,escTo:t.escTo||null,where:t.where||'any',lat:loc.lat,lng:loc.lng,urg:t.forceUrg||null,status:'avoin',assigned:[],created:G.clock,addr:taskAddr,addrBlurred:addrIsBlurred,onScene:false,escDone:false,lead:null,workNeeded:workMin*60,work:0,mislabeled:realT.c!==shownC,pilapuhelu:pilapuhelu,outcome:null};
   // Palotehtävän potilaalla voi olla esim. hengitystiepalovamma → lääkäri/L4 parantaa ennustetta.
   // EI pakollinen vaste (ei lukita tehtävää!) — vain ~35% potilaspaloista; vihje näkyy call-tekstissä.
@@ -3407,7 +3430,12 @@ function playDispatchSound(){
   }catch(e){}
 }
 async function sendDispatch(next){
-  const tk=dCur;if(!tk.urg){toast('Valitse ensin kiireellisyys (A/B/C/D)');return;}if(dSel.size===0&&!next)return;
+  const tk=dCur;
+  if(!tk){return;}
+  // KORJAUS (BUGI): estä hälytys tehtävään joka on jo poistettu (esim. ehti "jäädä hoitamatta"
+  // samalla kun paneeli oli auki) — muuten yksikkö lähti ajamaan haamutehtävään.
+  if(!G.tasks.includes(tk)){toast('Tehtävä ei ole enää aktiivinen');const dp=document.getElementById('disp');if(dp)dp.classList.remove('open');dCur=null;return;}
+  if(!tk.urg){toast('Valitse ensin kiireellisyys (A/B/C/D)');return;}if(dSel.size===0&&!next)return;
   G._lastActivity=Date.now(); // tämä laite aktiivinen → pilvisynkka ei ylikirjoita sitä passiivisen laitteen tallennuksella
   const names=[];const ids=[...dSel];
   // Suodata pois ei-hälytettävissä olevat (mutta salli partioivat)
@@ -3534,6 +3562,17 @@ window.setTaskCode=(code)=>{
 };
 
 /* ===== RADIO ===== */
+// Tehtävä voi "jäädä hoitamatta" (sakko) vain jos se on LUONTEELTAAN kiireellinen.
+// KORJAUS (BUGI): aiemmin ehtona oli !['A','B'].includes(tk.urg) eli se nojasi PELAAJAN
+// valitsemaan kiireellisyyteen. Koska urg asetetaan vasta triagatessa, triagaamaton tehtävä
+// oli ikuisesti suojassa epäonnistumiselta, ja vanhan tehtävän triagaaminen epäonnistutti sen
+// VÄLITTÖMÄSTI (sakko + haamutehtävä). Nyt käytetään tehtävän SISÄISTÄ kiireellisyyttä.
+function neglectEligible(tk){
+  if(tk.timeCrit) return true;                          // aikakriittinen koodi (sek)
+  if(['critical','high'].includes(tk.sev)) return true; // vakava → vastaa A/B-kiireellisyyttä
+  if(['A','B'].includes(tk.forceUrg)) return true;      // pakotettu kiireellisyys
+  return false;
+}
 function checkNeglect(tk){
   // JUUTTUNEEN TEHTÄVÄN SIIVOUS: jos yksiköt ovat olleet matkalla todella kauan eivätkä
   // koskaan saavu (esim. vanha tallennus, mahdoton reitti), vapauta ne ja avaa tehtävä uudelleen.
@@ -3545,7 +3584,7 @@ function checkNeglect(tk){
       renderList();updateBadge();
     }
   }
-  if(tk.status!=='avoin'||!['A','B'].includes(tk.urg))return;
+  if(tk.status!=='avoin'||!neglectEligible(tk))return;
   const waited=G.clock-tk.created;
   if(!tk.warned&&waited>360){tk.warned=true;alertTask(tk,'HÄKE: kiireellinen tehtävä '+tk.c+' '+tk.addr+' yhä ilman yksiköitä!');}
   if(!tk.escNeglect&&waited>600&&tk.escTo&&tk.escTo!==tk.c&&TASKS.find(t=>t.c===tk.escTo)){tk.escNeglect=true;const reasons=ESC_REASON[tk.c]||['tilanne ehti pahentua ilman apua'];const why=reasons[Math.floor(Math.random()*reasons.length)];alertTask(tk,'HÄKE: '+tk.c+' '+tk.addr+' — '+why+' (yhä ilman yksiköitä)');} // EI vaihda koodia pelaajan puolesta — vain varoitus
@@ -3556,6 +3595,7 @@ function checkNeglect(tk){
     // Vapauta mahdolliset matkalla olevat yksiköt (orpojen yksiköiden korjaus)
     (tk.assigned||[]).forEach(id=>{const u=G.units.find(x=>x.id===id);if(u){freeUnit(u);}});
     if(tk.marker)map.removeLayer(tk.marker);
+    if(dCur&&dCur.id===tk.id){dCur=null;const dp=document.getElementById('disp');if(dp)dp.classList.remove('open');} // älä jätä hälytyspaneelia auki poistettuun tehtävään
     G.tasks=G.tasks.filter(t=>t.id!==tk.id);renderList();updateBadge();
   }
 }
@@ -3676,6 +3716,8 @@ function tick(dt){G.clock+=dt;
   // Päivän vaihtuminen — etenee dayCount, laukaisee päiväkohtaisen logiikan
   if(G.clock>=86400){
     while(G.clock>=86400){G.clock-=86400;G.dayCount=(G.dayCount||0)+1;}
+    // Päivitä vuodenaika kuukauden mukaan (ellei pelaaja asettanut käsin tai myrsky päällä)
+    if(!G._seasonManual&&G.season!=='myrsky')G.season=seasonForDate();
     const ev=todayEvent();
     if(ev){toast(ev.icon+' '+ev.name+' — '+fmtGameDate());}
     // Uusi päivä: korvaa lunastetut tavoitteet vähitellen uusilla haasteilla
@@ -5316,7 +5358,7 @@ function spawnFollowUp(parent){
 }
 
 /* ===== RENDER LISTAT ===== */
-function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${t.c} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${t.n}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
+function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${t.c} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${t.n}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
 function updateBadge(){
   const n=G.tasks.filter(t=>t.status==='avoin').length,b=document.getElementById('navbadge');
   if(n>0){b.style.display='block';b.textContent=n;}else b.style.display='none';
@@ -5472,8 +5514,8 @@ function showBuyCustomModal(T,nm){
     const w=custom.water;
     fields+=`<div class="toggle" style="flex-direction:column;align-items:stretch;gap:4px;padding:10px 0">
       <div style="display:flex;justify-content:space-between"><span>${w.label}</span><b id="bm_water_v">${T.water} L</b></div>
-      <input type="range" min="${w.min}" max="${w.max}" step="${w.step}" value="${T.water}" class="inp" style="height:30px;padding:0;margin:0" 
-        oninput="document.getElementById('bm_water_v').textContent=this.value+' L'">
+      <input id="bm_water" type="range" min="${w.min}" max="${w.max}" step="${w.step}" value="${T.water}" class="inp" style="height:30px;padding:0;margin:0"
+        oninput="document.getElementById('bm_water_v').textContent=this.value+' L';bmPrice()">
       <div style="display:flex;justify-content:space-between" class="smallnote"><span>${w.min}L</span><span>${w.max}L</span></div>
     </div>`;
   }
@@ -5481,8 +5523,8 @@ function showBuyCustomModal(T,nm){
     const initCrew=parseInt((T.crew||'1+1').split('+')[1])||1;
     fields+=`<div class="toggle" style="flex-direction:column;align-items:stretch;gap:4px;padding:10px 0">
       <div style="display:flex;justify-content:space-between"><span>${custom.crewN.label}</span><b id="bm_crew_v">1+${initCrew}</b></div>
-      <input type="range" min="${custom.crewN.min}" max="${custom.crewN.max}" step="1" value="${initCrew+1}" class="inp" style="height:30px;padding:0;margin:0"
-        oninput="document.getElementById('bm_crew_v').textContent='1+'+(this.value-1)">
+      <input id="bm_crew" type="range" min="${custom.crewN.min}" max="${custom.crewN.max}" step="1" value="${initCrew+1}" class="inp" style="height:30px;padding:0;margin:0"
+        oninput="document.getElementById('bm_crew_v').textContent='1+'+(this.value-1);bmPrice()">
       <div style="display:flex;justify-content:space-between" class="smallnote"><span>1+${custom.crewN.min-1}</span><span>1+${custom.crewN.max-1}</span></div>
     </div>`;
   }
@@ -5492,13 +5534,29 @@ function showBuyCustomModal(T,nm){
     ${fields}
     <input class="inp" id="bm_name" value="${nm||''}" placeholder="Tunnus (jätetään tyhjäksi → automaattinen)">
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="buy" style="flex:1;font-size:15px" onclick="confirmBuy()">🛒 Osta ${T.price.toLocaleString('fi-FI')}€</button>
+      <button id="bm_buy" class="buy" style="flex:1;font-size:15px" onclick="confirmBuy()">🛒 Osta ${T.price.toLocaleString('fi-FI')}€</button>
       <button class="btn-x" onclick="closeBuyModal()">Peruuta</button>
     </div>
   </div>`;
   el.style.display='flex';
 }
 window.closeBuyModal=()=>{const el=document.getElementById('buymodal');if(el)el.style.display='none';pendingBuy=null;};
+// KORJAUS: varustelu (vesimäärä/miehistö) vaikuttaa nyt hintaan, joten liukusäätimet eivät ole "ilmaisia".
+// Lisämaksu vain peruskokoa SUUREMMASTA varustelusta; perusvalinta = perushinta.
+function buySurcharge(T,water,crewN){
+  let extra=0;
+  if(T&&T.custom&&T.custom.water&&typeof water==='number')extra+=Math.max(0,water-(T.water||0))*3; // 3€/litra yli perustason
+  if(T&&T.custom&&T.custom.crewN&&typeof crewN==='number'){const baseX=parseInt((T.crew||'1+1').split('+')[1])||1;extra+=Math.max(0,crewN-baseX)*1500;} // 1500€/lisähenkilö
+  return Math.round(extra);
+}
+function bmPrice(){
+  if(!pendingBuy)return;const T=VTYPES[pendingBuy.vt]||{};
+  let water=null,crewN=null;
+  const wl=document.getElementById('bm_water_v');if(wl)water=parseInt(wl.textContent)||T.water;
+  const cl=document.getElementById('bm_crew_v');if(cl)crewN=parseInt(cl.textContent.split('+')[1]);
+  const tot=(T.price||0)+buySurcharge(T,water,crewN);
+  const b=document.getElementById('bm_buy');if(b)b.textContent='🛒 Osta '+tot.toLocaleString('fi-FI')+'€';
+}
 window.confirmBuy=()=>{
   if(!pendingBuy)return;
   const {sid,vt}=pendingBuy;
@@ -5517,8 +5575,10 @@ window.confirmBuy=()=>{
 };
 function finalizeBuy(sid,vt,nm,customValues){
   const s=G.stations.find(x=>x.id===sid);if(!s)return;
-  const T=VTYPES[vt];if(!T||G.money<T.price){toast('Ei tarpeeksi rahaa');return;}
-  G.money-=T.price;updateMoney();
+  const T=VTYPES[vt];if(!T)return;
+  const total=T.price+buySurcharge(T,customValues.water,customValues.crewN); // varustelun lisämaksu mukaan
+  if(G.money<total){toast('Ei tarpeeksi rahaa');return;}
+  G.money-=total;updateMoney();
   const u=addUnit(s,vt,nm);
   // Sovella muokatut arvot
   if(customValues.water!=null)u.water=customValues.water;
@@ -5702,13 +5762,13 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 
 /* ===== ASETUKSET ===== */
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
-function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 78 · Asetukset</div>';
+function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 79 · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="3" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
   h+=`<div class="toggle"><span>Pelin nopeus (aika nopeutuu)</span><input type="range" min="1" max="16" step="1" value="${TIME_MULT}" oninput="TIME_MULT=parseInt(this.value);document.getElementById('tmv').textContent=TIME_MULT+'×'"><span id="tmv">${TIME_MULT}×</span></div>`;
   h+=`<div class="toggle"><span>Vasteaika-kerroin (lähtöaika)</span><input type="range" min="0" max="2.5" step="0.1" value="${TURNOUT_MULT}" oninput="TURNOUT_MULT=parseFloat(this.value);document.getElementById('tov').textContent=TURNOUT_MULT.toFixed(1)+'×'"><span id="tov">${TURNOUT_MULT.toFixed(1)}×</span></div>`;
-  h+=`<div class="toggle"><span>Vuodenaika / sää</span><select class="inp" style="width:auto;margin:0" onchange="G.season=this.value;toast('Sää: '+this.value)">${['kesä','talvi','myrsky'].map(s=>`<option ${G.season===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
+  h+=`<div class="toggle"><span>Vuodenaika / sää</span><select class="inp" style="width:auto;margin:0" onchange="G.season=this.value;G._seasonManual=true;toast('Sää: '+this.value)">${['kesä','talvi','myrsky'].map(s=>`<option ${G.season===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
   h+=sw('Tehtävät voivat laajentua',G.settings.autoEsc,"G.settings.autoEsc=!G.settings.autoEsc;renderSet()");
   h+=sw('Näytä ponnahdusilmoitukset',G.settings.showCallouts,"G.settings.showCallouts=!G.settings.showCallouts;renderSet()");
   h+=sw('🔊 Äänimerkki kun hälytät yksikön',G.settings.dispatchSound!==false,"G.settings.dispatchSound=(G.settings.dispatchSound===false);try{if(G.settings.dispatchSound)playDispatchSound();}catch(e){}saveGame(false);renderSet()");
@@ -6054,7 +6114,13 @@ async function fbPeriodicPull(){
   // omat pushit päivittävät toisen (passiivisen) laitteen. Popupit pysyvät laitekohtaisina.
   if(d.device&&d.device===_fbDeviceId())return;
   if((d.ts||0)<=(G.lastSaveTs||0)+3000)return;
-  if(G._lastActivity&&Date.now()-G._lastActivity<90000)return; // tämä laite aktiivinen → ei adoptoida
+  if(G._lastActivity&&Date.now()-G._lastActivity<90000){
+    // KONFLIKTIVAROITUS (crossplay): toinen laite tallensi uudemman, MUTTA tämä laite on aktiivinen →
+    // ei ylikirjoiteta (suojaa omat hälytykset). Tämä tarkoittaa että SAMAA tiliä pelataan kahdella
+    // laitteella yhtä aikaa, jolloin "uusin voittaa" voi hukata edistymistä → varoita (kerran per 2 min).
+    if(!G._dualWarnT||Date.now()-G._dualWarnT>120000){G._dualWarnT=Date.now();toast('⚠️ Tiliä pelataan myös toisella laitteella samaan aikaan — pelaa vain yhdellä laitteella kerrallaan, ettei edistyminen mene päällekkäin.');}
+    return; // tämä laite aktiivinen → ei adoptoida
+  }
   const remote=decodePayload(d.data);if(!remote)return;
   remote.openPops=G.openPops||null;
   applyLoaded(remote);G.lastSaveTs=d.ts;_myPushTs=d.ts;
