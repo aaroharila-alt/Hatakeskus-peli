@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HÄTÄKESKUS - dispatch sim v83 (KORJAUKSET: SUOJA-BUGI: liikenneonnettomuus pyysi jatkuvasti lisää säiliöautoa suojaksi vaikka niitä oli jo paikalla. Juurisyy: vanha versio inflatoi need.suoja-arvon (lisäsi monta kertaa) ja se jäi tallennukseen. Korjaus: (a) need.suoja capataan 1:ksi latauksessa (korjaa vanhat tallennukset), (b) maybeRequestSuoja ASETTAA need.suoja=1 (ei ++). Säiliö/tankki/nostolava lasketaan jo suojaksi needMetBy:ssä. Muuten kuten v82) -->
 <!-- HÄTÄKESKUS - dispatch sim v82 (KORJAUKSET: 1) PALJON uusia tehtävävariantteja (EXTRA_VARIANTS-yhdistys ~50 koodille, ei muokkaa TASKS-määrittelyä); 2) radioviestin yksikkötunnusta klikatessa AVAUTUU se tehtävä jossa yksikkö on (EI enää lähetä yksikköä toiselle tehtävälle); muuten kuten v81) -->
 <!-- HÄTÄKESKUS - dispatch sim v81 (KORJAUKSET: 1) "Suositeltu vaste" -teksti poistettu hälytysnäkymästä; 2) äänimerkki soi nyt UUDESTA TEHTÄVÄSTÄ (ei hälytyksestä); 3) radioviestien yksikkötunnukset KLIKATTAVIA → hälyttää avoinna olevaan tehtävään; 4) "Hylkää tehtävä" maksaa nyt SAKON (ei ilmainen tehtävien ohitus, vain jumipako); 5) johtaja EI enää pyydä suojaa/joukkuelähtöä jos sellainen on JO matkalla (en-route-kate) + "johtaja arvioi tilannetta" -viive poistettu (hoitaa heti); 6) valmiussiirto-näyttö rehellinen ("saapumassa" kun vielä matkalla) + "Korjaa jumittuneet yksiköt" -nappi nollaa myös ei-hälytettävään jumiin jääneet + duty-sijainnin; 7) tavoitteet eivät enää ilmoita vanhoja "saavutettu" latauksen/pilvisynkan jälkeen) -->
 <!-- HÄTÄKESKUS - dispatch sim v80 (KORJAUKSET: A) AUTOM. PILVITALLENNUS sulkiessa/taustalle (visibilitychange+pagehide → fbPushDo, ei tarvitse painaa "Tallenna nyt"); B) OFFLINE: Firestore enablePersistence (offline-kirjoitusjono synkkaa kun verkko palaa) + Service Worker sw.js + manifest.json + ikonit → asennettava PWA, toimii ilman nettiä 1. latauksen jälkeen (cachettaa kuoren + vieraillut karttalaatat); C) radio-popupit EIVÄT enää siirry laitteelta toiselle (fbForcePull strippaa openPops) eikä niitä palauteta mobiilissa (peittivät kartan, ei saanut suljettua); D) "🗑️ Poista tehtävä" -nappi hälytysnäkymässä (jumittuneen tehtävän poisto); E) KOODI-pudotusvalikko numerojärjestyksessä; F) wipe() poistaa myös pilvitallennuksen → nollattu peli ei palaa takaisin synkasta) -->
@@ -5117,7 +5118,7 @@ function maybeRequestSuoja(tk,u){
   const prob={'201':0.7,'202':0.8,'203':0.9,'204':0.95,'205':0.6,'411':0.8,'412':0.85,'413':0.9,'461':0.65,'471':0.8,'481':0.7}[tk.base]||0.75;
   if(Math.random()<prob){
     tk.reqSuoja=true;
-    tk.need.suoja=(tk.need.suoja||0)+1;
+    tk.need.suoja=1; // EI ++ → suojaa tarvitaan korkeintaan 1, ei voi inflatoitua vaikka tämä ajettaisiin uudestaan
     tk.rew+=150;tk.reqDone=true;
     const reasons=[
       'pyydän suojauton kohteeseen — kaista suojattava',
@@ -5916,7 +5917,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 
 /* ===== ASETUKSET ===== */
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
-function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 82 · Asetukset</div>';
+function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 83 · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="3" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
@@ -6511,6 +6512,9 @@ function applyLoaded(d){
   G.tasks=[];(d.tasks||[]).forEach(t=>{
     const tk=Object.assign({status:'avoin',assigned:[],onScene:false,escDone:false,lead:null,work:0,reqKey:''},t);
     if(tk.created==null)tk.created=G.clock; // vain jos puuttuu vanhasta tallennuksesta
+    // SAVE-KORJAUS (v83): vanha versio saattoi lisätä need.suoja useita kertoja → tehtävä pyysi suojaa
+    // vaikka säiliöitä/nostolavoja oli jo paikalla. Suojaa tarvitaan KORKEINTAAN 1 → korjaa vanha tallennus.
+    if(tk.need&&tk.need.suoja>1)tk.need.suoja=1;
     G.tasks.push(tk);tk.marker=makeTaskMarker(tk);
   });
   (d.units||[]).forEach(u=>{
