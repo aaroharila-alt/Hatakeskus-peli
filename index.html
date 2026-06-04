@@ -897,7 +897,7 @@ const TASKS=[
    'Sähkölaturi sulanut pistorasiassa, käryä ja kipinöitä. Soittaja: asukas, irrotti johdon.',
    'Pyykinkuivausrumpu savuaa kodinhoitohuoneessa, asukas katkaisi virran.',
    'Liesituulettimen rasva syttyi, asukas tukahdutti kannella, savua keittiössä.']},
- {c:'402',n:'Rakennuspalo: keskisuuri',toimi:'pelastus',w:2.5,need:{sammutus:2,sailio:1,nostolava:1,johto:1,ambulanssi:1},minCrew:10,rew:1800,where:'urban',patients:1,sev:'high',timeCrit:600,esc:.18,escTo:'403',dur:[50,120],info:'Rakennuspalo.',variants:[
+ {c:'402',n:'Rakennuspalo: keskisuuri',toimi:'pelastus',w:1.2,need:{sammutus:2,sailio:1,nostolava:1,johto:1,ambulanssi:1},minCrew:10,rew:1800,where:'urban',patients:1,sev:'high',timeCrit:600,esc:.18,escTo:'403',dur:[50,120],info:'Rakennuspalo.',variants:[
    'Savua ulos huoneiston ikkunasta, asukkaat ulkona, soittaja: naapuri.',
    'Liekkejä parvekkeen ovesta kerrostalossa, asukkaat poistuivat. Soittaja: ohikulkija.',
    'Kerrostalon asunnosta paksua savua, soittaja epävarma onko kaikki ulkona.',
@@ -915,7 +915,7 @@ const TASKS=[
    'Auton moottoritilasta savua parkkipaikalla, omistaja paikalla.',
    'Pakettiauto palaa, ohikulkijat pysähtyneet, ei tietoa kuljettajasta.',
    'Mopo palaa parkkipaikalla, kuljettaja kävellyt pois.']},
- {c:'412',n:'Liikennevälinepalo: keskisuuri',toimi:'pelastus',w:1.2,need:{sammutus:2,sailio:1},minCrew:7,rew:750,where:'road',patients:1,sev:'medium',esc:.1,dur:[25,55],info:'Iso ajoneuvopalo.',variants:[
+ {c:'412',n:'Liikennevälinepalo: keskisuuri',toimi:'pelastus',w:0.8,need:{sammutus:2,sailio:1},minCrew:7,rew:750,where:'road',patients:1,sev:'medium',esc:.1,dur:[25,55],info:'Iso ajoneuvopalo.',variants:[
    'Kuorma-auto liekeissä valtatien varressa, kuljettaja ulkona.',
    'Linja-auto palaa, matkustajat poistuneet, kuljettaja tarkistaa.',
    'Useampi auto tulessa parkkihallissa, savua tilassa, evakuointi.']},
@@ -924,7 +924,7 @@ const TASKS=[
    'Nuotio karannut metsänreunassa, leiriläiset ilmoittavat.',
    'Hakkuujäte palaa, tuuli leviää sitä. Soittaja: ohikulkija metsätiellä.',
    'Ruohikkoa palaa pellon laidalla, tuntematon syy. Soittaja: maanviljelijä.']},
- {c:'422',n:'Maastopalo: keskisuuri',toimi:'pelastus',w:1,need:{sammutus:2,sailio:2,johto:1},minCrew:10,rew:1300,where:'forest',patients:0,sev:'low',esc:.2,dur:[90,220],info:'Laaja maastopalo.',variants:[
+ {c:'422',n:'Maastopalo: keskisuuri',toimi:'pelastus',w:0.6,need:{sammutus:2,sailio:2,johto:1},minCrew:10,rew:1300,where:'forest',patients:0,sev:'low',esc:.2,dur:[90,220],info:'Laaja maastopalo.',variants:[
    'Metsäpalo usean hehtaarin alueella, tuuli yltyy.',
    'Maastopalo lähestyy asutusta, evakuointivalmius.',
    'Metsäpalo levinnyt useaan suuntaan, tarkkaa kokoa ei vielä tiedossa.']},
@@ -933,7 +933,7 @@ const TASKS=[
    'Roskakatos tulessa taloyhtiön pihassa. Soittaja: asukas.',
    'Pieni ulkorakennus savuaa, omistaja ei paikalla. Soittaja: naapuri.',
    'Grillinviereinen pensaikko leimahti, asukas yrittänyt sammuttaa.']},
- {c:'432',n:'Tulipalo muu: keskisuuri',toimi:'pelastus',w:1,need:{sammutus:2,sailio:1,johto:1},minCrew:8,rew:800,where:'any',patients:0,sev:'low',esc:.12,dur:[35,80],info:'Palo levinnyt.',variants:[
+ {c:'432',n:'Tulipalo muu: keskisuuri',toimi:'pelastus',w:0.6,need:{sammutus:2,sailio:1,johto:1},minCrew:8,rew:800,where:'any',patients:0,sev:'low',esc:.12,dur:[35,80],info:'Palo levinnyt.',variants:[
    'Varasto tulessa, leviämisvaara naapurirakennuksiin.',
    'Autotalli liekeissä, savua runsaasti.',
    'Pihasauna tulessa, asukas itse soittanut, leviämisvaara päärakennukseen.']},
@@ -966,7 +966,7 @@ const TASKS=[
    'Henkilö puristuksissa ajoneuvon ja lastauslaiturin välissä, hereillä.',
    'Auton alle jäänyt huoltomies tunkin pettäessä, työpari soittaa.',
    'Mönkijä kaatunut kuljettajan päälle pihatiellä, hereillä mutta jää alle.']},
- {c:'203',n:'Liikenneonnett.: keskisuuri',toimi:'pelastus',w:2,need:{sammutus:2,sailio:1,ambulanssi:2,poliisi:1,johto:1},minCrew:9,rew:1300,where:'road',patients:2,sev:'high',timeCrit:600,esc:.04,escTo:'204',dur:[40,90],info:'Vakava kolari, mahdollinen irrotus.',variants:[
+ {c:'203',n:'Liikenneonnett.: keskisuuri',toimi:'pelastus',w:1.4,need:{sammutus:2,sailio:1,ambulanssi:2,poliisi:1,johto:1},minCrew:9,rew:1300,where:'road',patients:2,sev:'high',timeCrit:600,esc:.04,escTo:'204',dur:[40,90],info:'Vakava kolari, mahdollinen irrotus.',variants:[
    'Henkilö puristuksissa autossa, ei pääse ulos. Soittaja: ohikulkija.',
    'Nokkakolari, kaksi loukkaantunutta, toinen ei vastaa kysymyksiin.',
    'Auto puuta päin, kuljettaja kiinni ohjaamossa, hereillä mutta kipuilee.',
@@ -1014,7 +1014,7 @@ const TASKS=[
    'Mainoskyltti irronnut ja roikkuu vaarallisesti yli kävelytien.',
    'Vesikatto vuotaa, valuu asuntoon. Soittaja: asukas.',
    'Lippa irronnut talon julkisivusta, putoamisvaara kävelijöille.']},
- {c:'462',n:'Vahingontorjunta: keskisuuri',toimi:'pelastus',w:2,need:{sammutus:1},altNeed:[{vahinko:1}],rew:600,where:'any',patients:0,sev:'none',esc:.1,dur:[40,90],info:'Vesivahinko. Sammutusyksikkö TAI vahingontorjunta-auto.',variants:[
+ {c:'462',n:'Vahingontorjunta: keskisuuri',toimi:'pelastus',w:0.7,need:{sammutus:1},altNeed:[{vahinko:1}],rew:600,where:'any',patients:0,sev:'none',esc:.1,dur:[40,90],info:'Vesivahinko. Sammutusyksikkö TAI vahingontorjunta-auto.',variants:[
    'Kellari täyttyy vedestä putkirikon takia, taloyhtiö soittaa.',
    'Myrsky kaatanut useita puita teille, useita kohteita.',
    'Tulva uhkaa kiinteistöjä, sade jatkuu.']},
@@ -1086,8 +1086,12 @@ const TASKS=[
    'Grillistä leimahdus terassilla, asukas yrittää sammuttaa, ei näkyvää savua enää.']},
 
  /* ===== PELASTUS — suuronnettomuudet (harvinaisia) ===== */
- {c:'231',n:'Ilmaliikenneonnettomuus',toimi:'pelastus',w:0.12,need:{sammutus:2,sailio:1,ambulanssi:2,johto:1},minCrew:14,rew:3200,where:'any',patients:3,sev:'critical',timeCrit:600,esc:0,dur:[90,220],info:'Pienkone pakkolaskussa, savua ja loukkaantuneita.',variants:['Pienkone tehnyt pakkolaskun pellolle, savua.','Helikopteri pudonnut, miehistö loukkaantunut.','Lentokone liukunut kiitotieltä, matkustajia.']},
- {c:'212',n:'Raideliikenneonnettomuus',toimi:'pelastus',w:0.15,need:{sammutus:3,ambulanssi:3,johto:1},minCrew:16,rew:3400,where:'any',patients:4,sev:'critical',timeCrit:720,esc:0,dur:[100,240],info:'Juna ja ajoneuvo törmänneet tasoristeyksessä.',variants:['Juna ja henkilöauto törmänneet tasoristeyksessä.','Junan ja rekan törmäys, useita loukkaantuneita.','Raideliikenneonnettomuus, vaunu suistunut.']},
+ {c:'231',n:'Ilmaliikenneonnett.: keskisuuri',toimi:'pelastus',w:0.12,need:{sammutus:2,sailio:1,ambulanssi:2,johto:1},minCrew:14,rew:3200,where:'any',patients:3,sev:'critical',timeCrit:600,esc:.1,escTo:'232',dur:[90,220],info:'Pienkone pakkolaskussa, savua ja loukkaantuneita.',variants:['Pienkone tehnyt pakkolaskun pellolle, savua.','Helikopteri pudonnut, miehistö loukkaantunut.','Lentokone liukunut kiitotieltä, matkustajia.']},
+ {c:'232',n:'Ilmaliikenneonnett.: suuri',toimi:'pelastus',w:0.05,need:{sammutus:3,sailio:2,ambulanssi:3,johto:2},minCrew:18,rew:5000,where:'any',patients:6,sev:'critical',timeCrit:720,esc:.06,escTo:'233',dur:[110,260],info:'Suurempi ilma-aluksen onnettomuus.',variants:['Matkustajakone tehnyt hätälaskun kentän laidalle, kymmeniä matkustajia.','Rahtikone pudonnut teollisuusalueelle, tulipalo ja vuotoja.','Helikopteri syöksynyt rakennukseen, useita loukkaantuneita.']},
+ {c:'233',n:'Ilmaliikenneonnett.: suuronnettomuus',toimi:'pelastus',w:0.015,need:{sammutus:5,sailio:2,ambulanssi:6,johto:3},minCrew:30,rew:9000,where:'any',patients:15,sev:'critical',timeCrit:900,esc:0,dur:[180,360],info:'Suuri ilmaliikenteen suuronnettomuus, monipotilastilanne.',variants:['Matkustajakone syöksynyt maahan, kymmeniä uhreja, laaja palo.','Lentokone-onnettomuus kiitotiellä, massiivinen pelastus- ja lääkintätehtävä.']},
+ {c:'212',n:'Raideliikenneonnett.: keskisuuri',toimi:'pelastus',w:0.15,need:{sammutus:3,ambulanssi:3,johto:1},minCrew:16,rew:3400,where:'any',patients:4,sev:'critical',timeCrit:720,esc:.1,escTo:'213',dur:[100,240],info:'Juna ja ajoneuvo törmänneet tasoristeyksessä.',variants:['Juna ja henkilöauto törmänneet tasoristeyksessä.','Junan ja rekan törmäys, useita loukkaantuneita.','Raideliikenneonnettomuus, vaunu suistunut.']},
+ {c:'213',n:'Raideliikenneonnett.: suuri',toimi:'pelastus',w:0.05,need:{sammutus:4,sailio:1,ambulanssi:5,johto:2},minCrew:22,rew:6000,where:'any',patients:10,sev:'critical',timeCrit:900,esc:.05,escTo:'214',dur:[140,300],info:'Henkilöjuna suistunut, useita vaunuja, monta uhria.',variants:['Henkilöjuna suistunut raiteilta, useita vaunuja kyljellään, kymmeniä matkustajia.','Kahden junan törmäys, laaja pelastustehtävä, paljon loukkaantuneita.']},
+ {c:'214',n:'Raideliikenneonnett.: suuronnettomuus',toimi:'pelastus',w:0.015,need:{sammutus:6,sailio:2,ambulanssi:8,johto:3},minCrew:34,rew:10000,where:'any',patients:20,sev:'critical',timeCrit:1000,esc:0,dur:[200,400],info:'Suuri raideliikenteen suuronnettomuus.',variants:['Matkustajajuna suistunut sillalta, kymmeniä uhreja, laaja monipotilastilanne.','Junan ja vaarallisten aineiden kuljetuksen törmäys, evakuointi + lääkintä.']},
 
  /* ===== POLIISI ===== */
  {c:'032',n:'Pahoinpitely',toimi:'poliisi',w:5,need:{poliisi:1},rew:250,where:'urban',patients:1,sev:'medium',esc:.1,dur:[15,35],info:'Pahoinpitely.',variants:[
@@ -1322,6 +1326,9 @@ function fmtClock(s){s=Math.floor(s)%86400;return String(Math.floor(s/3600)).pad
 function km(la1,ln1,la2,ln2){const x=(ln2-ln1)*55,y=(la2-la1)*111;return Math.sqrt(x*x+y*y);}
 function toast(t){if(G._offlineSim)return;if(typeof currentNav!=='undefined'&&currentNav!=='map')return;const d=document.createElement('div');d.className='tmsg';d.textContent=t;document.getElementById('toast').appendChild(d);setTimeout(()=>d.remove(),2600);}
 function rnd(a,b){return a+Math.random()*(b-a);}
+// POISSON-prosessin satunnainen väliaika (eksponentiaalijakauma): keskiarvo = mean, mutta luonnollista
+// vaihtelua → joskus kaksi keikkaa lähekkäin, joskus pitkä hiljainen hetki (kuten oikeasti). Rajattu.
+function _expInterval(mean){const r=Math.max(1e-6,Math.random());return Math.max(20,Math.min(mean*4,-Math.log(r)*mean));}
 
 /* ===== REITITYS ===== */
 async function snapToRoad(lat,lng){
@@ -3401,6 +3408,7 @@ function playDispatchSound(){
 }
 async function sendDispatch(next){
   const tk=dCur;if(!tk.urg){toast('Valitse ensin kiireellisyys (A/B/C/D)');return;}if(dSel.size===0&&!next)return;
+  G._lastActivity=Date.now(); // tämä laite aktiivinen → pilvisynkka ei ylikirjoita sitä passiivisen laitteen tallennuksella
   const names=[];const ids=[...dSel];
   // Suodata pois ei-hälytettävissä olevat (mutta salli partioivat)
   const validIds=ids.filter(id=>{const u=G.units.find(x=>x.id===id);if(!u)return false;
@@ -3717,20 +3725,16 @@ function tick(dt){G.clock+=dt;
     const cap=fleetCapacity();
     const perHour=Math.max(1.5,Math.min(45,cap*0.5*G.spawnRate*dayBoost)); // ~0.5 tehtävää/h per yksikkö normaalipäivänä; juhlaboost (dayBoost) ja liukuri kiristävät
     const baseInterval=3600/perHour;
-    if(G.realisticSpawn){
-      // Realistinen rytmi: TASAINEN, vaihteleva virta YKSITTÄISIÄ tehtäviä — EI ryppäitä.
-      if(!G._burst){G._burst={nextAt:G.clock+baseInterval*rnd(0.5,1.4)};}
-      const b=G._burst;
-      if(G.clock>=b.nextAt){lastSpawn=G.clock;spawnTask();b.nextAt=G.clock+baseInterval*rnd(0.5,1.6);}
-    } else {
-      if(G.clock-lastSpawn>baseInterval){lastSpawn=G.clock;spawnTask();}
-    }
-    // VARMUUSRAJA (maxTaskGap): EI saa pakottaa luonnollista tahtia tiheämmäksi — muuten pieni
-    // laitos hukkuu eikä liukurin laskeminen rauhoita peliä (vanha bugi). Lattia relaksoituu aina
-    // vähintään luonnolliseen väliin. Asetus = sekunteja peliaikaa, 0 = ei rajaa.
+    // REALISTINEN AJOITUS: Poisson-prosessi (eksponentiaaliset väliajat) → luonnolliset ryppäät ja
+    // hiljaiset hetket, ei tasaista kelloa. Sama kummassakin tilassa; spawnRate-liukuri säätää tahtia.
+    if(!G._burst){G._burst={nextAt:G.clock+_expInterval(baseInterval)};}
+    const b=G._burst;
+    if(G.clock>=b.nextAt){lastSpawn=G.clock;spawnTask();b.nextAt=G.clock+_expInterval(baseInterval);}
+    // VARMUUSRAJA (maxTaskGap): ei pakota luonnollista tahtia tiheämmäksi (pieni laitos ei huku) —
+    // lattia relaksoituu vähintään luonnolliseen väliin. 0 = ei rajaa.
     const setGap=G.settings.maxTaskGap??300;
     const effGap=setGap>0?Math.max(setGap,baseInterval*1.5):0;
-    if(effGap>0&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;spawnTask();if(G._burst)G._burst.nextAt=G.clock+baseInterval*rnd(0.5,1.2);}
+    if(effGap>0&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;spawnTask();b.nextAt=G.clock+_expInterval(baseInterval);}
   }
   // VPK-liikenne — vähennetty rajusti (oli liian usein). Vain ~5% entisestä.
   if(Math.random()<0.00002*dt){const vpkUnits=G.units.filter(u=>{const s=G.stations.find(x=>x.id===u.stationId);return s&&s.muoto==='vpk'&&u.toimi==='pelastus'&&u.status==='asema'&&!u.taskId;});if(vpkUnits.length){const u=vpkUnits[Math.floor(Math.random()*vpkUnits.length)];const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';const lines=['pyydämme lupaa kalustoharjoitukseen','pyydämme lupaa lähteä huoltoajolle'];const line=lines[Math.floor(Math.random()*lines.length)];radio(reg+' VPK',u.name,line);pendingVpkEvent(u,st,line);}}
@@ -5993,10 +5997,13 @@ async function fbLoadUserSave(){
   if(snap&&snap.exists){
     const d=snap.data()||{};const remote=d.data?decodePayload(d.data):null;
     if(remote){
-      const remoteScore=(remote.missDone||0)*1e9+(d.ts||remote.lastSaveTs||0);
-      const localScore=(G.missDone||0)*1e9+(G.lastSaveTs||0);
-      if(remoteScore>localScore){
-        applyLoaded(remote);G.lastSaveTs=remote.lastSaveTs||d.ts||Date.now();
+      // TUOREUSPERUSTAINEN auto-lataus: jos pilvitallennus on UUDEMPI kuin tämän laitteen viimeisin
+      // tallennus (= toista laitetta pelattu viimeksi) → adoptoi automaattisesti. missDone vain tasapelin
+      // ratkaisija. Popupit (avoimet ikkunat) PIDETÄÄN paikallisina → eivät tule toiselta laitteelta.
+      const rTs=d.ts||remote.lastSaveTs||0, lTs=G.lastSaveTs||0;
+      if(rTs>lTs || (rTs===lTs && (remote.missDone||0)>(G.missDone||0))){
+        remote.openPops=G.openPops||null;
+        applyLoaded(remote);G.lastSaveTs=rTs||Date.now();_myPushTs=d.ts||_myPushTs;
         try{localStorage.setItem('hatakeskus_code',btoa(unescape(encodeURIComponent(JSON.stringify(remote)))));}catch(e){}
         G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
         toast('☁️ Tilisi peli haettu pilvestä');return;
@@ -6006,6 +6013,8 @@ async function fbLoadUserSave(){
   fbPushDo(); // paikallinen yhtä pitkällä/pidemmällä → tallenna pilveen
 }
 function scheduleFbPush(){if(!fbReady||!G.user||_fbPushT)return;_fbPushT=setTimeout(()=>{_fbPushT=null;fbPushDo();},6000);}
+// Pysyvä laitetunniste (selainkohtainen) → erottaa oman pushin toisen laitteen tallennuksesta synkassa.
+function _fbDeviceId(){try{let id=localStorage.getItem('hk_devid');if(!id){id='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('hk_devid',id);}return id;}catch(e){return 'd0';}}
 // HUOM: sisäinen async-funktio uudelleennimetty fbPushNow→fbPushDo. Aiemmin window.fbPushNow-wrapper
 // (alla) ylikirjoitti samannimisen funktiojulistuksen → kutsui itseään → ääretön rekursio / stack
 // overflow → PILVEEN-TYÖNTÖ KAATUI AINA (autosave + nappi). Nyt wrapper kutsuu fbPushDo:ta.
@@ -6013,7 +6022,7 @@ async function fbPushDo(){
   if(!fbReady||!G.user||_fbBusy)return;_fbBusy=true;const ts=Date.now();
   try{
     const data=btoa(unescape(encodeURIComponent(JSON.stringify({...serializeGame(),lastSaveTs:ts}))));
-    await fbDb.collection('saves').doc(G.user.uid).set({data,missDone:G.missDone||0,ts,name:G.user.name,email:G.user.email});
+    await fbDb.collection('saves').doc(G.user.uid).set({data,missDone:G.missDone||0,ts,device:_fbDeviceId(),name:G.user.name,email:G.user.email});
     _myPushTs=ts;G.lastSaveTs=ts;
   }catch(e){/* yritetään seuraavalla tallennuksella */}
   finally{_fbBusy=false;}
@@ -6040,14 +6049,17 @@ async function fbPeriodicPull(){
   if(!fbReady||!G.user||_fbBusy||_isWiping)return;
   let snap;try{snap=await fbDb.collection('saves').doc(G.user.uid).get();}catch(e){return;}
   if(!snap||!snap.exists)return;const d=snap.data()||{};if(!d.data||!d.ts||d.ts===_myPushTs)return;
+  // Auto-synkka: adoptoi VAIN toisen laitteen UUDEMPI tallennus. Oma laite ohitetaan (tunniste).
+  // AKTIIVISTA laitetta ei ylikirjoiteta (jos juuri pelannut <90s) → ei menetä omia hälytyksiä; sen
+  // omat pushit päivittävät toisen (passiivisen) laitteen. Popupit pysyvät laitekohtaisina.
+  if(d.device&&d.device===_fbDeviceId())return;
+  if((d.ts||0)<=(G.lastSaveTs||0)+3000)return;
+  if(G._lastActivity&&Date.now()-G._lastActivity<90000)return; // tämä laite aktiivinen → ei adoptoida
   const remote=decodePayload(d.data);if(!remote)return;
-  const remoteScore=(remote.missDone||0)*1e9+(d.ts||0);
-  const localScore=(G.missDone||0)*1e9+(G.lastSaveTs||0);
-  if(remoteScore>localScore&&d.ts>(G.lastSaveTs||0)+8000){
-    applyLoaded(remote);G.lastSaveTs=remote.lastSaveTs||d.ts;
-    G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
-    toast('☁️ Päivitetty toisen laitteen tallennuksesta');
-  }
+  remote.openPops=G.openPops||null;
+  applyLoaded(remote);G.lastSaveTs=d.ts;_myPushTs=d.ts;
+  G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
+  toast('☁️ Päivitetty toisen laitteen tallennuksesta');
 }
 setInterval(fbPeriodicPull,120000);
 window.addEventListener('online',()=>{if(fbReady&&G.user)fbPeriodicPull();});
