@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HÄTÄKESKUS - dispatch sim v81 (KORJAUKSET: 1) "Suositeltu vaste" -teksti poistettu hälytysnäkymästä; 2) äänimerkki soi nyt UUDESTA TEHTÄVÄSTÄ (ei hälytyksestä); 3) radioviestien yksikkötunnukset KLIKATTAVIA → hälyttää avoinna olevaan tehtävään; 4) "Hylkää tehtävä" maksaa nyt SAKON (ei ilmainen tehtävien ohitus, vain jumipako); 5) johtaja EI enää pyydä suojaa/joukkuelähtöä jos sellainen on JO matkalla (en-route-kate) + "johtaja arvioi tilannetta" -viive poistettu (hoitaa heti); 6) valmiussiirto-näyttö rehellinen ("saapumassa" kun vielä matkalla) + "Korjaa jumittuneet yksiköt" -nappi nollaa myös ei-hälytettävään jumiin jääneet + duty-sijainnin; 7) tavoitteet eivät enää ilmoita vanhoja "saavutettu" latauksen/pilvisynkan jälkeen) -->
+<!-- HÄTÄKESKUS - dispatch sim v80 (KORJAUKSET: A) AUTOM. PILVITALLENNUS sulkiessa/taustalle (visibilitychange+pagehide → fbPushDo, ei tarvitse painaa "Tallenna nyt"); B) OFFLINE: Firestore enablePersistence (offline-kirjoitusjono synkkaa kun verkko palaa) + Service Worker sw.js + manifest.json + ikonit → asennettava PWA, toimii ilman nettiä 1. latauksen jälkeen (cachettaa kuoren + vieraillut karttalaatat); C) radio-popupit EIVÄT enää siirry laitteelta toiselle (fbForcePull strippaa openPops) eikä niitä palauteta mobiilissa (peittivät kartan, ei saanut suljettua); D) "🗑️ Poista tehtävä" -nappi hälytysnäkymässä (jumittuneen tehtävän poisto); E) KOODI-pudotusvalikko numerojärjestyksessä; F) wipe() poistaa myös pilvitallennuksen → nollattu peli ei palaa takaisin synkasta) -->
 <!-- HÄTÄKESKUS - dispatch sim v79 (KORJAUKSET: 1) tehtävän epäonnistuminen perustuu nyt tehtävän SISÄISEEN kiireellisyyteen (timeCrit/sev), ei pelaajan triagaamaan urg:iin → triagaamaton tehtävä ei ole enää ikuisesti suojassa eikä vanhan tehtävän triagaaminen epäonnistuta sitä heti; 2) ei voi enää hälyttää poistettuun tehtävään (haamuhälytys estetty); 3) osoitteeseen liitetään oikea kunta + yleiset kadunnimet; 4) vuodenaika seuraa päivämäärää (1.1. = talvi); 5) tehtävälistassa näkyy "odottaa lisäyksikköä"; 6) varustelu (vesi/miehistö) vaikuttaa hintaan; 7) aseman paneeli sulkee päällekkäiset välilehtipaneelit; 8) MOBIILI: yläpalkki ei enää vuoda ruudun yli (vieritettävä, ei koko sivun vaakavieritystä); 9) CROSSPLAY: varoitus kun samaa tiliä pelataan kahdella laitteella yhtä aikaa (estää hiljaisen edistymisen häviämisen)) -->
 <!-- v78 (balanssi: tahti skaalautuu kalustoon + maxTaskGap-lattia korjattu; radio/johtaja-realismi; myy-nappi; miehitys 1+X; tauolla hälytettävissä; kohteessa/matkalla-lokerot; hälytysääni; partiopolygonit näkyvät; offline-rahakatto) -->
 <meta charset="utf-8">
@@ -11,6 +13,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hätäkeskus">
 <meta name="theme-color" content="#0a0c0f">
+<!-- PWA: asennettava + OFFLINE. Service Worker cachettaa sovelluksen (HTML, Leaflet, fontit) + vieraillut
+     karttalaatat → peli toimii ilman nettiä ensimmäisen latauksen jälkeen. Vaatii tiedostot sw.js +
+     manifest.json + icon-192/512.png samaan kansioon kuin index.html (github-kansiossa mukana). -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <title>HÄTÄKESKUS</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -383,6 +391,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
     <div><span class="mono" id="dcode" style="font-weight:800;font-size:15px"></span>
       <span style="color:var(--dim);font-size:12px" id="dname"></span><br>
       <span class="smallnote" id="daddr"></span></div>
+    <button class="btn-x" id="ddelete" title="Hylkää tehtävä (SAKKO — vain jumittuneeseen)" onclick="removeCurrentTask()" style="margin-right:4px">🗑️</button>
     <button class="btn-x x" id="dclose">✕</button>
   </div>
   <div class="dbody" id="dbody"></div>
@@ -1746,7 +1755,9 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
   } else {
     body+=`<div class="sec"><h4>Yksiköt (${us.length})</h4>${s.muoto==='vpk'?`<div style="display:flex;gap:6px;margin-bottom:8px"><button class="buy" style="flex:1;font-size:12px;padding:6px 0" onclick="setAllReady('${s.id}',true)">⚡ Kaikki valmiuteen</button><button class="btn-x" style="flex:1;font-size:12px;padding:6px 0" onclick="setAllReady('${s.id}',false)">Poista kaikilta</button></div>`:''}${us.map(u=>{const tagStr=VTYPES[u.vt]?.tag?'<span style="font-size:9px;background:var(--bg);color:var(--pol);border:1px solid var(--pol);padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:700;font-family:var(--fmono)">'+VTYPES[u.vt].tag+'</span>':'';const coverStr=u._origName?'<span style="font-size:10.5px;color:var(--dim);margin-left:6px;font-family:var(--fmono)">(oma: '+u._origName+')</span>':'';
       // Merkintä jos yksikkö on TÄÄLLÄ vain päivystämässä (kotiasema muualla)
-      const visitStr=(u.stationId!==s.id&&effectiveStationId(u)===s.id)?'<span style="font-size:10px;color:var(--acc2);margin-left:6px">⇄ päivystää (koti: '+((G.stations.find(x=>x.id===u.stationId)||{}).n||'?').split(' ')[0]+')</span>':'';
+      const _dutyHere=(u.stationId!==s.id&&effectiveStationId(u)===s.id);
+      const _dutyWord=(u.status==='paluu'||u.status==='matka')?'saapumassa':'päivystää'; // rehellinen: vielä matkalla ≠ paikalla
+      const visitStr=_dutyHere?'<span style="font-size:10px;color:var(--acc2);margin-left:6px">⇄ '+_dutyWord+' (koti: '+((G.stations.find(x=>x.id===u.stationId)||{}).n||'?').split(' ')[0]+')</span>':'';
       // VPK-asemalla per-yksikkö valmiusnappi näkyy AINA (valitse mitkä yksiköt asemavalmiuteen) — ei enää vain H351-ikkunan aikana
       const readyBtn=(s.muoto==='vpk')?`<button class="${u.atReadyStation?'buy':'btn-x'}" style="font-size:11px;padding:3px 8px;margin-left:6px" onclick="event.stopPropagation();toggleAtReady('${u.id}');renderStation('${s.id}')">${u.atReadyStation?'⚡ valmius':'⚡ aseta'}</button>`:'';
       return `<div class="urow" onclick="smUnit='${u.id}';renderStation('${s.id}')"><span class="sq ${u.off?'off':''}" style="background:${unitColor(u)}33;border-color:${unitColor(u)}"></span><div style="flex:1"><div class="uname mono">${u.name}${tagStr}${coverStr}${visitStr}</div><div class="umeta">${VTYPES[u.vt].label}</div></div><span style="color:${unitColor(u)};font-size:11px">${statusLabel(u)} ›</span>${readyBtn}</div>`;}).join('')||'<div class="smallnote">Ei yksiköitä. Osta alta.</div>'}</div>`;
@@ -2564,10 +2575,23 @@ window.resetStuckUnits=()=>{
     if(u.taskId&&!G.tasks.find(t=>t.id===u.taskId)){u.taskId=null;u.transport=null;if(['matka','kohde','otettu','kuljetus'].includes(u.status)){u.status='asema';u.lat=u.hx;u.lng=u.hy;u.route=null;u.ri=0;}n++;}
     // 3) Liikkuva tila ilman tehtävää → asemalle
     else if(['matka','kohde','otettu'].includes(u.status)&&!u.taskId){u.status='asema';u.lat=u.hx;u.lng=u.hy;u.route=null;u.ri=0;n++;}
-    // 4) Huoltoaika jo ohi mutta jäänyt jumiin
-    if(u.status==='huolto'&&u.huoltoUntil&&G.clock>u.huoltoUntil){u.status='asema';u.huoltoUntil=null;n++;}
+    // 4) Huolto jumissa (aika ohi TAI ei loppuaikaa) → palauta valmiuteen
+    if(u.status==='huolto'&&(!u.huoltoUntil||G.clock>u.huoltoUntil)){u.status=u.atReadyStation?'vapaa_valmius':'asema';u.huoltoUntil=null;u.lat=u.hx;u.lng=u.hy;n++;}
     // 5) Nollaa jumittuneet partion välitilat
     if(u._goingPit||u._pitUntil){u._goingPit=false;u._pitUntil=0;}
+    // 6) DUTY-asema (valmiussiirto): olematon kohde → nollaa; muuten synkkaa fyysinen sijainti
+    //    efektiiviseen asemaan (korjaa "näkyy duty-asemalla mutta on kotona" -ristiriidan).
+    if(u.dutyAt){ if(!G.stations.find(s=>s.id===u.dutyAt)){u.dutyAt=null;u.dutyAtPartial=false;n++;} else {try{applyDutyLocation(u);}catch(e){}} }
+    // 7) Yksikkö jumissa "ei hälytettävissä" -tilaan ILMAN tehtävää (vanhentunut tauko/harjoitus/kuljetus
+    //    tms.) → palauta puhtaaseen asemavalmiuteen efektiiviselle asemalle. (Käyttäjän jumi-ambulanssi.)
+    if(!u.taskId){
+      const cleanIdle=['asema','vapaa_valmius','paluu','huolto'].includes(u.status);
+      const validMuu=u.status==='muu'&&['partio','kauppa','harjoitus','vpkajo'].includes(u.omamieli);
+      if(!cleanIdle&&!validMuu){
+        u.omamieli=null;u.omamieliBack=null;u._driveTarget=null;u._driveUntil=0;u._vpkFree=false;u.transport=null;u.route=null;u.ri=0;
+        u.status=u.atReadyStation?'vapaa_valmius':'asema';u.lat=u.hx;u.lng=u.hy;n++;
+      }
+    }
   });
   G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});
   renderList();updateBadge();try{renderSet();}catch(e){}saveGame(false);
@@ -2894,6 +2918,8 @@ async function spawnTask(){
   }
   G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
   if(G.settings.showCallouts)toast('Uusi tehtävä: '+tk.c+' '+tk.n);
+  // Äänimerkki UUDESTA tehtävästä (asetuksista). Throttle estää piippusarjan jos monta syntyy kerralla.
+  try{ if(!G._offlineSim && (!window.__taskBeepT || Date.now()-window.__taskBeepT>1200)){ window.__taskBeepT=Date.now(); playDispatchSound(); } }catch(e){}
 }
 
 /* ===== DISPATCH-IKKUNA ===== */
@@ -3060,11 +3086,8 @@ function dStatusInner(tk){
       if(enoughTotal){
         // Lisää yksiköitä on jo matkalla → EI radiopyyntöä, ei kehoteta kuuntelemaan radiota.
         prog=`<div class="smallnote" style="margin-top:7px;color:var(--dim)">🚗 Lisää yksiköitä matkalla kohteeseen…</div>`;
-      } else if(!leadAssessReady(tk)){
-        // Johtaja ei tiedä heti — sizettää tilanteen ennen kuin pyytää lisää.
-        prog=`<div class="smallnote" style="margin-top:7px;color:var(--dim)">⏳ Johtaja arvioi tilannetta kohteessa…</div>`;
       } else {
-        // Vaste alimitoitettu, johtaja arvioinut → näytä SAMA pyyntö jonka hän sanoi radiolla.
+        // Vaste alimitoitettu → näytä SAMA pyyntö jonka johtaja sanoi radiolla.
         const r=missingRequestPhrase(tk);
         const phrase=r?r.phrase:'pyydän lisää yksiköitä';
         prog=`<div class="smallnote" style="margin-top:7px;color:var(--dim)">📻 ${phrase.charAt(0).toUpperCase()+phrase.slice(1)}</div>`;
@@ -3076,6 +3099,30 @@ function dStatusInner(tk){
 }
 window.forceComplete=(tid)=>{const tk=G.tasks.find(t=>t.id===tid);if(!tk)return;completeTask(tk);document.getElementById('disp').classList.remove('open');};
 window.freeAll=(tid)=>{const tk=G.tasks.find(t=>t.id===tid);if(!tk)return;[...tk.assigned].forEach(id=>{const u=G.units.find(x=>x.id===id);if(u)freeUnit(u);});tk.assigned=[];tk.onScene=false;tk.status='avoin';tk.reqKey='';tk._reqAnnounced=null;tk.reqMsg=null;if(dCur&&dCur.id===tid)renderDispatch();renderList();updateBadge();toast('Kaikki yksiköt kotiutettu');};
+// POISTA TEHTÄVÄ kokonaan (esim. jumittunut tehtävä jota ei saa muuten pois). Vapauttaa yksiköt,
+// poistaa kartalta ja listalta. EI palkkiota (peruutus). Tallentaa heti, jottei palaa pilvestä.
+function removeTask(tid){
+  const tk=G.tasks.find(t=>t.id===tid); if(!tk)return false;
+  (tk.assigned||[]).forEach(id=>{const u=G.units.find(x=>x.id===id);if(u){try{freeUnit(u);}catch(e){}}});
+  if(tk.marker){try{map.removeLayer(tk.marker);}catch(e){}}
+  G.tasks=G.tasks.filter(t=>t.id!==tid);
+  try{renderList();updateBadge();}catch(e){}
+  try{saveGame(false);}catch(e){}
+  return true;
+}
+window.removeCurrentTask=()=>{
+  const tk=dCur; if(!tk){toast('Ei tehtävää valittuna');return;}
+  // KÄYTTÄJÄ: hylkäys EI saa olla ilmainen tehtävien ohitus → tulee SAKKO (sama kuin hoitamatta jäänyt).
+  // Näin nappi toimii vain jumittuneen tehtävän pakopolkuna, ei epämieluisten skippaamiseen.
+  const fine=Math.max(0,Math.round((tk.rew||0)*0.5));
+  if(!confirm('Hylkää tehtävä '+tk.c+(tk.n?' '+tk.n:'')+'?\nYksiköt vapautetaan ja tulee SAKKO '+fine.toLocaleString('fi-FI')+'€ (sama kuin hoitamatta jäänyt). EI ilmainen ohitus — käytä vain jumittuneeseen tehtävään.'))return;
+  const id=tk.id, code=tk.c, addr=tk.addr, toimi=tk.toimi;
+  if(fine){G.money-=fine;try{updateMoney();}catch(e){}}
+  try{radio(chFor(toimi,'INFO',tk),'HÄKE','tehtävä '+code+' '+addr+' peruttu — jäi hoitamatta');}catch(e){}
+  document.getElementById('disp').classList.remove('open'); dCur=null;
+  removeTask(id);
+  toast('❌ Tehtävä '+code+' hylätty — sakko '+fine.toLocaleString('fi-FI')+'€');
+};
 let _dstatHash='';
 function updateDispatchLive(){
   if(!document.getElementById('disp').classList.contains('open')||!dCur)return;
@@ -3196,11 +3243,8 @@ function renderDispatch(){
    <div class="sec"><div class="smallnote">${tk.info}${tk.patients?` · ilmoituksen mukaan potilaita ${tk.patients}`:''}</div></div>
    <div id="dstat">${dStatusInner(tk)}</div>
    <div class="sec"><h4>Kiireellisyys <span style="font-weight:400;color:var(--dim);font-size:11px">— päättele kuvauksesta</span></h4><div class="urg">${['A','B','C','D'].map(u=>`<div class="urgb ${tk.urg===u?'sel':''}" data-u="${u}" onclick="setUrg('${u}')">${u}</div>`).join('')}</div></div>
-   <div class="sec"><h4>Koodi</h4><select class="codesel" onchange="setTaskCode(this.value)">${TASKS.filter(t=>t.toimi===tk.toimi).map(t=>`<option value="${t.c}" ${t.c===tk.c?'selected':''}>${t.c} ${t.n}</option>`).join('')}</select></div>
-   <div class="sec"><h4>Suositeltu vaste</h4>
-     <div class="smallnote" style="margin-bottom:7px">${vasteStr(tk)}${tk.minCrew?` · väh. ${tk.minCrew} henk.`:''}</div>
-     ${dSel.size?`<span class="chip" onclick="clearDsel()">✕ Tyhjennä valinta (${dSel.size})</span>`:''}
-   </div>
+   <div class="sec"><h4>Koodi</h4><select class="codesel" onchange="setTaskCode(this.value)">${TASKS.filter(t=>t.toimi===tk.toimi).sort((a,b)=>((parseInt(a.c,10)||0)-(parseInt(b.c,10)||0))||String(a.c).localeCompare(String(b.c))).map(t=>`<option value="${t.c}" ${t.c===tk.c?'selected':''}>${t.c} ${t.n}</option>`).join('')}</select></div>
+   ${dSel.size?`<div class="sec" style="padding-top:2px"><span class="chip" onclick="clearDsel()">✕ Tyhjennä valinta (${dSel.size})</span></div>`:''}
    <div class="sec"><h4>Lähimmät yksiköt${dSel.size?` — valittu ${dSel.size}`:''}</h4>
      <div class="filterbar">${([['kaikki','Kaikki'],['paloautot','Paloautot'],['sailio','Säiliö'],['muupel','Muu pelastus'],tk.toimi==='ensihoito'?['ambulanssi','Ambulanssi+EV']:['ambulanssi','Ambulanssi'],['poliisi','Poliisi']]).map(f=>`<div class="fb ${dFilter===f[0]?'on':''}" onclick="dFilter='${f[0]}';renderDispatch()">${f[1]}</div>`).join('')}</div>
      <div style="margin:4px 0 8px"><label style="font-size:12px;color:var(--dim);cursor:pointer"><input type="checkbox" ${dShowBusy?'checked':''} onchange="dShowBusy=this.checked;renderDispatch()"> Näytä myös toisilla tehtävillä olevat yksiköt</label></div>
@@ -3498,7 +3542,7 @@ async function sendDispatch(next){
   // Pelaaja vastasi → poista ❗ jos tarpeet nyt katettu (assigned-yksiköillä)
   clearAlertIfResolved(tk);
   announceDispatch(tk,names);
-  if(names.length)playDispatchSound(); // äänimerkki hälytyksestä (asetuksista pois/päälle)
+  // (Äänimerkki siirretty hälytyksestä UUDEN TEHTÄVÄN ilmestymiseen — ks. spawnTask.)
   // Lisähälytysviesti vain uusille yksiköille (ei koko annolle uudelleen jos vain yksi)
   refreshTaskLabel(tk);dSel=new Set();renderList();updateBadge();
   if(next){const nx=G.tasks.find(t=>t.status==='avoin');document.getElementById('disp').classList.remove('open');if(nx)openDispatch(nx.id);else toast('Ei muita avoimia tehtäviä');}
@@ -3661,7 +3705,25 @@ window.openRadioWin=(ch)=>{
   clampWinIntoView(w);
   renderRadioWin(ch);capturePopState();
 };
-function renderRadioWin(ch){const w=openRadioWins[ch];if(!w)return;clearRadioUnread(ch);const f=G.radio[ch]||[];w.querySelector('.rb').innerHTML=f.slice(-25).reverse().map(m=>`<div class="m${m._isNew?' new':''}"><span class="mono" style="color:var(--dim)">${fmtClock(m.t)}</span> ${m._isNew?'<span class="nb">UUSI</span>':''}<b style="color:var(--acc)">${m.from}:</b> ${m.msg}</div>`).join('')||'<div style="color:var(--dim)">Ei liikennettä</div>';}
+// KÄYTTÄJÄ: tee radioviestien yksikkötunnuksista klikattavia → hälytä avoinna olevaan tehtävään.
+function linkifyUnits(text){
+  if(!text)return text;
+  const names=G.units.map(u=>u.name).filter(Boolean).sort((a,b)=>b.length-a.length);
+  if(!names.length)return text;
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re=new RegExp('\\b('+names.map(esc).join('|')+')\\b','g');
+  return text.replace(re,m=>`<span class="radiounit" style="color:#7fd7ff;cursor:pointer;text-decoration:underline dotted" onclick="event.stopPropagation();radioDispatch('${m.replace(/'/g,"")}')">${m}</span>`);
+}
+window.radioDispatch=(name)=>{
+  const u=G.units.find(x=>x.name===name); if(!u){toast(name+': yksikköä ei löytynyt');return;}
+  if(!dCur||!G.tasks.includes(dCur)){toast('Avaa ensin tehtävä (johon hälytät), sitten klikkaa yksikköä radiossa');return;}
+  if(!dCur.urg){toast('Valitse ensin tehtävälle kiireellisyys (A/B/C/D)');return;}
+  if(u.taskId===dCur.id){toast(name+' on jo tällä tehtävällä');return;}
+  if(u.status==='huolto'){toast(name+' on huollossa');return;}
+  dSel=new Set([u.id]);
+  sendDispatch(false);
+};
+function renderRadioWin(ch){const w=openRadioWins[ch];if(!w)return;clearRadioUnread(ch);const f=G.radio[ch]||[];w.querySelector('.rb').innerHTML=f.slice(-25).reverse().map(m=>`<div class="m${m._isNew?' new':''}"><span class="mono" style="color:var(--dim)">${fmtClock(m.t)}</span> ${m._isNew?'<span class="nb">UUSI</span>':''}<b style="color:var(--acc)">${linkifyUnits(m.from)}:</b> ${linkifyUnits(m.msg)}</div>`).join('')||'<div style="color:var(--dim)">Ei liikennettä</div>';}
 function makeDraggable(el,handle){let sx,sy,ox,oy;const down=e=>{const p=e.touches?e.touches[0]:e;sx=p.clientX;sy=p.clientY;ox=el.offsetLeft;oy=el.offsetTop;el.style.zIndex=++rwZ;document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});document.addEventListener('mouseup',up);document.addEventListener('touchend',up);e.preventDefault();};const move=e=>{const p=e.touches?e.touches[0]:e;el.style.left=(ox+p.clientX-sx)+'px';el.style.top=(oy+p.clientY-sy)+'px';if(e.cancelable)e.preventDefault();};const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('touchmove',move);document.removeEventListener('mouseup',up);document.removeEventListener('touchend',up);try{clampWinIntoView(el);capturePopState();}catch(e){}};handle.addEventListener('mousedown',down);handle.addEventListener('touchstart',down,{passive:false});}
 let taskPopOpen=false;
 window.toggleTaskPop=()=>{taskPopOpen=!taskPopOpen;document.getElementById('taskpop').classList.toggle('open',taskPopOpen);if(taskPopOpen)renderTaskPop();capturePopState();};
@@ -3685,6 +3747,10 @@ function hideAllPops(){
 function restorePops(){
   const st=G.openPops;if(!st)return;
   if(st.taskpop){taskPopOpen=true;const tp=document.getElementById('taskpop');tp.classList.add('open');tp.style.display='';renderTaskPop();}
+  // MOBIILI: älä palauta kelluvia radioikkunoita — ne peittivät kartan eikä niitä saanut kunnolla
+  // suljettua kosketuksella (etenkin jos tulivat toiselta laitteelta synkan kautta). Radio löytyy
+  // Radio-välilehdeltä. Tyhjennä myös tallennettu tila, ettei niitä yritetä avata uudelleen.
+  if((window.innerWidth||999)<=760){ st.radios=[]; st.radiosPos={}; return; }
   (st.radios||[]).forEach(ch=>{
     if(!G.radio[ch])return;
     if(!openRadioWins[ch]){
@@ -3706,7 +3772,7 @@ function renderRadio(){const tabs=Object.keys(G.radio);if(!G.selChannel||!G.radi
   // Korosta kanava jossa on lukematonta
   document.getElementById('rtabs').innerHTML=tabs.map(c=>{const unread=(G.radio[c]||[]).filter(m=>m.unread).length;return `<div class="rch ${G.selChannel===c?'on':''}" onclick="G.selChannel='${c}';renderRadio()">${c}${unread?' <span style="background:var(--A);color:#fff;font-size:9px;padding:0 4px;border-radius:3px;margin-left:4px">'+unread+'</span>':''}</div>`;}).join('');
   const f=G.radio[G.selChannel]||[];
-  document.getElementById('rfeed').innerHTML=f.slice().reverse().map(m=>`<div class="rmsg${m.unread?' new':''}"><span class="rt mono">${fmtClock(m.t)}</span> <span class="ru">${m.from}:</span> ${m.msg}</div>`).join('')||'<div class="smallnote">Ei liikennettä.</div>';
+  document.getElementById('rfeed').innerHTML=f.slice().reverse().map(m=>`<div class="rmsg${m.unread?' new':''}"><span class="rt mono">${fmtClock(m.t)}</span> <span class="ru">${linkifyUnits(m.from)}:</span> ${linkifyUnits(m.msg)}</div>`).join('')||'<div class="smallnote">Ei liikennettä.</div>';
   updateBadge();
 }
 
@@ -4965,6 +5031,10 @@ function maybeRequestSuoja(tk,u){
   if(tk.reqSuoja!=null)return;
   if(G.settings.noSuoja){tk.reqSuoja=false;return;}
   if(tk.where!=='road'||!tk.fastRoad){tk.reqSuoja=false;return;}
+  // KÄYTTÄJÄ: älä pyydä suojaa jos suojakykyinen yksikkö (säiliö/tankki/nostolava) on JO hälytetty
+  // (paikalla TAI matkalla) → ei turhaa "pyydän suojauton" kun sellainen on jo tulossa.
+  const _assigSuoja=(tk.assigned||[]).map(id=>G.units.find(x=>x.id===id)).filter(Boolean);
+  if((_computeHave(_assigSuoja).have.suoja||0)>0){tk.reqSuoja=false;return;}
   // Nopealla tiellä suoja lähes aina; suuremmissa onnettomuuksissa varmasti.
   const prob={'201':0.7,'202':0.8,'203':0.9,'204':0.95,'205':0.6,'411':0.8,'412':0.85,'413':0.9,'461':0.65,'471':0.8,'481':0.7}[tk.base]||0.75;
   if(Math.random()<prob){
@@ -5021,7 +5091,12 @@ function maybeEscalate(tk,arriving){
   //    ehdotusta; vakavissa tehtävissä satunnainen tilanneraportti radioon.
   const canEsc=tk.escTo&&tk.escTo!==tk.c&&TASKS.find(t=>t.c===tk.escTo);
   if(canEsc){
-    if(Math.random()<tk.esc){
+    // KÄYTTÄJÄ: jos JO hälytetty vaste (myös matkalla) kattaa suuremman koodin tarpeen, EI ehdoteta
+    // joukkuelähtöä/nostoa — turhaa kun melkein koko joukkue on jo tulossa.
+    const _escDef=TASKS.find(t=>t.c===tk.escTo);
+    const _hv=_computeHave(tk.assigned.map(id=>G.units.find(x=>x.id===id)).filter(Boolean));
+    const _escCovered=_escDef&&_needMet(_escDef.need,_hv.have,_hv.crew,_escDef.minCrew);
+    if(!_escCovered&&Math.random()<tk.esc){
       tk.escDone=true;tk.escSuggest=tk.escTo;
       const word=(tk.toimi==='pelastus')?`nostakaa joukkuelähdöksi (koodille ${tk.escTo})`:`suositan nostoa koodille ${tk.escTo}`;
       const msg=`${tk.addr} — ${word} — ${_escWhy(tk.c)}`;
@@ -5063,8 +5138,9 @@ function maybeReleaseExtras(tk){
 }
 // Onko johtaja ehtinyt ARVIOIDA tilanteen? Johtaja ei tiedä/reagoi heti — sizetään tilanne ensin.
 function leadAssessReady(tk){
-  if(tk._leadAssessAt==null)tk._leadAssessAt=G.clock+rnd(20,110);
-  return G.clock>=tk._leadAssessAt;
+  // KÄYTTÄJÄ: johtaja EI "arvioi tilannetta" erikseen — hän hoitaa heti kohteessa. Pyynnöt/eskalaatiot
+  // gateataan jo incidentCommanderilla + en-route-katteella, joten turhaa chatteria ei tule.
+  return tk.onScene===true;
 }
 function progressTask(tk,dt){
   if(tk.status!=='ajossa'||!tk.onScene)return;
@@ -5762,7 +5838,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 
 /* ===== ASETUKSET ===== */
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
-function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 79 · Asetukset</div>';
+function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 81 · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="3" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
@@ -5771,7 +5847,7 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
   h+=`<div class="toggle"><span>Vuodenaika / sää</span><select class="inp" style="width:auto;margin:0" onchange="G.season=this.value;G._seasonManual=true;toast('Sää: '+this.value)">${['kesä','talvi','myrsky'].map(s=>`<option ${G.season===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
   h+=sw('Tehtävät voivat laajentua',G.settings.autoEsc,"G.settings.autoEsc=!G.settings.autoEsc;renderSet()");
   h+=sw('Näytä ponnahdusilmoitukset',G.settings.showCallouts,"G.settings.showCallouts=!G.settings.showCallouts;renderSet()");
-  h+=sw('🔊 Äänimerkki kun hälytät yksikön',G.settings.dispatchSound!==false,"G.settings.dispatchSound=(G.settings.dispatchSound===false);try{if(G.settings.dispatchSound)playDispatchSound();}catch(e){}saveGame(false);renderSet()");
+  h+=sw('🔊 Äänimerkki kun uusi tehtävä ilmestyy',G.settings.dispatchSound!==false,"G.settings.dispatchSound=(G.settings.dispatchSound===false);try{if(G.settings.dispatchSound)playDispatchSound();}catch(e){}saveGame(false);renderSet()");
   // OPT-OUT: kytke pois spontaaneja tapahtumia (toggle ON = ominaisuus käytössä). saveGame jotta säilyy.
   h+=`<div style="font-size:11px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;font-weight:700;margin:14px 0 4px">Tapahtumat — kytke pois jos et halua</div>`;
   h+=sw('Potilas voi mennä elottomaksi (→ 701 elvytys)',!G.settings.noDeteriorate,"G.settings.noDeteriorate=!G.settings.noDeteriorate;saveGame(false);renderSet()");
@@ -6035,6 +6111,9 @@ function fbInit(){
   try{
     firebase.initializeApp(window.FIREBASE_CONFIG);
     fbAuth=firebase.auth();fbDb=firebase.firestore();fbReady=true;
+    // OFFLINE-JONO: Firestore tallentaa kirjoitukset paikalliseen välimuistiin myös ilman nettiä ja
+    // lähettää ne automaattisesti kun verkko palaa → lyhyt katko ei hukkaa edistymistä.
+    try{fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}
     // Kun kirjautuminen muuttuu: lataa kyseisen käyttäjän tallennus pilvestä
     fbAuth.onAuthStateChanged(async(user)=>{
       if(user){G.user={uid:user.uid,name:user.displayName||user.email||'Pelaaja',email:user.email||''};try{await fbLoadUserSave();}catch(e){}}
@@ -6098,6 +6177,7 @@ window.fbForcePull=async()=>{
   const d=snap.data()||{};const remote=d.data?decodePayload(d.data):null;
   if(!remote){toast('Pilvitallennus on vioittunut');return;}
   if((G.missDone||0)>3&&!confirm('Korvataanko tämän laitteen peli pilvitallennuksella ('+(d.missDone||0)+' tehtävää suoritettu)? Tämän laitteen nykyinen peli häviää.'))return;
+  remote.openPops=G.openPops||null; // ÄLÄ adoptoi toisen laitteen radioikkunoita (jäivät puhelimelle auki, peittivät kartan)
   try{applyLoaded(remote);}catch(e){toast('Lataus epäonnistui: '+e.message);return;}
   G.lastSaveTs=remote.lastSaveTs||d.ts||Date.now();_myPushTs=d.ts||_myPushTs;
   G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});
@@ -6452,6 +6532,10 @@ function applyLoaded(d){
     G._readyMigrated=true;
   } else {G._readyMigrated=true;}
   ensureVpkChannels();renderList&&renderList();updateBadge&&updateBadge();
+  // KÄYTTÄJÄ: estä "yhtäkkiä saavutit monta tavoitetta" -ilmoitukset latauksen/pilvisynkan jälkeen.
+  // Merkitse JO valmiit tavoitteet ilmoitetuiksi → vain UUDET valmistumiset toastataan. (Tämä ajetaan
+  // KAIKISSA latauspoluissa, myös pilviadoptiossa fbLoadUserSave/fbPeriodicPull/fbForcePull.)
+  try{ G._goalNotified=G._goalNotified||{}; getGoals().forEach(g=>{ if(goalProgress(g)>=g.n) G._goalNotified[g.id]=true; }); }catch(e){}
 }
 
 /* OFFLINE-AIKA: peliaika pyörii taustalla kun peli on suljettuna.
@@ -6534,11 +6618,15 @@ function spawnCatchUp(){
 }
 async function loadGame(){try{const code=localStorage.getItem('hatakeskus_code');if(code){const d=JSON.parse(decodeURIComponent(escape(atob(code))));G.lastSaveTs=d.lastSaveTs||0;applyLoaded(d);spawnCatchUp();return true;}}catch(e){}try{const r=await window.storage.get('hatakeskus_v2');if(r&&r.value){const d=JSON.parse(r.value);G.lastSaveTs=d.lastSaveTs||0;applyLoaded(d);spawnCatchUp();return true;}}catch(e){}return false;}
 let _isWiping=false;
-function wipe(){
+async function wipe(){
   _isWiping=true; // estä beforeunload tallentamasta peliä takaisin
+  // PILVI: poista myös pilvitallennus, ettei vanha peli palaa heti takaisin synkan kautta nollauksen
+  // jälkeen. Race 3s timeoutilla, ettei reload jää jumiin jos verkko on hidas/poikki.
+  if(fbReady&&G.user){try{await Promise.race([fbDb.collection('saves').doc(G.user.uid).delete(),new Promise(r=>setTimeout(r,3000))]);}catch(e){}}
   try{window.storage.delete('hatakeskus_v2');}catch(e){}
   try{localStorage.removeItem('hatakeskus_code');}catch(e){}
   try{localStorage.removeItem('hatakeskus_v2');}catch(e){}
+  _myPushTs=0; G.lastSaveTs=0;
   location.reload();
 }
 
@@ -6582,8 +6670,11 @@ async function init(){
   // KRIITTINEN: tallenna heti kun peli suljetaan tai ikkuna piilotetaan,
   // jotta yksiköiden hälytykset ja asetukset eivät katoa.
   // POIKKEUS: jos käyttäjä nollasi pelin (wipe), älä tallenna takaisin!
-  window.addEventListener('beforeunload',()=>{if(_isWiping)return;try{saveGame(false);}catch(e){}});
-  document.addEventListener('visibilitychange',()=>{if(_isWiping||!document.hidden)return;try{saveGame(false);}catch(e){}});
+  window.addEventListener('beforeunload',()=>{if(_isWiping)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
+  document.addEventListener('visibilitychange',()=>{if(_isWiping||!document.hidden)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
+  // PAGEHIDE: luotettavin "sovellus suljetaan/taustalle" -signaali (etenkin puhelin) → työnnä pilveen
+  // HETI, ettei tarvitse painaa "Tallenna nyt". Firestoren offline-jono lähettää sen kun verkko palaa.
+  window.addEventListener('pagehide',()=>{if(_isWiping)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
   // Ikkunan koon muutos / puhelimen kääntö: pidä avoimet radioikkunat näytöllä
   window.addEventListener('resize',()=>{try{Object.values(openRadioWins).forEach(w=>{if(w&&w.style.display!=='none')clampWinIntoView(w);});}catch(e){}});
 }
