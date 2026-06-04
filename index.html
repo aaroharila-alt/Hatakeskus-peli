@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HÄTÄKESKUS - dispatch sim v82 (KORJAUKSET: 1) PALJON uusia tehtävävariantteja (EXTRA_VARIANTS-yhdistys ~50 koodille, ei muokkaa TASKS-määrittelyä); 2) radioviestin yksikkötunnusta klikatessa AVAUTUU se tehtävä jossa yksikkö on (EI enää lähetä yksikköä toiselle tehtävälle); muuten kuten v81) -->
 <!-- HÄTÄKESKUS - dispatch sim v81 (KORJAUKSET: 1) "Suositeltu vaste" -teksti poistettu hälytysnäkymästä; 2) äänimerkki soi nyt UUDESTA TEHTÄVÄSTÄ (ei hälytyksestä); 3) radioviestien yksikkötunnukset KLIKATTAVIA → hälyttää avoinna olevaan tehtävään; 4) "Hylkää tehtävä" maksaa nyt SAKON (ei ilmainen tehtävien ohitus, vain jumipako); 5) johtaja EI enää pyydä suojaa/joukkuelähtöä jos sellainen on JO matkalla (en-route-kate) + "johtaja arvioi tilannetta" -viive poistettu (hoitaa heti); 6) valmiussiirto-näyttö rehellinen ("saapumassa" kun vielä matkalla) + "Korjaa jumittuneet yksiköt" -nappi nollaa myös ei-hälytettävään jumiin jääneet + duty-sijainnin; 7) tavoitteet eivät enää ilmoita vanhoja "saavutettu" latauksen/pilvisynkan jälkeen) -->
 <!-- HÄTÄKESKUS - dispatch sim v80 (KORJAUKSET: A) AUTOM. PILVITALLENNUS sulkiessa/taustalle (visibilitychange+pagehide → fbPushDo, ei tarvitse painaa "Tallenna nyt"); B) OFFLINE: Firestore enablePersistence (offline-kirjoitusjono synkkaa kun verkko palaa) + Service Worker sw.js + manifest.json + ikonit → asennettava PWA, toimii ilman nettiä 1. latauksen jälkeen (cachettaa kuoren + vieraillut karttalaatat); C) radio-popupit EIVÄT enää siirry laitteelta toiselle (fbForcePull strippaa openPops) eikä niitä palauteta mobiilissa (peittivät kartan, ei saanut suljettua); D) "🗑️ Poista tehtävä" -nappi hälytysnäkymässä (jumittuneen tehtävän poisto); E) KOODI-pudotusvalikko numerojärjestyksessä; F) wipe() poistaa myös pilvitallennuksen → nollattu peli ei palaa takaisin synkasta) -->
 <!-- HÄTÄKESKUS - dispatch sim v79 (KORJAUKSET: 1) tehtävän epäonnistuminen perustuu nyt tehtävän SISÄISEEN kiireellisyyteen (timeCrit/sev), ei pelaajan triagaamaan urg:iin → triagaamaton tehtävä ei ole enää ikuisesti suojassa eikä vanhan tehtävän triagaaminen epäonnistuta sitä heti; 2) ei voi enää hälyttää poistettuun tehtävään (haamuhälytys estetty); 3) osoitteeseen liitetään oikea kunta + yleiset kadunnimet; 4) vuodenaika seuraa päivämäärää (1.1. = talvi); 5) tehtävälistassa näkyy "odottaa lisäyksikköä"; 6) varustelu (vesi/miehistö) vaikuttaa hintaan; 7) aseman paneeli sulkee päällekkäiset välilehtipaneelit; 8) MOBIILI: yläpalkki ei enää vuoda ruudun yli (vieritettävä, ei koko sivun vaakavieritystä); 9) CROSSPLAY: varoitus kun samaa tiliä pelataan kahdella laitteella yhtä aikaa (estää hiljaisen edistymisen häviämisen)) -->
@@ -1336,6 +1337,81 @@ const TASKS=[
    'Virtsakatetri tukossa, kotihoitaja pyytää hoitotason apua.',
    'Asiakas sekava aamukäynnillä, hoitaja huolissaan, ei tavoita lääkäriä.']},
 ];
+/* ===== LISÄVARIANTIT (v82) — paljon uusia, realistisia hätäpuhelukuvauksia. Yhdistetään olemassa
+   oleviin TASKS-koodien variants[]-listoihin AJON AIKANA (ei muokata itse TASKS-määrittelyä → turvallista
+   eikä riko syntaksia). Tyyli noudattaa olemassa olevia: lyhyt tilannekuvaus, usein soittajan konteksti.
+   spawnTask lisää näiden päälle vielä aika-/epävarmuusmerkinnät kuten ennenkin. ===== */
+const EXTRA_VARIANTS={
+ // --- ENSIHOITO: peruselintoiminnot ---
+ '700':['Mies n. 50v romahti kuntosalilla kesken treenin, ei reagoi. Henkilökunta aloittaa painelun.','Iäkäs nainen löytyi sängystä kylmänä aamulla, omainen soittaa, ei herää.','Rakennustyömaalla työntekijä lyyhistyi, työkaverit eivät tunne pulssia.','Mies kaatui kadulle ja jäi makaamaan, ohikulkijat aloittivat painelun.','Uimahallin altaasta nostettu mies, ei hengitä, valvoja paikalla.','Vanhus palvelutalossa eloton, hoitaja hakee defibrillaattorin.','Nainen lyyhistyi kaupan kassajonossa, ei reagoi, henkilökunta soitti.'],
+ '702':['Nuori nainen pyörtyi ravintolassa, hengittää mutta ei herää.','Mies löytyi tajuttomana auton ratista parkkipaikalla.','Diabeetikko ei herää aamulla, puoliso paikalla.','Henkilö lyyhistyi bussipysäkillä, ohikulkija soittaa.','Vanhus löytyi lattialta tajuttomana, kotihoitaja hälytti.','Juhlijoita, yksi sammunut eikä herää ravisteluun.'],
+ '703':['Astmaatikko saa kohtauksen, ei pysty puhumaan lauseita.','Vanhus hengittää raskaasti, huulet sinertävät, omainen huolissaan.','Keuhkoahtaumatauti pahentunut, happi loppuu kotona.','Lapsi yskii rajusti, vetää henkeä vaikeasti, vanhempi soittaa.','Hengenahdistus ja rinnan vinkuna, ei aiempaa diagnoosia.'],
+ '704':['Mies 60v puristava rintakipu, säteilee vasempaan käteen, hikoilee.','Nainen valittaa kovaa rintakipua ja pahoinvointia työpaikalla.','Iäkäs mies rintakipu ja hengenahdistus, aiempi infarkti.','Rintakipua kotona, kalpea ja hikinen, puoliso hälytti.'],
+ '705':['Sydän hakkaa epätasaisesti, huimausta, henkilö istuu kalpeana.','Tykytyskohtaus, rinnassa ahdistaa, ei aiempaa diagnoosia.'],
+ '706':['Toinen suupieli roikkuu, puhe puuroutunut, alkoi tunti sitten. Puoliso soittaa.','Vanhus ei saa kättä nostettua, sekava, hoitaja huomasi.','Äkillinen toispuolinen halvausoire, omainen kuvaa kasvojen velttoutta.'],
+ '711':['Lapsi tukehtuu ruokapalaan, ei saa henkeä, vanhempi paniikissa.','Mies ravintolassa, ruoka väärään kurkkuun, ei pysty puhumaan.','Vanhus tukehtui leipäpalaan hoitokodissa, hoitaja yrittää Heimlichia.'],
+ '714':['Henkilö vajosi järveen uimarannalla, juuri nostettu, ei reagoi.','Lapsi putosi laiturilta veteen, vanhempi sai ylös, yskii vettä.'],
+ '741':['Työntekijä putosi telineiltä n. 4 m, ei liiku jalkoja.','Vanhus kaatui portaissa alas, pään haava ja sekavuutta.','Lapsi putosi puusta, käsi vääntyneenä, itkee kovasti.','Henkilö pudonnut katolta lumitöissä, valittaa selkää.'],
+ '744':['Syvä viiltohaava kädessä, runsas vuoto, työkaveri painaa.','Lasinsirpaleet jalassa, vuotaa, asiakas kaupan edessä.','Moottorisaha lipesi, sääressä iso haava.','Veitsi lipesi keittiössä, sormi auki, vuotaa.'],
+ '745':['Vanhus kaatui kotona, lonkka kipeä, ei pääse ylös.','Liukastui jäisellä pihalla, ranne turvoksissa.','Pyöräilijä kaatui, kyynärpää ja polvi naarmuilla.','Henkilö kaatui kaupassa, lyöty pää, hieman sekava.'],
+ '746':['Sai pallon kasvoihin pelissä, nenä vuotaa runsaasti.','Putoava esine osui päähän varastolla, tajunta hetken poissa.','Sai iskun päähän tappelussa, huimaa ja oksettaa.'],
+ '747':['Sormi jäi oven väliin, kovaa kipua, mahdollinen murtuma.','Nilkka vääntyi portaissa, ei varaa jalalle.','Olkapää meni sijoiltaan urheillessa.'],
+ '751':['Häkävaroitin soi, asukkaat päänsärkyä ja huimausta.','Autotallissa moottori käynnissä, henkilö pökertynyt.'],
+ '752':['Lapsi nieli pesuainetta, suu kirvelee, vanhempi soittaa.','Henkilö otti tuntemattomia tabletteja, sekava.'],
+ '753':['Sähköasentaja sai iskun, tärisee ja valittaa rintakipua.'],
+ '754':['Kuuma öljy roiskui käsiin keittiössä, rakkuloita.','Lapsi veti kuuman kahvin päälleen, iho punainen, itkee.','Saunan kiukaaseen kaatunut, jalka palanut.'],
+ '761':['Runsas verenvuoto reidestä, ei tyrehdy painamalla.','Nenäverenvuoto ei lakkaa tuntiin, verenohennuslääkitys.','Työtapaturmassa katkennut valtimo, voimakas vuoto.'],
+ '770':['Vointi romahti äkillisesti, kalpea ja heikko.','Yleinen huono olo ja huimaus, ei jaksa seistä.'],
+ '771':['Diabeetikko hikinen ja sekava, verensokeri matala.','Insuliinishokki, ei pysty syömään, puoliso paikalla.'],
+ '772':['Epilepsiakohtaus jatkuu, jäykistelyä, ei herää välissä.','Lapsi kuumekouristelee, vanhempi paniikissa.','Mies kouristeli kadulla, ohikulkijat suojaavat päätä.'],
+ '773':['Ampiaisen pisto, kasvot turpoavat, hengitys vinkuu.','Ruoka-allergia laukesi ravintolassa, ihottumaa ja ahdistusta.'],
+ '774':['Vanhus syönyt huonosti päiviä, heikko ja sekava.','Yleiskunto romahtanut, ei jaksa nousta, omainen huolissaan.','Kuumetta ja sekavuutta, hoitaja pyytää arviota.'],
+ '775':['Voimakas vatsatauti, oksentanut yön, kuivunut.','Ripuli ja oksentelu, vanhus heikkona.'],
+ '781':['Kova vatsakipu oikealla alhaalla, pahoinvointia.','Raskaana oleva valittaa alavatsakipua.','Äkillinen vatsakipu ja oksentelu, kalpea.'],
+ '782':['Äkillinen kova päänsärky, pahin koskaan, valonarkuus.','Niska jäykkä ja päätä särkee, kuumetta.'],
+ '783':['Selkä jumissa, ei pääse liikkumaan, kova kipu.','Iskias säteilee jalkaan, ei pysty kävelemään.'],
+ '785':['Henkilö ahdistunut ja paniikissa, hengittää tiheästi.','Sekava henkilö kadulla, puhuu epäselvästi, ei väkivaltainen.','Omainen huolissaan psyykkisesti oireilevasta läheisestä.'],
+ '790':['Soittaja valitti rintakipua ja vaikeni kesken puhelun.','Yhteys katkesi soittajaan joka kuvasi hengenahdistusta.'],
+ '791':['Synnytys käynnistynyt kotona, supistukset 3 min välein.','Lapsivesi meni, matka sairaalaan pitkä, ensisynnyttäjä.'],
+ // --- POLIISI ---
+ '032':['Tappelu päättynyt, toinen osapuoli verissä päin, tekijä paennut.','Henkilöä lyöty kasvoihin baarin edessä, silminnäkijöitä.','Naapurista kuuluu huutoa ja pauketta, epäillään väkivaltaa.'],
+ '022':['Useita lyöty puistossa, yksi maassa liikkumattomana.','Törkeä pahoinpitely terassilla, tekijällä mahdollisesti ase.'],
+ '031':['Iso tappelu yökerhon edessä, useita osallisia.','Joukko nuoria käsirysyssä torilla.'],
+ '341':['Päihtynyt makaa jalkakäytävällä, häiritsee kulkua.','Sekava päihtynyt kolkuttelee ovia rappukäytävässä.','Humalainen riehuu kaupan edessä, henkilökunta soitti.'],
+ '351':['Kovaa musiikkia ja huutoa naapurista yöllä.','Toistuvaa metelöintiä porraskäytävässä.'],
+ '331':['Henkilö huutelee ja uhkailee ohikulkijoita torilla.','Häiriköivä henkilö ei poistu liikkeestä.'],
+ '361':['Naapuri ilmoittaa toistuvasta huudosta ja itkusta asunnosta.','Perheriita äityi, lapsia paikalla.'],
+ '111':['Murtohälytin soi omakotitalossa, asukkaat lomalla.','Liiketilan hälytin lauennut yöllä.'],
+ '112':['Liikkeen ikkuna rikottu, hälytin soi, mahdollinen tekijä paikalla.'],
+ '101':['Henkilö yrittää tunkeutua takaoven kautta, asukas piiloutunut.'],
+ '121':['Myymälävaras pidetty kiinni, henkilökunta odottaa partiota.'],
+ '141':['Autoja töhritty parkkihallissa, tekijä videolla.','Bussipysäkki rikottu, tekijät paikalla.'],
+ '381':['Lapsi (6v) kadonnut kauppakeskuksesta, vanhempi etsii.'],
+ '391':['Omainen huolissaan, henkilö uhannut vahingoittaa itseään, ei tavoiteta.'],
+ '511':['Muistisairas vanhus kadonnut hoitokodista, pukeutunut kevyesti.','Henkilö kadonnut lenkiltä, ei vastaa puhelimeen.'],
+ '051':['Kioski ryöstetty, tekijä paennut jalan, myyjä järkyttynyt.'],
+ '071':['Henkilö uhkaa veitsellä kaupan kassalla.'],
+ '072':['Henkilö uhkaillut väkivallalla puhelimitse, soittaja peloissaan.','Uhkaava henkilö ei poistu pihalta.'],
+ '321':['Auto ajaa kaahaten ja mutkitellen valtatiellä, mahdollinen rattijuoppo.'],
+ '201':['Kahden auton peltikolari risteyksessä, ei loukkaantuneita, kaista tukossa.','Peräänajo liikennevaloissa, pieniä vaurioita.'],
+ '205':['Hirvi tiellä, vaurioitunut auto pientareella, kuljettaja ulkona.','Peura juossut auton eteen, eläin loukkaantunut tiellä.'],
+ // --- PELASTUS ---
+ '103':['Palovaroitin laukesi liikekiinteistössä, syy epäselvä.','Automaattinen paloilmoitin hälyttää koulussa.'],
+ '401':['Saunan kiuas ylikuumentunut, savua löylyhuoneesta.','Roskakatos palaa kerrostalon pihalla, leviämisvaara.','Liesipalo keittiössä, asukas sammuttanut, savua sisällä.'],
+ '402':['Rivitalon päädystä nousee savua, asukkaat ulkona.','Kerrostaloasunnosta tulee savua, naapureita varoitettu.'],
+ '403':['Teollisuushalli tulessa, voimakas savunmuodostus, työntekijöitä ulkona.'],
+ '411':['Henkilöauto palaa parkkipaikalla, kuljettaja ulkona.','Pakettiauto savuaa moottoritilasta tien laidassa.'],
+ '421':['Pieni maastopalo radanvarressa, leviää kuivassa heinikossa.','Nuotio karannut metsänreunassa.'],
+ '461':['Vesivahinko kerrostalossa, vettä valuu alempaan kerrokseen.','Myrsky kaatoi puun tielle, tukkii ajoradan.','Irronnut peltikate roikkuu vaarallisesti katolla.'],
+ '471':['Polttoainetta vuotaa rekan tankista huoltoaseman pihaan.'],
+ '202':['Auto ojassa, kuljettaja ulkona, valittaa niskakipua.','Pyöräilijä jäänyt auton kylkeen, jalka kipeä.','Peräänajo risteyksessä, yksi valittaa päänsärkyä.'],
+ '203':['Kahden auton nokkakolari mutkassa, henkilö puristuksissa.','Pakettiauto ja henkilöauto kolaroineet, useita loukkaantuneita.'],
+ '486':['Henkilö jäänyt koneen väliin tehtaalla, ei pääse irti.','Sormet jäivät puristuksiin laitteeseen.'],
+ '483':['Henkilö pulahti jäihin järvellä, pää vielä pinnalla.','Veneestä pudonnut henkilö vedessä, ei pelastusliiviä.'],
+ '581':['Kissa jumissa puussa korkealla, ei pääse alas.','Hevonen pudonnut ojaan, ei nouse itse.','Koira pudonnut jäihin, omistaja rannalla.'],
+ '712':['Lapsi lukittu vahingossa autoon kuumalla säällä.','Vanhus jäänyt hissiin jumiin, ahdistaa.']
+};
+(function(){try{Object.entries(EXTRA_VARIANTS).forEach(([c,arr])=>{const t=TASKS.find(x=>x.c===c);if(t){const ex=t.variants||[];t.variants=ex.concat(arr.filter(v=>!ex.includes(v)));}});}catch(e){}})();
 function seasonAdjust(t){if(G.season==='talvi'){if(t.c==='745')return {...t,w:t.w*1.6};if(t.c==='202')return {...t,w:t.w*1.5};}if(G.season==='myrsky'&&t.c==='461')return {...t,w:t.w*6};return t;}
 
 /* ===== APU ===== */
@@ -3705,23 +3781,25 @@ window.openRadioWin=(ch)=>{
   clampWinIntoView(w);
   renderRadioWin(ch);capturePopState();
 };
-// KÄYTTÄJÄ: tee radioviestien yksikkötunnuksista klikattavia → hälytä avoinna olevaan tehtävään.
+// KÄYTTÄJÄ: tee radioviestien yksikkötunnuksista klikattavia → AVAA yksikön nykyinen tehtävä (ei lähetä mihinkään).
 function linkifyUnits(text){
   if(!text)return text;
   const names=G.units.map(u=>u.name).filter(Boolean).sort((a,b)=>b.length-a.length);
   if(!names.length)return text;
   const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const re=new RegExp('\\b('+names.map(esc).join('|')+')\\b','g');
-  return text.replace(re,m=>`<span class="radiounit" style="color:#7fd7ff;cursor:pointer;text-decoration:underline dotted" onclick="event.stopPropagation();radioDispatch('${m.replace(/'/g,"")}')">${m}</span>`);
+  return text.replace(re,m=>`<span class="radiounit" style="color:#7fd7ff;cursor:pointer;text-decoration:underline dotted" title="Avaa tehtävä jossa yksikkö on" onclick="event.stopPropagation();radioOpenUnit('${m.replace(/'/g,"")}')">${m}</span>`);
 }
-window.radioDispatch=(name)=>{
+window.radioOpenUnit=(name)=>{
   const u=G.units.find(x=>x.name===name); if(!u){toast(name+': yksikköä ei löytynyt');return;}
-  if(!dCur||!G.tasks.includes(dCur)){toast('Avaa ensin tehtävä (johon hälytät), sitten klikkaa yksikköä radiossa');return;}
-  if(!dCur.urg){toast('Valitse ensin tehtävälle kiireellisyys (A/B/C/D)');return;}
-  if(u.taskId===dCur.id){toast(name+' on jo tällä tehtävällä');return;}
-  if(u.status==='huolto'){toast(name+' on huollossa');return;}
-  dSel=new Set([u.id]);
-  sendDispatch(false);
+  // KÄYTTÄJÄ: klikkaus EI lähetä yksikköä toiselle tehtävälle — se VIE sinut tehtävään jossa yksikkö ON,
+  // jotta pääset helposti käsiksi siihen (panoroi kartan + avaa tehtävän hälytysnäkymän).
+  if(u.taskId){
+    const tk=G.tasks.find(t=>t.id===u.taskId);
+    if(tk){ try{map.panTo([tk.lat,tk.lng]);}catch(e){} openDispatch(tk.id); return; }
+  }
+  // Ei tehtävällä → avaa yksikön tiedot (sieltä näkee tilan/sijainnin).
+  try{openUnitInfo(u.id);}catch(e){ toast(name+' ei ole juuri nyt tehtävällä'); }
 };
 function renderRadioWin(ch){const w=openRadioWins[ch];if(!w)return;clearRadioUnread(ch);const f=G.radio[ch]||[];w.querySelector('.rb').innerHTML=f.slice(-25).reverse().map(m=>`<div class="m${m._isNew?' new':''}"><span class="mono" style="color:var(--dim)">${fmtClock(m.t)}</span> ${m._isNew?'<span class="nb">UUSI</span>':''}<b style="color:var(--acc)">${linkifyUnits(m.from)}:</b> ${linkifyUnits(m.msg)}</div>`).join('')||'<div style="color:var(--dim)">Ei liikennettä</div>';}
 function makeDraggable(el,handle){let sx,sy,ox,oy;const down=e=>{const p=e.touches?e.touches[0]:e;sx=p.clientX;sy=p.clientY;ox=el.offsetLeft;oy=el.offsetTop;el.style.zIndex=++rwZ;document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});document.addEventListener('mouseup',up);document.addEventListener('touchend',up);e.preventDefault();};const move=e=>{const p=e.touches?e.touches[0]:e;el.style.left=(ox+p.clientX-sx)+'px';el.style.top=(oy+p.clientY-sy)+'px';if(e.cancelable)e.preventDefault();};const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('touchmove',move);document.removeEventListener('mouseup',up);document.removeEventListener('touchend',up);try{clampWinIntoView(el);capturePopState();}catch(e){}};handle.addEventListener('mousedown',down);handle.addEventListener('touchstart',down,{passive:false});}
@@ -5838,7 +5916,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 
 /* ===== ASETUKSET ===== */
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
-function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 81 · Asetukset</div>';
+function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 82 · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="3" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
