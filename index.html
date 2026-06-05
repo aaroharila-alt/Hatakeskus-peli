@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HÄTÄKESKUS - dispatch sim v87 (ETA-järjestys korjattu: lähetyslistan arvio saattoi näyttää kaukaisemman aseman lähempää nopeampana, koska se vertaili OIKEAA tiereittiä (jo ladattu, pidempi) optimistiseen linnuntie-arvioon. Korjaus: linnuntie-arvion kerroin 1.32 -> 1.55 (vesistöt/sillat huomioiden, esim. saaret), ja OSRM-tiereitti haetaan 14 lähimmälle asemalle (oli 10) jotta järjestys perustuu oikeisiin teihin. Muuten kuten v86) -->
 <!-- HÄTÄKESKUS - dispatch sim v86 (Asemavalmiudella ENIMMÄISKESTO: VPK/sopimus max 4 h, vakituinen max 24 h (peliaikaa). Sen täytyttyä valmius purkautuu itsestään (tickVpkReadiness) ja radio ilmoittaa. _atReadyUntil tallennetaan. Muuten kuten v85) -->
 <!-- HÄTÄKESKUS - dispatch sim v85 (PUHELINKORJAUKSET: (1) Peliaika ei edennyt puhelimella poissa ollessa — syy: pilvitallennuksen lataus (fbLoadUserSave) ei ajanut offline-etenemistä. Korjaus: pilvilataus ajaa spawnCatchUp:n (kerran, katto 7 vrk). (2) Kiireellisyyden vaihto ei enää nollaa valittuja yksiköitä (setUrg ei rakenna listaa uudelleen). (3) Hengitystiepalovamma vain savupaloihin (40X/41X/42X), suositusteksti pois. (4) Perävaunu (0+0) ei lähde ilman vetoautoa. (5) Yksikkökohtainen 'Pakota vapaaksi' -nappi jumittuneelle yksikölle. (6) Kohdepisteet pienempiä + jokaisen saa poistettua klikkaamalla. (7) ETA realistisempi (huomioi liikenteen hidastuksen). (8) Tehtävien katto skaalautuu kalustoon (ei ruudun täyttymistä). (9) Asemavalmius-nappi vain vara-autoille. (10) VPK uusiksi: enimmäkseen asemalla; harjoitus näkyy ajelemassa mutta vaste asemalta; vapaa liikkuu teillä 1 min vasteella ja voi liittyä lähitehtävään; KAIKKI liike seuraa tietä → ei mereen. Muuten kuten v84) -->
 <!-- HÄTÄKESKUS - dispatch sim v84 (KORJAUKSET: PUHELIN EI TALLENTANUT PILVEEN: syy oli signInWithPopup joka estyy puhelinselaimissa → kirjautuminen ei mennyt läpi → ei G.user → ei pilvitallennusta. Korjaus: mobiilissa signInWithRedirect (+ getRedirectResult paluussa), työpöydällä popup+redirect-varalla. Lisäksi: varoitus jos paikallinen tallennus estetty (yksityinen selaus). Muuten kuten v83) -->
@@ -3125,7 +3126,7 @@ async function prefetchDispatchTimes(tk){
   const skip=['vene','vene_pieni','vene_iso','hems'];
   // Esivalitse 10 lähintä linnuntietä, mutta DEDUPLOI lokaatiolla (sama asema = yksi haku)
   const cands=G.units.filter(u=>isDispatchable(u)&&!skip.includes(u.vt))
-    .map(u=>({u,d:km(u.lat,u.lng,tk.lat,tk.lng)})).sort((a,b)=>a.d-b.d).slice(0,10);
+    .map(u=>({u,d:km(u.lat,u.lng,tk.lat,tk.lng)})).sort((a,b)=>a.d-b.d).slice(0,14);
   const seen={},locs=[];
   cands.forEach(({u})=>{const k=_rcKey(u.lat,u.lng,tk);if(!seen[k]&&!G_rcache[k]){seen[k]=1;locs.push({k,lat:u.lat,lng:u.lng});}});
   await Promise.all(locs.map(async ({k,lat,lng})=>{
@@ -3152,8 +3153,12 @@ function nearestUnits(tk){
       // Todellinen OSRM-tiereitti, skaalattu yksikön hälytysnopeudella — ei linnuntie-arvio
       driveMin=(cached.duration/(spd/50))/60;
     } else {
-      // Linnuntie × 1.32 karkea arvio ennen OSRM-hakua
-      driveMin=straight*1.32/spd*60;
+      // Linnuntie-arvio ennen OSRM-tiereittiä. Kerroin 1.55 (ei 1.32): kaupungissa, jossa on vesistöjä
+      // ja siltoja (esim. saaret kuten Lauttasaari), oikea tiematka on selvästi linnuntietä pidempi.
+      // Liian pieni kerroin teki arviosta optimistisen → kaukainen asema saattoi näyttää lähempää
+      // nopeammalta kun lähemmän aseman OIKEA (pidempi) tiereitti oli jo latautunut. Nyt arvio ei
+      // enää alita oikeaa reittiä yhtä helposti.
+      driveMin=straight*1.55/spd*60;
     }
     const totalMin=driveMin+unitTurnoutMin(u);
     return {u,drive:driveMin,t:totalMin,osrm:!!cached};
@@ -3182,7 +3187,7 @@ function dStatusInner(tk){
       s='~'+lm+' min'+dk;
     }else{
       const d=km(u.lat,u.lng,tk.lat,tk.lng);const spd=etaSpeed(u,tk.urg||'B');
-      s='~'+Math.max(1,Math.round(d*1.32/spd*60))+' min';
+      s='~'+Math.max(1,Math.round(d*1.55/spd*60))+' min';
     }
   }else if(u.status==='kohde')s='✓ kohteessa';else if(u.status==='paluu')s='paluumatkalla';else s=u.status;
     return `<div style="font-size:12px;display:flex;align-items:center;gap:6px;padding:3px 0"><span class="mono" style="flex:1">${u.name}</span><span style="color:${unitColor(u)}">${s}</span><button class="btn-x" style="padding:6px 14px;font-size:12px;min-width:68px;touch-action:manipulation" data-act="cancelunit" data-uid="${u.id}">Peruuta</button></div>`;
