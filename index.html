@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
+<!-- HÄTÄKESKUS - dispatch sim v88 (Kohdepisteet eivät enää poistu vahingossa: poisto vain muokkaustilassa JA kysyy varmistuksen. Normaalipelissä kohdepisteen klikkaus ei tee mitään. Muuten kuten v87) -->
 <!-- HÄTÄKESKUS - dispatch sim v87 (ETA-järjestys korjattu: lähetyslistan arvio saattoi näyttää kaukaisemman aseman lähempää nopeampana, koska se vertaili OIKEAA tiereittiä (jo ladattu, pidempi) optimistiseen linnuntie-arvioon. Korjaus: linnuntie-arvion kerroin 1.32 -> 1.55 (vesistöt/sillat huomioiden, esim. saaret), ja OSRM-tiereitti haetaan 14 lähimmälle asemalle (oli 10) jotta järjestys perustuu oikeisiin teihin. Muuten kuten v86) -->
 <!-- HÄTÄKESKUS - dispatch sim v86 (Asemavalmiudella ENIMMÄISKESTO: VPK/sopimus max 4 h, vakituinen max 24 h (peliaikaa). Sen täytyttyä valmius purkautuu itsestään (tickVpkReadiness) ja radio ilmoittaa. _atReadyUntil tallennetaan. Muuten kuten v85) -->
 <!-- HÄTÄKESKUS - dispatch sim v85 (PUHELINKORJAUKSET: (1) Peliaika ei edennyt puhelimella poissa ollessa — syy: pilvitallennuksen lataus (fbLoadUserSave) ei ajanut offline-etenemistä. Korjaus: pilvilataus ajaa spawnCatchUp:n (kerran, katto 7 vrk). (2) Kiireellisyyden vaihto ei enää nollaa valittuja yksiköitä (setUrg ei rakenna listaa uudelleen). (3) Hengitystiepalovamma vain savupaloihin (40X/41X/42X), suositusteksti pois. (4) Perävaunu (0+0) ei lähde ilman vetoautoa. (5) Yksikkökohtainen 'Pakota vapaaksi' -nappi jumittuneelle yksikölle. (6) Kohdepisteet pienempiä + jokaisen saa poistettua klikkaamalla. (7) ETA realistisempi (huomioi liikenteen hidastuksen). (8) Tehtävien katto skaalautuu kalustoon (ei ruudun täyttymistä). (9) Asemavalmius-nappi vain vara-autoille. (10) VPK uusiksi: enimmäkseen asemalla; harjoitus näkyy ajelemassa mutta vaste asemalta; vapaa liikkuu teillä 1 min vasteella ja voi liittyä lähitehtävään; KAIKKI liike seuraa tietä → ei mereen. Muuten kuten v84) -->
@@ -474,6 +476,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
+const VERSION='v89'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -2233,15 +2236,30 @@ let spawnEditMode='circle';// 'circle' tai 'poly'
 let polyDraft=[];          // piirrettävän polygonin pisteet [[lat,lng],...]
 let polyDraftLayers=[];    // näkyvät draft-markerit/viiva
 let spawnSnap=true;        // tartunta: uudet pisteet napsahtavat viereisen alueen kulmaan
-// Napsauta piste lähimpään olemassa olevaan kulmaan (polygonit) jos alle kynnyksen → ei rakoja
+// Napsauta piste lähimpään olemassa olevaan kohtaan (kulma TAI reunaviiva) jos alle kynnyksen → ei rakoja.
+// Parannettu: ennen tartunta osui vain KULMIIN. Nyt se osuu myös alueen REUNAVIIVAAN (segmentin lähin
+// piste), joten uudet alueet liittyvät saumattomasti vanhojen reunoihin eikä väliin jää rakoja.
+function projectToSeg(lat,lng,A,B){
+  const sc=Math.cos(lat*Math.PI/180);
+  const ax=A[1]*sc,ay=A[0],bx=B[1]*sc,by=B[0],px=lng*sc,py=lat;
+  const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;if(len2<1e-12)return [A[0],A[1]];
+  let t=((px-ax)*dx+(py-ay)*dy)/len2;t=Math.max(0,Math.min(1,t));
+  return [ay+t*dy,(ax+t*dx)/sc];
+}
 function snapSpawnPoint(lat,lng){
   if(!spawnSnap)return [lat,lng];
-  const thr=0.45;let best=null,bd=thr;
+  const thr=0.6;let best=null,bd=thr;
+  // 1) Lähimmät kulmat
   const verts=[];
   (G.spawnAreas||[]).forEach(a=>{if(a.type==='poly'&&a.points)a.points.forEach(p=>verts.push(p));});
   polyDraft.forEach(p=>verts.push(p));
-  verts.forEach(p=>{const d=km(lat,lng,p[0],p[1]);if(d<bd){bd=d;best=p;}});
-  return best?[best[0],best[1]]:[lat,lng];
+  verts.forEach(p=>{const d=km(lat,lng,p[0],p[1]);if(d<bd){bd=d;best=[p[0],p[1]];}});
+  // 2) Lähin piste olemassa olevan polygonin REUNALLA (segmentit) — täyttää raot kulmien välissä
+  const segs=[];
+  (G.spawnAreas||[]).forEach(a=>{if(a.type==='poly'&&a.points&&a.points.length>=2){for(let i=0;i<a.points.length;i++)segs.push([a.points[i],a.points[(i+1)%a.points.length]]);}});
+  for(let i=0;i+1<polyDraft.length;i++)segs.push([polyDraft[i],polyDraft[i+1]]);
+  segs.forEach(([A,B])=>{const pr=projectToSeg(lat,lng,A,B);const d=km(lat,lng,pr[0],pr[1]);if(d<bd){bd=d;best=pr;}});
+  return best||[lat,lng];
 }
 window.toggleSpawnSnap=()=>{spawnSnap=!spawnSnap;const b=document.getElementById('spawnSnapBtn');if(b){b.textContent='🧲 Tartunta: '+(spawnSnap?'ON':'OFF');b.style.background=spawnSnap?'#2ee6a0':'#3a2a00';b.style.color=spawnSnap?'#06210f':'#ffd11a';}toast(spawnSnap?'Tartunta päällä — pisteet napsahtavat viereisiin kulmiin':'Tartunta pois');};
 window.setSpawnEditMode=(m)=>{
@@ -2354,8 +2372,12 @@ function renderSpawnCircles(){
     }
     layer.on('click',(ev)=>{
       L.DomEvent.stopPropagation(ev);
+      // KORJAUS: ennen klikkaus poisti alueen heti → uutta aluetta rakentaessa vanha poistui vahingossa.
+      // Nyt kysytään varmistus, joten vahinkoklikkaus ei poista aluetta.
+      if(!confirm('Poista tämä tehtäväalue?'))return;
       G.spawnAreas.splice(i,1);
       renderSpawnCircles();
+      saveGame(false);
       toast('Tehtäväalue poistettu');
     });
     spawnCircles.push(layer);
@@ -2371,15 +2393,17 @@ function renderPois(){
   clearPoiMarkers();
   (G.pois||[]).forEach(p=>{
     const def=POI_TYPES[p.type]||{icon:'📍',label:p.type};
-    // #5: pienempi merkki (ei vie niin paljon tilaa kartalta) + himmeämpi kun ei muokata.
+    // Pienempi merkki + himmeämpi kun ei muokata.
     const ic=L.divIcon({html:`<div style="font-size:12px;line-height:14px;text-align:center;filter:drop-shadow(0 0 1px #000a);opacity:${editingPois?1:0.55}">${def.icon}</div>`,className:'',iconSize:[15,15],iconAnchor:[8,8]});
-    // #6: aina klikattava → yhden kohdepisteen saa poistettua MILLOIN VAAN (ei tarvitse muokkaustilaa).
-    const mk=L.marker([p.lat,p.lng],{icon:ic,interactive:true,keyboard:false}).addTo(map);
-    mk.bindTooltip(def.label+' — klikkaa poistaaksesi',{direction:'top'});
-    mk.on('click',(ev)=>{L.DomEvent.stopPropagation(ev);
-      if(editingPois){G.pois=(G.pois||[]).filter(x=>x.id!==p.id);renderPois();toast('Kohdepiste poistettu ('+(G.pois||[]).length+' jäljellä)');}
-      else if(confirm('Poista kohdepiste: '+def.label+'?')){G.pois=(G.pois||[]).filter(x=>x.id!==p.id);renderPois();saveGame(false);toast('Kohdepiste poistettu ('+(G.pois||[]).length+' jäljellä)');}
-    });
+    // KORJAUS: kohdepiste on klikattava VAIN muokkaustilassa → normaalipelissä vahinkoklikkaus ei poista
+    // mitään. Muokkaustilassakin poisto KYSYY VARMISTUKSEN, joten vahinkoklikkaus ei enää poista pistettä.
+    const mk=L.marker([p.lat,p.lng],{icon:ic,interactive:editingPois,keyboard:false}).addTo(map);
+    mk.bindTooltip(def.label+(editingPois?' — klikkaa poistaaksesi':''),{direction:'top'});
+    if(editingPois){
+      mk.on('click',(ev)=>{L.DomEvent.stopPropagation(ev);
+        if(confirm('Poista kohdepiste: '+def.label+'?')){G.pois=(G.pois||[]).filter(x=>x.id!==p.id);renderPois();saveGame(false);toast('Kohdepiste poistettu ('+(G.pois||[]).length+' jäljellä)');}
+      });
+    }
     poiMarkers.push(mk);
   });
 }
@@ -6044,7 +6068,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 
 /* ===== ASETUKSET ===== */
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
-function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio 84 · Asetukset</div>';
+function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio '+VERSION+' · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="3" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
