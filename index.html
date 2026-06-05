@@ -1,6 +1,9 @@
 <!DOCTYPE html>
+
 <html lang="fi">
 <head>
+<!-- HÄTÄKESKUS - dispatch sim v86 (Asemavalmiudella ENIMMÄISKESTO: VPK/sopimus max 4 h, vakituinen max 24 h (peliaikaa). Sen täytyttyä valmius purkautuu itsestään (tickVpkReadiness) ja radio ilmoittaa. _atReadyUntil tallennetaan. Muuten kuten v85) -->
+<!-- HÄTÄKESKUS - dispatch sim v85 (PUHELINKORJAUKSET: (1) Peliaika ei edennyt puhelimella poissa ollessa — syy: pilvitallennuksen lataus (fbLoadUserSave) ei ajanut offline-etenemistä. Korjaus: pilvilataus ajaa spawnCatchUp:n (kerran, katto 7 vrk). (2) Kiireellisyyden vaihto ei enää nollaa valittuja yksiköitä (setUrg ei rakenna listaa uudelleen). (3) Hengitystiepalovamma vain savupaloihin (40X/41X/42X), suositusteksti pois. (4) Perävaunu (0+0) ei lähde ilman vetoautoa. (5) Yksikkökohtainen 'Pakota vapaaksi' -nappi jumittuneelle yksikölle. (6) Kohdepisteet pienempiä + jokaisen saa poistettua klikkaamalla. (7) ETA realistisempi (huomioi liikenteen hidastuksen). (8) Tehtävien katto skaalautuu kalustoon (ei ruudun täyttymistä). (9) Asemavalmius-nappi vain vara-autoille. (10) VPK uusiksi: enimmäkseen asemalla; harjoitus näkyy ajelemassa mutta vaste asemalta; vapaa liikkuu teillä 1 min vasteella ja voi liittyä lähitehtävään; KAIKKI liike seuraa tietä → ei mereen. Muuten kuten v84) -->
 <!-- HÄTÄKESKUS - dispatch sim v84 (KORJAUKSET: PUHELIN EI TALLENTANUT PILVEEN: syy oli signInWithPopup joka estyy puhelinselaimissa → kirjautuminen ei mennyt läpi → ei G.user → ei pilvitallennusta. Korjaus: mobiilissa signInWithRedirect (+ getRedirectResult paluussa), työpöydällä popup+redirect-varalla. Lisäksi: varoitus jos paikallinen tallennus estetty (yksityinen selaus). Muuten kuten v83) -->
 <!-- HÄTÄKESKUS - dispatch sim v83 (KORJAUKSET: SUOJA-BUGI: liikenneonnettomuus pyysi jatkuvasti lisää säiliöautoa suojaksi vaikka niitä oli jo paikalla. Juurisyy: vanha versio inflatoi need.suoja-arvon (lisäsi monta kertaa) ja se jäi tallennukseen. Korjaus: (a) need.suoja capataan 1:ksi latauksessa (korjaa vanhat tallennukset), (b) maybeRequestSuoja ASETTAA need.suoja=1 (ei ++). Säiliö/tankki/nostolava lasketaan jo suojaksi needMetBy:ssä. Muuten kuten v82) -->
 <!-- HÄTÄKESKUS - dispatch sim v82 (KORJAUKSET: 1) PALJON uusia tehtävävariantteja (EXTRA_VARIANTS-yhdistys ~50 koodille, ei muokkaa TASKS-määrittelyä); 2) radioviestin yksikkötunnusta klikatessa AVAUTUU se tehtävä jossa yksikkö on (EI enää lähetä yksikköä toiselle tehtävälle); muuten kuten v81) -->
@@ -58,231 +61,232 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 /* Zoom-napit aina yläpalkin ALLE ja paneelien ALLE (z-index) — ei vuoda dispatch/asetukset päälle */
 .leaflet-top.leaflet-left{margin-top:calc(var(--top-h) + 6px);z-index:450}
 
-#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;background:linear-gradient(180deg,#0d1116 0%,#0a0d11 100%);border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;padding:0 12px;box-shadow:0 2px 12px #0008}
-#top:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--acc);box-shadow:0 0 12px var(--acc)}
-#top .logo{font-family:var(--fdisp);font-weight:700;letter-spacing:3px;font-size:18px;color:var(--txt);text-transform:uppercase;display:flex;align-items:center;gap:7px}
-#top .logo:before{content:"";width:9px;height:9px;border-radius:50%;background:var(--acc2);box-shadow:0 0 9px var(--acc2);animation:beat 2s infinite}
+#top{position:absolute;top:0;left:0;right:0;height:var(–top-h);z-index:600;background:linear-gradient(180deg,#0d1116 0%,#0a0d11 100%);border-bottom:1px solid var(–line2);display:flex;align-items:center;gap:9px;padding:0 12px;box-shadow:0 2px 12px #0008}
+#top:before{content:””;position:absolute;left:0;top:0;bottom:0;width:4px;background:var(–acc);box-shadow:0 0 12px var(–acc)}
+#top .logo{font-family:var(–fdisp);font-weight:700;letter-spacing:3px;font-size:18px;color:var(–txt);text-transform:uppercase;display:flex;align-items:center;gap:7px}
+#top .logo:before{content:””;width:9px;height:9px;border-radius:50%;background:var(–acc2);box-shadow:0 0 9px var(–acc2);animation:beat 2s infinite}
 @keyframes beat{0%,100%{opacity:1}50%{opacity:.35}}
-.pill{background:#0c1014;border:1px solid var(--line);border-radius:5px;padding:5px 10px;font-size:13px;white-space:nowrap;font-family:var(--fmono);font-weight:500;color:var(--dim);display:inline-flex;align-items:center;gap:5px}
-.pill b{color:var(--txt);font-weight:700}
+.pill{background:#0c1014;border:1px solid var(–line);border-radius:5px;padding:5px 10px;font-size:13px;white-space:nowrap;font-family:var(–fmono);font-weight:500;color:var(–dim);display:inline-flex;align-items:center;gap:5px}
+.pill b{color:var(–txt);font-weight:700}
 .spacer{flex:1}
 
-#nav{position:absolute;bottom:0;left:0;right:0;height:var(--nav-h);z-index:600;background:linear-gradient(180deg,#0d1217 0%,#080a0d 100%);border-top:1px solid var(--line2);display:flex;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 14px #0009}
-#nav button{flex:1;background:none;border:none;color:var(--dim2);font-size:10px;font-family:var(--fui);font-weight:600;letter-spacing:.4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;position:relative;min-height:44px;padding:6px 2px;text-transform:uppercase;transition:color .12s}
+#nav{position:absolute;bottom:0;left:0;right:0;height:var(–nav-h);z-index:600;background:linear-gradient(180deg,#0d1217 0%,#080a0d 100%);border-top:1px solid var(–line2);display:flex;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 14px #0009}
+#nav button{flex:1;background:none;border:none;color:var(–dim2);font-size:10px;font-family:var(–fui);font-weight:600;letter-spacing:.4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;position:relative;min-height:44px;padding:6px 2px;text-transform:uppercase;transition:color .12s}
 #nav button .ic{font-size:20px;line-height:1;filter:grayscale(.4) opacity(.7);transition:filter .12s}
-#nav button:before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:3px;background:var(--acc);border-radius:0 0 3px 3px;transition:width .15s;box-shadow:0 0 8px var(--acc)}
-#nav button.on{color:var(--acc)}
+#nav button:before{content:””;position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:3px;background:var(–acc);border-radius:0 0 3px 3px;transition:width .15s;box-shadow:0 0 8px var(–acc)}
+#nav button.on{color:var(–acc)}
 #nav button.on .ic{filter:none}
 #nav button.on:before{width:60%}
-#nav button .badge{position:absolute;top:5px;left:50%;margin-left:8px;background:var(--A);color:#fff;border-radius:9px;font-size:9px;padding:1px 5px;font-weight:700;font-family:var(--fmono);box-shadow:0 0 8px #ff3b3b88}
+#nav button .badge{position:absolute;top:5px;left:50%;margin-left:8px;background:var(–A);color:#fff;border-radius:9px;font-size:9px;padding:1px 5px;font-weight:700;font-family:var(–fmono);box-shadow:0 0 8px #ff3b3b88}
 
-.panel{position:absolute;left:0;right:0;bottom:var(--nav-h);top:var(--top-h);z-index:550;background:var(--bg);display:none;flex-direction:column}
+.panel{position:absolute;left:0;right:0;bottom:var(–nav-h);top:var(–top-h);z-index:550;background:var(–bg);display:none;flex-direction:column}
 .panel.open{display:flex;animation:slideup .18s ease}
 @keyframes slideup{from{transform:translateY(14px);opacity:.4}}
 /* ===== PC-LAYOUT (≥900px): sivupaneeli vasemmalla, kartta aina näkyvissä oikealla ===== */
 @media(min-width:900px){
-  :root{--nav-h:52px;--top-h:50px}
-  .panel{right:auto;width:420px;border-right:1px solid var(--line2);box-shadow:10px 0 40px #000a}
-  .panel.open{animation:slidein .18s ease}
-  @keyframes slidein{from{transform:translateX(-14px);opacity:.4}}
-  /* Nav-palkki tiivistetty, ikonit isommat PC:llä */
-  #nav button{font-size:11px;gap:4px;padding:5px 4px}
-  #nav button .ic{font-size:22px}
-  /* Parempi dispatch-ikkuna PC:llä — laajempi, ei kata koko karttaa */
-  #disp{top:58px;right:14px;width:460px;max-height:calc(100% - 120px);border-radius:10px}
-  #smod{top:58px;right:14px;width:460px;border-radius:10px}
-  /* Yksikköinfo vasemmalle jotta ei päällekkäin dispatch-ikkunan kanssa */
-  #uinfo{top:58px;left:440px;width:320px;border-radius:10px;max-height:70%}
-  /* Tehtävälista-popup PC:llä suurempi */
-  #taskpop{width:300px;max-height:60vh;right:14px;bottom:60px}
-  /* Radio-popup sijainti */
-  .radiobtn{bottom:60px}
-  .taskbtn{bottom:60px}
-  .fab{bottom:60px}
-  /* Toast ylös eikä tehtäväpalkin päälle */
-  #toast{bottom:62px}
+:root{–nav-h:52px;–top-h:50px}
+.panel{right:auto;width:420px;border-right:1px solid var(–line2);box-shadow:10px 0 40px #000a}
+.panel.open{animation:slidein .18s ease}
+@keyframes slidein{from{transform:translateX(-14px);opacity:.4}}
+/* Nav-palkki tiivistetty, ikonit isommat PC:llä */
+#nav button{font-size:11px;gap:4px;padding:5px 4px}
+#nav button .ic{font-size:22px}
+/* Parempi dispatch-ikkuna PC:llä — laajempi, ei kata koko karttaa */
+#disp{top:58px;right:14px;width:460px;max-height:calc(100% - 120px);border-radius:10px}
+#smod{top:58px;right:14px;width:460px;border-radius:10px}
+/* Yksikköinfo vasemmalle jotta ei päällekkäin dispatch-ikkunan kanssa */
+#uinfo{top:58px;left:440px;width:320px;border-radius:10px;max-height:70%}
+/* Tehtävälista-popup PC:llä suurempi */
+#taskpop{width:300px;max-height:60vh;right:14px;bottom:60px}
+/* Radio-popup sijainti */
+.radiobtn{bottom:60px}
+.taskbtn{bottom:60px}
+.fab{bottom:60px}
+/* Toast ylös eikä tehtäväpalkin päälle */
+#toast{bottom:62px}
 }
 
 /* ===== MOBIILI-LAYOUT (<900px): optimoitu kosketusnäytölle ===== */
 @media(max-width:899px){
-  :root{--nav-h:60px}
-  /* YLÄPALKKI: logoteksti piiloon (jää vain "live"-piste) ja pillit tiiviiksi, jotta KAIKKI
-     mahtuu — etenkin raha. Leaflet-zoom siirretään ettei jää logon/piste päälle. */
-  /* KORJAUS (mobiili): yläpalkki vieritettävissä vaakaan, ettei sisältö (Ruuhka/tapahtuma/tehtävätahti)
-     vuoda ruudun ulkopuolelle ja aiheuta koko sivun vaakavieritystä. Aika/pvm/raha näkyvät heti. */
-  #top{gap:6px;padding:0 8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-  #top::-webkit-scrollbar{display:none}
-  #top .logo{font-size:0;gap:0;letter-spacing:0;flex:none}
-  #top .pill{padding:4px 7px;font-size:12px;gap:3px}
-  /* Isommat kosketusalueet */
-  .trow{min-height:62px;padding:12px 11px}
-  .urow{min-height:58px}
-  .btn-go{font-size:17px;min-height:58px}
-  /* Scrollaus paneeleissa sujuvampi */
-  .panel .body{-webkit-overflow-scrolling:touch;padding:10px}
-  /* Dispatch koko ruudun levyinen puhelimella */
-  #disp{border-radius:0;border:none}
-  /* Tavoitteet-nappi isompi kosketukselle */
-  .buy{min-height:46px}
+:root{–nav-h:60px}
+/* YLÄPALKKI: logoteksti piiloon (jää vain “live”-piste) ja pillit tiiviiksi, jotta KAIKKI
+mahtuu — etenkin raha. Leaflet-zoom siirretään ettei jää logon/piste päälle. */
+/* KORJAUS (mobiili): yläpalkki vieritettävissä vaakaan, ettei sisältö (Ruuhka/tapahtuma/tehtävätahti)
+vuoda ruudun ulkopuolelle ja aiheuta koko sivun vaakavieritystä. Aika/pvm/raha näkyvät heti. */
+#top{gap:6px;padding:0 8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#top::-webkit-scrollbar{display:none}
+#top .logo{font-size:0;gap:0;letter-spacing:0;flex:none}
+#top .pill{padding:4px 7px;font-size:12px;gap:3px}
+/* Isommat kosketusalueet */
+.trow{min-height:62px;padding:12px 11px}
+.urow{min-height:58px}
+.btn-go{font-size:17px;min-height:58px}
+/* Scrollaus paneeleissa sujuvampi */
+.panel .body{-webkit-overflow-scrolling:touch;padding:10px}
+/* Dispatch koko ruudun levyinen puhelimella */
+#disp{border-radius:0;border:none}
+/* Tavoitteet-nappi isompi kosketukselle */
+.buy{min-height:46px}
 }
 /* Erittäin kapea (pienet puhelimet): tiivistä pillit vielä + lyhennä päivämäärä koodilla */
 @media(max-width:430px){
-  #top{gap:4px;padding:0 6px}
-  #top .pill{padding:3px 6px;font-size:11.5px}
+#top{gap:4px;padding:0 6px}
+#top .pill{padding:3px 6px;font-size:11.5px}
 }
-.panel .head{padding:13px 14px;border-bottom:1px solid var(--line2);font-family:var(--fdisp);font-weight:700;font-size:19px;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:9px;min-height:50px;background:linear-gradient(180deg,#10151b,#0c1014)}
-.panel .head .pclose{margin-left:auto;width:34px;height:34px;min-width:34px;display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--line);border-radius:6px;color:var(--dim);cursor:pointer;font-size:16px;font-family:var(--fui)}
-.panel .head .pclose:active{background:var(--A);color:#fff;border-color:var(--A)}
+.panel .head{padding:13px 14px;border-bottom:1px solid var(–line2);font-family:var(–fdisp);font-weight:700;font-size:19px;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:9px;min-height:50px;background:linear-gradient(180deg,#10151b,#0c1014)}
+.panel .head .pclose{margin-left:auto;width:34px;height:34px;min-width:34px;display:flex;align-items:center;justify-content:center;background:var(–bg3);border:1px solid var(–line);border-radius:6px;color:var(–dim);cursor:pointer;font-size:16px;font-family:var(–fui)}
+.panel .head .pclose:active{background:var(–A);color:#fff;border-color:var(–A)}
 .panel .body{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px;-webkit-overflow-scrolling:touch}
 
-.trow{background:var(--bg2);border:1px solid var(--line);border-left-width:5px;border-radius:4px;padding:11px 11px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:56px;transition:background .1s,border-color .1s}
-.trow:hover{border-color:var(--line2)}
-.trow:active{background:var(--bg3)}
+.trow{background:var(–bg2);border:1px solid var(–line);border-left-width:5px;border-radius:4px;padding:11px 11px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:56px;transition:background .1s,border-color .1s}
+.trow:hover{border-color:var(–line2)}
+.trow:active{background:var(–bg3)}
 .trow .dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
 .trow .mid{flex:1;min-width:0}
-.trow .code{font-weight:700;font-size:15px;font-family:var(--fmono);letter-spacing:.5px}
-.trow .desc{color:var(--dim);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.trow .st{font-size:11px;text-align:right;color:var(--dim);white-space:nowrap;font-family:var(--fmono);text-transform:uppercase;letter-spacing:.5px}
-.u-A{border-left-color:var(--A)} .u-B{border-left-color:var(--B)} .u-C{border-left-color:var(--C)} .u-D{border-left-color:var(--D)} .u-N{border-left-color:var(--N)}
-.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:3px;font-family:var(--fmono)}
-.tag-A{background:var(--A);color:#fff} .tag-B{background:var(--B);color:#111} .tag-C{background:var(--C);color:#111} .tag-D{background:var(--D);color:#111} .tag-N{background:var(--N);color:#fff} .tag-none{background:#3a4350;color:#cdd}
+.trow .code{font-weight:700;font-size:15px;font-family:var(–fmono);letter-spacing:.5px}
+.trow .desc{color:var(–dim);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.trow .st{font-size:11px;text-align:right;color:var(–dim);white-space:nowrap;font-family:var(–fmono);text-transform:uppercase;letter-spacing:.5px}
+.u-A{border-left-color:var(–A)} .u-B{border-left-color:var(–B)} .u-C{border-left-color:var(–C)} .u-D{border-left-color:var(–D)} .u-N{border-left-color:var(–N)}
+.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:3px;font-family:var(–fmono)}
+.tag-A{background:var(–A);color:#fff} .tag-B{background:var(–B);color:#111} .tag-C{background:var(–C);color:#111} .tag-D{background:var(–D);color:#111} .tag-N{background:var(–N);color:#fff} .tag-none{background:#3a4350;color:#cdd}
 
 /* DISPATCH */
-#disp{position:absolute;z-index:700;background:var(--bg);display:none;flex-direction:column;border:1px solid var(--line2)}
+#disp{position:absolute;z-index:700;background:var(–bg);display:none;flex-direction:column;border:1px solid var(–line2)}
 #disp.open{display:flex}
 @media(max-width:760px){
-  #disp{inset:0;border-radius:0;border:none}
-  #disp .dfoot{padding-bottom:calc(env(safe-area-inset-bottom,0)+10px)}
+#disp{inset:0;border-radius:0;border:none}
+#disp .dfoot{padding-bottom:calc(env(safe-area-inset-bottom,0)+10px)}
 }
 @media(min-width:761px){ #disp{top:58px;right:12px;width:430px;max-height:calc(100% - 134px);border-radius:8px;box-shadow:0 16px 50px #000c} }
-#disp .dhead{padding:13px 13px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#141a21,#0e1217);min-height:54px}
+#disp .dhead{padding:13px 13px;border-bottom:1px solid var(–line2);display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#141a21,#0e1217);min-height:54px}
 #disp .dhead .x{margin-left:auto;min-width:40px;min-height:40px;display:flex;align-items:center;justify-content:center}
 #disp .dbody{flex:1;overflow-y:auto;overflow-x:hidden;padding:13px;-webkit-overflow-scrolling:touch}
-#disp .dfoot{border-top:1px solid var(--line2);background:#0e1217;padding:11px;display:flex;gap:9px}
+#disp .dfoot{border-top:1px solid var(–line2);background:#0e1217;padding:11px;display:flex;gap:9px}
 .sec{margin-bottom:15px}
-.sec h4{margin:0 0 7px;font-size:11px;letter-spacing:1.5px;color:var(--acc);text-transform:uppercase;font-family:var(--fui);font-weight:700}
+.sec h4{margin:0 0 7px;font-size:11px;letter-spacing:1.5px;color:var(–acc);text-transform:uppercase;font-family:var(–fui);font-weight:700}
 .urg{display:flex;gap:8px}
-.urgb{flex:1;text-align:center;padding:14px 0;border-radius:6px;border:2px solid var(--line);background:var(--bg3);font-weight:700;font-size:19px;cursor:pointer;min-height:50px;font-family:var(--fmono);transition:transform .08s}
+.urgb{flex:1;text-align:center;padding:14px 0;border-radius:6px;border:2px solid var(–line);background:var(–bg3);font-weight:700;font-size:19px;cursor:pointer;min-height:50px;font-family:var(–fmono);transition:transform .08s}
 .urgb:active{transform:scale(.95)}
-.urgb.sel[data-u=A]{background:var(--A);border-color:var(--A);color:#fff;box-shadow:0 0 14px #ff3b3b66}
-.urgb.sel[data-u=B]{background:var(--B);border-color:var(--B);color:#111;box-shadow:0 0 14px #ff8a1e66}
-.urgb.sel[data-u=C]{background:var(--C);border-color:var(--C);color:#111;box-shadow:0 0 14px #ffd11a66}
-.urgb.sel[data-u=D]{background:var(--D);border-color:var(--D);color:#111;box-shadow:0 0 14px #39c06a66}
-.chip{display:inline-block;background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:8px 12px;margin:0 6px 6px 0;font-size:12.5px;cursor:pointer;min-height:36px;font-weight:600}
-.chip:active{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.urgb.sel[data-u=A]{background:var(–A);border-color:var(–A);color:#fff;box-shadow:0 0 14px #ff3b3b66}
+.urgb.sel[data-u=B]{background:var(–B);border-color:var(–B);color:#111;box-shadow:0 0 14px #ff8a1e66}
+.urgb.sel[data-u=C]{background:var(–C);border-color:var(–C);color:#111;box-shadow:0 0 14px #ffd11a66}
+.urgb.sel[data-u=D]{background:var(–D);border-color:var(–D);color:#111;box-shadow:0 0 14px #39c06a66}
+.chip{display:inline-block;background:var(–bg3);border:1px solid var(–line);border-radius:4px;padding:8px 12px;margin:0 6px 6px 0;font-size:12.5px;cursor:pointer;min-height:36px;font-weight:600}
+.chip:active{background:var(–acc);color:var(–acc-ink);border-color:var(–acc)}
 .filterbar{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
-.fb{background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:7px 11px;font-size:11.5px;white-space:nowrap;cursor:pointer;min-height:34px;font-weight:600}
-.fb.on{background:var(--acc);color:var(--acc-ink);font-weight:700;border-color:var(--acc)}
-.urow{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:5px;padding:10px 10px;margin-bottom:7px;cursor:pointer;min-height:54px;transition:border-color .1s}
-.urow:hover{border-color:var(--line2)}
-.urow.sel{border-color:var(--acc);background:#241c08;box-shadow:0 0 0 1px var(--acc) inset}
-.selbox{width:24px;height:24px;min-width:24px;border:2px solid var(--line2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--acc);font-weight:900}
-.urow.sel .selbox{border-color:var(--acc);background:var(--acc);color:var(--acc-ink)}
-.urow .sq{width:24px;height:17px;border:2px solid var(--txt);border-radius:2px;flex:none;position:relative}
-.urow .sq.off:after{content:"+";position:absolute;right:-7px;top:-9px;font-weight:900;color:var(--C);font-size:12px}
-.urow .uname{font-weight:700;font-size:13.5px;font-family:var(--fmono)} .urow .umeta{color:var(--dim);font-size:11.5px}
-.urow .ueta{margin-left:auto;text-align:right;font-size:12px;font-family:var(--fmono)}
-.btn{border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:var(--fui)}
-.btn-go{background:var(--acc2);color:#06210f;flex:1;font-size:18px;padding:16px 0;min-height:54px;letter-spacing:2px;text-transform:uppercase;box-shadow:0 0 18px #26d07c44}
+.fb{background:var(–bg3);border:1px solid var(–line);border-radius:4px;padding:7px 11px;font-size:11.5px;white-space:nowrap;cursor:pointer;min-height:34px;font-weight:600}
+.fb.on{background:var(–acc);color:var(–acc-ink);font-weight:700;border-color:var(–acc)}
+.urow{display:flex;align-items:center;gap:10px;background:var(–bg2);border:1px solid var(–line);border-radius:5px;padding:10px 10px;margin-bottom:7px;cursor:pointer;min-height:54px;transition:border-color .1s}
+.urow:hover{border-color:var(–line2)}
+.urow.sel{border-color:var(–acc);background:#241c08;box-shadow:0 0 0 1px var(–acc) inset}
+.selbox{width:24px;height:24px;min-width:24px;border:2px solid var(–line2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(–acc);font-weight:900}
+.urow.sel .selbox{border-color:var(–acc);background:var(–acc);color:var(–acc-ink)}
+.urow .sq{width:24px;height:17px;border:2px solid var(–txt);border-radius:2px;flex:none;position:relative}
+.urow .sq.off:after{content:”+”;position:absolute;right:-7px;top:-9px;font-weight:900;color:var(–C);font-size:12px}
+.urow .uname{font-weight:700;font-size:13.5px;font-family:var(–fmono)} .urow .umeta{color:var(–dim);font-size:11.5px}
+.urow .ueta{margin-left:auto;text-align:right;font-size:12px;font-family:var(–fmono)}
+.btn{border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:var(–fui)}
+.btn-go{background:var(–acc2);color:#06210f;flex:1;font-size:18px;padding:16px 0;min-height:54px;letter-spacing:2px;text-transform:uppercase;box-shadow:0 0 18px #26d07c44}
 .btn-go:disabled{opacity:.3;box-shadow:none}
-.btn-next{background:var(--bg3);color:var(--txt);border:1px solid var(--line2);padding:0 14px;font-size:12px;min-height:54px}
-.btn-x{background:var(--bg3);color:var(--txt);border:1px solid var(--line2);padding:9px 13px;font-size:13px;border-radius:6px;min-height:40px;font-weight:600}
-.codesel{background:var(--bg3);color:var(--txt);border:1px solid var(--line2);border-radius:5px;padding:10px;font-size:14px;min-height:44px;font-family:var(--fui)}
-.smallnote{color:var(--dim);font-size:12.5px;line-height:1.55}
+.btn-next{background:var(–bg3);color:var(–txt);border:1px solid var(–line2);padding:0 14px;font-size:12px;min-height:54px}
+.btn-x{background:var(–bg3);color:var(–txt);border:1px solid var(–line2);padding:9px 13px;font-size:13px;border-radius:6px;min-height:40px;font-weight:600}
+.codesel{background:var(–bg3);color:var(–txt);border:1px solid var(–line2);border-radius:5px;padding:10px;font-size:14px;min-height:44px;font-family:var(–fui)}
+.smallnote{color:var(–dim);font-size:12.5px;line-height:1.55}
 
 .rtab{display:flex;gap:6px;overflow-x:auto;padding:6px 0;flex-wrap:wrap}
-.rch{background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:8px 12px;font-size:12px;white-space:nowrap;cursor:pointer;font-weight:600;min-height:36px;font-family:var(--fmono)}
-.rch.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
-.rmsg{border-bottom:1px solid var(--line);padding:9px 2px;font-size:13.5px;line-height:1.5}
-.rmsg.new{background:linear-gradient(90deg,#ffb01f22 0%,transparent 60%);border-left:3px solid var(--acc);padding-left:8px}
-.rmsg .rt{color:var(--dim2);font-size:11px;font-family:var(--fmono)}.rmsg .ru{color:var(--acc);font-weight:700;font-family:var(--fmono)}
+.rch{background:var(–bg3);border:1px solid var(–line);border-radius:4px;padding:8px 12px;font-size:12px;white-space:nowrap;cursor:pointer;font-weight:600;min-height:36px;font-family:var(–fmono)}
+.rch.on{background:var(–acc);color:var(–acc-ink);border-color:var(–acc)}
+.rmsg{border-bottom:1px solid var(–line);padding:9px 2px;font-size:13.5px;line-height:1.5}
+.rmsg.new{background:linear-gradient(90deg,#ffb01f22 0%,transparent 60%);border-left:3px solid var(–acc);padding-left:8px}
+.rmsg .rt{color:var(–dim2);font-size:11px;font-family:var(–fmono)}.rmsg .ru{color:var(–acc);font-weight:700;font-family:var(–fmono)}
 
-.card{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:13px;margin-bottom:11px}
-.card h3{margin:0 0 4px;font-size:16px;font-family:var(--fdisp);letter-spacing:.6px;text-transform:uppercase;font-weight:700}.card .meta{color:var(--dim);font-size:12.5px;margin-bottom:9px;line-height:1.5}
-.buy{background:var(--acc2);color:#06210f;border:none;border-radius:5px;padding:11px 14px;font-weight:700;cursor:pointer;min-height:44px;font-family:var(--fui);letter-spacing:.4px}
+.card{background:var(–bg2);border:1px solid var(–line);border-radius:6px;padding:13px;margin-bottom:11px}
+.card h3{margin:0 0 4px;font-size:16px;font-family:var(–fdisp);letter-spacing:.6px;text-transform:uppercase;font-weight:700}.card .meta{color:var(–dim);font-size:12.5px;margin-bottom:9px;line-height:1.5}
+.buy{background:var(–acc2);color:#06210f;border:none;border-radius:5px;padding:11px 14px;font-weight:700;cursor:pointer;min-height:44px;font-family:var(–fui);letter-spacing:.4px}
 .buy:disabled{opacity:.4}
-.inp{background:var(--bg3);color:var(--txt);border:1px solid var(--line2);border-radius:5px;padding:11px;width:100%;font-size:15px;margin-bottom:8px;min-height:44px;font-family:var(--fui)}
-.toggle{display:flex;justify-content:space-between;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);min-height:50px;font-size:14.5px}
-.sw{width:50px;height:28px;background:#2a3138;border-radius:4px;position:relative;cursor:pointer;flex:none;border:1px solid var(--line2)}
-.sw.on{background:var(--acc2)} .sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:3px;background:#fff;transition:.15s}.sw.on i{left:27px}
+.inp{background:var(–bg3);color:var(–txt);border:1px solid var(–line2);border-radius:5px;padding:11px;width:100%;font-size:15px;margin-bottom:8px;min-height:44px;font-family:var(–fui)}
+.toggle{display:flex;justify-content:space-between;align-items:center;padding:13px 2px;border-bottom:1px solid var(–line);min-height:50px;font-size:14.5px}
+.sw{width:50px;height:28px;background:#2a3138;border-radius:4px;position:relative;cursor:pointer;flex:none;border:1px solid var(–line2)}
+.sw.on{background:var(–acc2)} .sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:3px;background:#fff;transition:.15s}.sw.on i{left:27px}
 
 #toast{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:800;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
-.tmsg{background:#0a0d10ee;border:1px solid var(--line2);border-left:3px solid var(--acc);border-radius:5px;padding:8px 14px;font-size:13.5px;animation:pop .3s;box-shadow:0 4px 16px #0009}
+.tmsg{background:#0a0d10ee;border:1px solid var(–line2);border-left:3px solid var(–acc);border-radius:5px;padding:8px 14px;font-size:13.5px;animation:pop .3s;box-shadow:0 4px 16px #0009}
 @keyframes pop{from{transform:translateY(8px);opacity:0}}
 @keyframes goalPulse{0%,100%{box-shadow:0 4px 14px #0009,0 0 16px #ffb01f55}50%{box-shadow:0 4px 14px #0009,0 0 24px #ffb01faa}}
-.fab{position:absolute;right:12px;bottom:72px;z-index:540;background:var(--acc);color:var(--acc-ink);border:none;border-radius:8px;width:50px;height:50px;font-size:13px;font-weight:800;box-shadow:0 4px 16px #0009,0 0 16px #ffb01f55;cursor:pointer;display:none}
+.fab{position:absolute;right:12px;bottom:72px;z-index:540;background:var(–acc);color:var(–acc-ink);border:none;border-radius:8px;width:50px;height:50px;font-size:13px;font-weight:800;box-shadow:0 4px 16px #0009,0 0 16px #ffb01f55;cursor:pointer;display:none}
 .fab.show{display:flex;align-items:center;justify-content:center}
-.help{background:#1a1407;border:1px solid var(--acc);border-radius:6px;padding:11px;font-size:12.5px;color:#ffe9c2;line-height:1.55;margin-bottom:11px}
-.placebar{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:580;background:var(--acc);color:var(--acc-ink);padding:9px 17px;border-radius:6px;font-weight:700;font-size:13.5px;display:none;box-shadow:0 4px 16px #0009}
+.help{background:#1a1407;border:1px solid var(–acc);border-radius:6px;padding:11px;font-size:12.5px;color:#ffe9c2;line-height:1.55;margin-bottom:11px}
+.placebar{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:580;background:var(–acc);color:var(–acc-ink);padding:9px 17px;border-radius:6px;font-weight:700;font-size:13.5px;display:none;box-shadow:0 4px 16px #0009}
 .placebar.show{display:block}
 
 /* MAP MARKERS — alkuperäiset selkeät grafiikat (v40-tyyli) */
 .tmk{position:relative;width:14px;height:14px}
 .tmk .d{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px #0007,0 0 8px currentColor}
-.tmk .lbl{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;background:#000d;color:#fff;padding:1px 4px;border-radius:2px;white-space:nowrap;font-family:var(--fmono);border:1px solid #fff3}
+.tmk .lbl{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;background:#000d;color:#fff;padding:1px 4px;border-radius:2px;white-space:nowrap;font-family:var(–fmono);border:1px solid #fff3}
 .tmk .ex{position:absolute;top:-12px;right:-9px;font-size:13px;display:none;animation:exb .8s infinite}
 .tmk.alert .ex{display:block}
 .tmk.alert .d{animation:pulse 1s infinite;box-shadow:0 0 0 4px #ff03,0 0 0 1.5px #0007,0 0 12px #ff3b3b}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
 @keyframes exb{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-.umk{font-size:9px;font-weight:700;color:#fff;white-space:nowrap;font-family:var(--fmono)}
+.umk{font-size:9px;font-weight:700;color:#fff;white-space:nowrap;font-family:var(–fmono)}
 .umk .b{display:inline-block;border:2px solid #fff;border-radius:2px;padding:1px 5px;background:#0d1217;position:relative;box-shadow:0 1px 4px #000a}
-.umk .b.off:after{content:"+";position:absolute;right:-7px;top:-8px;color:var(--C);font-size:10px}
+.umk .b.off:after{content:”+”;position:absolute;right:-7px;top:-8px;color:var(–C);font-size:10px}
 .smk{font-size:16px;filter:drop-shadow(0 0 2px #000)}
 .hkmk{font-size:17px;filter:drop-shadow(0 0 3px #000);cursor:pointer}
-#smod{position:absolute;z-index:700;background:var(--bg);display:none;flex-direction:column;border:1px solid var(--line2)}
+#smod{position:absolute;z-index:700;background:var(–bg);display:none;flex-direction:column;border:1px solid var(–line2)}
 #smod.open{display:flex}
 @media(max-width:760px){ #smod{inset:0} }
 @media(min-width:761px){ #smod{top:58px;right:12px;width:430px;max-height:calc(100% - 134px);border-radius:8px;box-shadow:0 16px 50px #000c} }
-#smod .dhead{padding:12px 13px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#141a21,#0e1217);min-height:50px}
+#smod .dhead{padding:12px 13px;border-bottom:1px solid var(–line2);display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#141a21,#0e1217);min-height:50px}
 #smod .dbody{flex:1;overflow:auto;padding:13px}
 .hkmk{font-size:17px;filter:drop-shadow(0 0 3px #000)}
-#spawnsel{color:var(--txt);background:var(--bg3);border:1px solid var(--line2);font-family:var(--fmono);font-weight:600;cursor:pointer;padding:5px 10px;border-radius:5px;font-size:12.5px}
-#uinfo{position:absolute;z-index:710;background:var(--bg);display:none;flex-direction:column;border:1px solid var(--line2);box-shadow:0 16px 50px #000c;overflow:hidden}
+#spawnsel{color:var(–txt);background:var(–bg3);border:1px solid var(–line2);font-family:var(–fmono);font-weight:600;cursor:pointer;padding:5px 10px;border-radius:5px;font-size:12.5px}
+#uinfo{position:absolute;z-index:710;background:var(–bg);display:none;flex-direction:column;border:1px solid var(–line2);box-shadow:0 16px 50px #000c;overflow:hidden}
 #uinfo.open{display:flex}
-#uinfo .dhead{padding:11px 13px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#141a21,#0e1217);min-height:50px}
+#uinfo .dhead{padding:11px 13px;border-bottom:1px solid var(–line2);display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#141a21,#0e1217);min-height:50px}
 #uinfo .dhead .x{margin-left:auto;min-width:38px;min-height:38px;display:flex;align-items:center;justify-content:center;flex:none}
 #uinfo .dbody{flex:1;overflow-y:auto;overflow-x:hidden;padding:13px;-webkit-overflow-scrolling:touch}
 @media(max-width:760px){#uinfo{left:8px;right:8px;top:58px;border-radius:8px;max-height:70%}}
 @media(min-width:761px){#uinfo{top:58px;left:12px;width:340px;border-radius:8px;max-height:70%}}
 #spawnsel option,select.inp option,.codesel option{background:#0d1217;color:#fff}
-.radiowin{position:absolute;z-index:560;width:250px;max-height:320px;background:#0a0d11f7;border:1px solid var(--line2);border-radius:7px;display:flex;flex-direction:column;box-shadow:0 8px 28px #000b}
-.radiowin .rh{padding:8px 8px 8px 11px;border-bottom:1px solid var(--line2);font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;cursor:move;background:linear-gradient(180deg,#141a21,#0e1217);border-radius:7px 7px 0 0;touch-action:none;font-family:var(--fmono)}
-.radiowin .rh [data-close]{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--line2);border-radius:5px;cursor:pointer;font-size:14px}
-.radiowin .rh [data-close]:active{background:var(--A);color:#fff}
+.radiowin{position:absolute;z-index:560;width:250px;max-height:320px;background:#0a0d11f7;border:1px solid var(–line2);border-radius:7px;display:flex;flex-direction:column;box-shadow:0 8px 28px #000b}
+.radiowin .rh{padding:8px 8px 8px 11px;border-bottom:1px solid var(–line2);font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;cursor:move;background:linear-gradient(180deg,#141a21,#0e1217);border-radius:7px 7px 0 0;touch-action:none;font-family:var(–fmono)}
+.radiowin .rh [data-close]{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(–bg3);border:1px solid var(–line2);border-radius:5px;cursor:pointer;font-size:14px}
+.radiowin .rh [data-close]:active{background:var(–A);color:#fff}
 .radiowin .rb{overflow:auto;padding:7px 9px;font-size:12px;user-select:text;-webkit-user-select:text;line-height:1.5}
 .radiowin .rb .m{padding:4px 0;border-bottom:1px solid #1a2129}
-.radiowin .rb .m.new{background:rgba(255,176,31,.16);border-left:3px solid var(--acc);padding-left:6px;border-radius:3px;animation:rflash 1.1s ease-out}
-.radiowin .rb .m.new .nb{display:inline-block;background:var(--acc);color:var(--acc-ink);font-size:9px;font-weight:800;border-radius:3px;padding:0 4px;margin-right:4px;vertical-align:middle}
+.radiowin .rb .m.new{background:rgba(255,176,31,.16);border-left:3px solid var(–acc);padding-left:6px;border-radius:3px;animation:rflash 1.1s ease-out}
+.radiowin .rb .m.new .nb{display:inline-block;background:var(–acc);color:var(–acc-ink);font-size:9px;font-weight:800;border-radius:3px;padding:0 4px;margin-right:4px;vertical-align:middle}
 @keyframes rflash{0%{background:rgba(255,176,31,.55)}100%{background:rgba(255,176,31,.16)}}
 /* Kollapsibles asetuspaneeleille — kompakti, helppolukuinen */
-details.sm{background:var(--bg2);border:1px solid var(--line);border-radius:7px;margin-top:6px;overflow:hidden}
-details.sm>summary{cursor:pointer;padding:8px 11px;font-size:12px;font-weight:700;letter-spacing:.5px;list-style:none;display:flex;align-items:center;gap:6px;user-select:none;background:var(--bg3);transition:background .12s}
+details.sm{background:var(–bg2);border:1px solid var(–line);border-radius:7px;margin-top:6px;overflow:hidden}
+details.sm>summary{cursor:pointer;padding:8px 11px;font-size:12px;font-weight:700;letter-spacing:.5px;list-style:none;display:flex;align-items:center;gap:6px;user-select:none;background:var(–bg3);transition:background .12s}
 details.sm>summary::-webkit-details-marker{display:none}
 details.sm>summary:hover{background:#1a2129}
-details.sm>summary::before{content:"▸";font-size:10px;color:var(--acc);transition:transform .15s;width:10px;flex:none}
+details.sm>summary::before{content:“▸”;font-size:10px;color:var(–acc);transition:transform .15s;width:10px;flex:none}
 details.sm[open]>summary::before{transform:rotate(90deg)}
-details.sm[open]>summary{border-bottom:1px solid var(--line);background:var(--bg2)}
-details.sm>div.smbox{padding:9px 11px;background:var(--bg2)}
+details.sm[open]>summary{border-bottom:1px solid var(–line);background:var(–bg2)}
+details.sm>div.smbox{padding:9px 11px;background:var(–bg2)}
 details.sm summary .tag{margin-left:auto;font-size:9.5px}
-.radiobtn{position:fixed;left:8px;bottom:72px;z-index:538;background:#0d1217;border:1px solid var(--acc);color:var(--acc);border-radius:6px;padding:9px 13px;font-size:13px;cursor:pointer;font-weight:700;box-shadow:0 3px 12px #0009;font-family:var(--fui);letter-spacing:.4px}
-#chanpick{position:fixed;left:8px;bottom:116px;z-index:561;background:#0d1217;border:1px solid var(--line2);border-radius:7px;padding:8px;display:none;flex-direction:column;gap:4px;max-height:50vh;overflow-y:auto;box-shadow:0 8px 28px #000b}
+.radiobtn{position:fixed;left:8px;bottom:72px;z-index:538;background:#0d1217;border:1px solid var(–acc);color:var(–acc);border-radius:6px;padding:9px 13px;font-size:13px;cursor:pointer;font-weight:700;box-shadow:0 3px 12px #0009;font-family:var(–fui);letter-spacing:.4px}
+#chanpick{position:fixed;left:8px;bottom:116px;z-index:561;background:#0d1217;border:1px solid var(–line2);border-radius:7px;padding:8px;display:none;flex-direction:column;gap:4px;max-height:50vh;overflow-y:auto;box-shadow:0 8px 28px #000b}
 #chanpick.open{display:flex}
-#chanpick .ci{padding:9px 12px;border-radius:5px;background:var(--bg3);cursor:pointer;font-size:13px;min-height:38px;display:flex;align-items:center;font-family:var(--fmono)}
-#chanpick .ci:active{background:var(--acc);color:var(--acc-ink)}
-#taskpop{position:fixed;right:8px;bottom:72px;z-index:542;width:min(270px,90vw);max-height:50vh;background:#0a0d11f7;border:1px solid var(--line2);border-radius:7px;display:none;flex-direction:column;box-shadow:0 8px 28px #000b}
+#chanpick .ci{padding:9px 12px;border-radius:5px;background:var(–bg3);cursor:pointer;font-size:13px;min-height:38px;display:flex;align-items:center;font-family:var(–fmono)}
+#chanpick .ci:active{background:var(–acc);color:var(–acc-ink)}
+#taskpop{position:fixed;right:8px;bottom:72px;z-index:542;width:min(270px,90vw);max-height:50vh;background:#0a0d11f7;border:1px solid var(–line2);border-radius:7px;display:none;flex-direction:column;box-shadow:0 8px 28px #000b}
 #taskpop.open{display:flex}
-#taskpop .th{padding:9px 8px 9px 11px;border-bottom:1px solid var(--line2);font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;min-height:42px;background:linear-gradient(180deg,#141a21,#0e1217);border-radius:7px 7px 0 0;font-family:var(--fdisp);letter-spacing:1px;text-transform:uppercase}
-#taskpop .th [onclick]{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--line2);border-radius:5px;cursor:pointer;font-size:14px}
-#taskpop .th [onclick]:active{background:var(--A);color:#fff}
+#taskpop .th{padding:9px 8px 9px 11px;border-bottom:1px solid var(–line2);font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;min-height:42px;background:linear-gradient(180deg,#141a21,#0e1217);border-radius:7px 7px 0 0;font-family:var(–fdisp);letter-spacing:1px;text-transform:uppercase}
+#taskpop .th [onclick]{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(–bg3);border:1px solid var(–line2);border-radius:5px;cursor:pointer;font-size:14px}
+#taskpop .th [onclick]:active{background:var(–A);color:#fff}
 #taskpop .tb{overflow-y:auto;overflow-x:hidden;padding:5px;-webkit-overflow-scrolling:touch}
-#taskpop .ti{padding:9px 10px;border-radius:4px;cursor:pointer;font-size:12.5px;display:flex;align-items:center;gap:6px;border-left:3px solid var(--N);min-height:40px;font-family:var(--fmono)}
-#taskpop .ti:active{background:var(--bg3)}
-.taskbtn{position:fixed;right:8px;bottom:116px;z-index:538;background:#0d1217;border:1px solid var(--acc);color:var(--acc);border-radius:6px;padding:9px 13px;font-size:13px;cursor:pointer;font-weight:700;box-shadow:0 3px 12px #0009;font-family:var(--fui);letter-spacing:.4px}
+#taskpop .ti{padding:9px 10px;border-radius:4px;cursor:pointer;font-size:12.5px;display:flex;align-items:center;gap:6px;border-left:3px solid var(–N);min-height:40px;font-family:var(–fmono)}
+#taskpop .ti:active{background:var(–bg3)}
+.taskbtn{position:fixed;right:8px;bottom:116px;z-index:538;background:#0d1217;border:1px solid var(–acc);color:var(–acc);border-radius:6px;padding:9px 13px;font-size:13px;cursor:pointer;font-weight:700;box-shadow:0 3px 12px #0009;font-family:var(–fui);letter-spacing:.4px}
 @media(max-width:760px){#uinfo{left:8px;right:8px;top:54px;border-radius:12px;max-height:70%}}
 @media(min-width:761px){#uinfo{top:56px;left:12px;width:320px;border-radius:12px;box-shadow:0 12px 40px #000b;max-height:70%}}
 #spawnsel option,select.inp option,.codesel option{background:#161b22;color:#fff}
 </style>
+
 </head>
 <body>
 
@@ -383,8 +387,10 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 <div class="panel" id="p-set"><div class="head">⚙️ Asetukset <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="setbody"></div></div>
 
 <!-- DISPATCH -->
+
 <button class="radiobtn" id="radiobtn" onclick="toggleChanPick()" style="display:none">📻 Radio</button>
 <button id="goalNotif" onclick="openPanel('miss')" style="display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:72px;z-index:561;background:linear-gradient(180deg,#1a1200,#0e0a00);color:var(--acc);border:1px solid var(--acc);border-radius:8px;padding:9px 16px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px #0009,0 0 16px #ffb01f55;font-family:var(--fui);letter-spacing:.4px;align-items:center;gap:6px;animation:goalPulse 2.5s infinite"></button>
+
 <div id="chanpick"></div>
 <button class="taskbtn" id="taskbtn" onclick="toggleTaskPop()">📋 Tehtävät</button>
 <div id="taskpop"><div class="th"><span style="flex:1">📋 Tehtävät</span><span style="cursor:pointer" onclick="toggleTaskPop()">✕</span></div><div class="tb" id="taskpopbody"></div></div>
@@ -1681,9 +1687,9 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
        const schedTag=sc.mode==='24h'?'24/7':sc.mode==='shift'?'Vuoroaika':sc.mode==='oncall'?'Päivystys':sc.mode;
        const dutyTag=u.dutyAt?(G.stations.find(st=>st.id===u.dutyAt)?.n.split(' ')[0]||'duty'):'';
        return `
-       ${ready.ready?`<div style="background:#1a2a1a;border:1px solid var(--acc2);border-radius:5px;padding:6px 8px;margin-top:8px;font-size:12px;color:var(--acc2)">⚡ <b>Asemavalmiudessa</b> · ${ready.reason} (~60s lähtö)</div>`:''}
+       ${ready.ready?`<div style="background:#1a2a1a;border:1px solid var(--acc2);border-radius:5px;padding:6px 8px;margin-top:8px;font-size:12px;color:var(--acc2)">⚡ <b>Asemavalmiudessa</b> · ${ready.reason} (~60s lähtö)${(u._atReadyUntil&&u._atReadyUntil>G.clock)?' · jäljellä ~'+Math.ceil((u._atReadyUntil-G.clock)/3600)+' h':''}</div>`:''}
        <details class="sm" ${ready.ready||sc.mode!=='24h'?'open':''}><summary>⏰ Aikataulu <span class="tag tag-N" style="background:${sc.mode==='24h'?'var(--bg)':'var(--acc)'};color:${sc.mode==='24h'?'var(--dim)':'var(--acc-ink)'}">${schedTag}</span></summary><div class="smbox">
-         <div class="toggle" style="padding:4px 0;border:none;margin-bottom:4px"><span style="font-size:12.5px">Asemavalmius (manuaalinen, 1-min)</span><div class="sw ${u.atReadyStation?'on':''}" onclick="toggleAtReady('${u.id}');renderStation('${s.id}')"><i></i></div></div>
+         ${u.spare?`<div class="toggle" style="padding:4px 0;border:none;margin-bottom:4px"><span style="font-size:12.5px">Asemavalmius (manuaalinen, 1-min)</span><div class="sw ${u.atReadyStation?'on':''}" onclick="toggleAtReady('${u.id}');renderStation('${s.id}')"><i></i></div></div>`:''}
          <select class="inp" style="margin:0 0 6px;font-size:12.5px" onchange="setUnitSchedMode('${u.id}',this.value);renderStation('${s.id}')">
            <option value="24h" ${sc.mode==='24h'?'selected':''}>Aina (24/7)</option>
            <option value="shift" ${sc.mode==='shift'?'selected':''}>Vuoroaika (esim. päiväyksikkö)</option>
@@ -1801,6 +1807,7 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
          <button class="btn-x" style="flex:1" onclick="toggleHuolto('${u.id}');renderStation('${s.id}')">${u.status==='huolto'?'Ota käyttöön':'Pois käytöstä (huolto)'}</button>
          <button class="btn-x" style="color:#f88" onclick="sellUnit('${u.id}');smUnit=null;renderStation('${s.id}')">Myy</button>
        </div>
+       <button class="btn-x" style="width:100%;margin-top:6px;color:var(--acc2);border-color:var(--acc2)" onclick="forceUnitFree('${u.id}','${s.id}')">🔧 Pakota vapaaksi (korjaa jumittunut yksikkö)</button>
        <details class="sm" ${u.spare?'open':''}><summary>🔄 Vara-auto <span class="tag tag-N" style="background:${u.spare?'var(--acc)':'var(--bg)'};color:${u.spare?'var(--acc-ink)':'var(--dim)'}">${u.spare?(u.spareScope==='alue'?'alue':'asema'):'ei'}</span></summary><div class="smbox">
          ${u.spare?`<div style="color:var(--acc);font-size:12px;margin-bottom:6px">⭐ Astuu peliin saman tyypin auton hajotessa.</div>
             <div style="display:flex;gap:6px;margin-bottom:6px">
@@ -1932,8 +1939,12 @@ window.removeUnitBoostDate=(id,date)=>{const u=G.units.find(x=>x.id===id);if(!u|
   toast(u.name+' päivystyspäivä poistettu: '+date);
 };
 /* ===== Asemavalmius / treenit / sijoitukset / kotiasema ===== */
+// Asemavalmiuden enimmäiskesto (peliaikaa): VPK/sopimus 4 h, vakituinen/muu 24 h. Miehistö ei jaksa
+// olla loputtomasti valmiudessa → tickVpkReadiness purkaa valmiuden automaattisesti ajan täyttyessä.
+function maxReadySec(u){const m=unitMuoto(u);return (m==='vpk'||m==='sopimus')?4*3600:24*3600;}
 window.toggleAtReady=(id)=>{const u=G.units.find(x=>x.id===id);if(!u)return;
   u.atReadyStation=!u.atReadyStation;
+  if(u.atReadyStation)u._atReadyUntil=G.clock+maxReadySec(u); else u._atReadyUntil=null;
   // Päivitä status näkyväksi kartalla
   if(u.atReadyStation&&(u.status==='asema'||u.status==='paluu')&&!u.taskId)u.status='vapaa_valmius';
   else if(!u.atReadyStation&&u.status==='vapaa_valmius'&&!u.taskId)u.status='asema';
@@ -1941,18 +1952,35 @@ window.toggleAtReady=(id)=>{const u=G.units.find(x=>x.id===id);if(!u)return;
   const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';
   const m=unitMuoto(u);
   const ch=(m==='vpk'||m==='sopimus')?reg+' VPK':pfx(u.toimi)+' '+reg+' INFO';
+  const maxH=Math.round(maxReadySec(u)/3600);
   radio(ch,u.name,u.atReadyStation?'pistetään auto asemavalmiuteen':'asemavalmius päättynyt, palataan normaaliin valmiuteen');
-  toast(u.name+': '+(u.atReadyStation?'asemavalmius (1 min)':'normaali valmius'));
+  toast(u.name+': '+(u.atReadyStation?'asemavalmius päällä (max '+maxH+' h)':'normaali valmius'));
   saveGame(false);
 };
-// VPK: nosta/poista asemavalmius KAIKILTA aseman yksiköiltä kerralla (valitse mitkä yksiköt mukaan
+// #11 KORJAUS: pakota YKSITTÄINEN jumittunut yksikkö (esim. bugittunut ambulanssi) puhtaaseen
+// asemavalmiuteen riippumatta tilasta. Toimii myös kun yksiköllä on yhä voimassa oleva tehtäväviittaus
+// (jota yleinen "Korjaa jumittuneet" ei irrota). Irrottaa tehtävältä, nollaa reitit ja omamielen,
+// palauttaa kotiasemalle.
+window.forceUnitFree=(id,sid)=>{
+  const u=G.units.find(x=>x.id===id);if(!u)return;
+  if(u.taskId){const t=G.tasks.find(t=>t.id===u.taskId);if(t){t.assigned=(t.assigned||[]).filter(i=>i!==id);t.reqKey='';if((t.assigned||[]).length===0&&t.status!=='valmis'){t.status='avoin';t.onScene=false;}}}
+  u.taskId=null;u.transport=null;u.route=null;u.ri=0;u.routeEta=null;u.routeDistance=null;u._guessedFor=null;
+  u.omamieli=null;u.omamieliBack=null;u._driveTarget=null;u._driveUntil=0;u._driveRoute=null;u._driveRi=0;u._driveHoming=false;u._vpkFree=false;u._vpkOffered=0;
+  u._drill=false;u._drillRoute=null;u._drillRi=0;u._drillPhase=null;u._drillLat=null;u._drillLng=null;u._goingPit=false;u._pitUntil=0;u._routePending=false;
+  u.huoltoUntil=null;u.departAt=null;
+  u.status=u.atReadyStation?'vapaa_valmius':'asema';
+  u.lat=u.hx;u.lng=u.hy;
+  try{refreshUnitMarker(u);}catch(e){}
+  renderList();updateBadge();try{if(sid)renderStation(sid);}catch(e){}saveGame(false);
+  toast('🔧 '+u.name+' pakotettu vapaaksi asemalle');
+};
 // per-yksikkö ⚡-napilla, tai kaikki näillä). Vara-autoja ei kosketa.
 window.setAllReady=(sid,on)=>{
   const units=G.units.filter(u=>u.stationId===sid&&!u.spare);
   let n=0;
   units.forEach(u=>{
-    if(on&&!u.atReadyStation&&!u.taskId){u.atReadyStation=true;if(u.status==='asema'||u.status==='paluu')u.status='vapaa_valmius';refreshUnitMarker(u);n++;}
-    else if(!on&&u.atReadyStation){u.atReadyStation=false;if(u.status==='vapaa_valmius'&&!u.taskId)u.status='asema';refreshUnitMarker(u);n++;}
+    if(on&&!u.atReadyStation&&!u.taskId){u.atReadyStation=true;u._atReadyUntil=G.clock+maxReadySec(u);if(u.status==='asema'||u.status==='paluu')u.status='vapaa_valmius';refreshUnitMarker(u);n++;}
+    else if(!on&&u.atReadyStation){u.atReadyStation=false;u._atReadyUntil=null;if(u.status==='vapaa_valmius'&&!u.taskId)u.status='asema';refreshUnitMarker(u);n++;}
   });
   const st=G.stations.find(s=>s.id===sid);const reg=(st&&st.reg)||'LU';
   if(n){const ch=(st&&st.muoto==='vpk')?reg+' VPK':pfx('pelastus')+' '+reg+' INFO';radio(ch,'HÄKE',(st?st.n:'asema')+' — '+(on?n+' yksikköä asemavalmiuteen':'asemavalmius purettu '+n+' yksiköltä'));}
@@ -2346,10 +2374,15 @@ function renderPois(){
   clearPoiMarkers();
   (G.pois||[]).forEach(p=>{
     const def=POI_TYPES[p.type]||{icon:'📍',label:p.type};
-    const ic=L.divIcon({html:`<div style="font-size:16px;line-height:20px;text-align:center;filter:drop-shadow(0 0 2px #000a);opacity:${editingPois?1:0.8}">${def.icon}</div>`,className:'',iconSize:[22,22],iconAnchor:[11,11]});
-    const mk=L.marker([p.lat,p.lng],{icon:ic,interactive:editingPois,keyboard:false}).addTo(map);
-    mk.bindTooltip(def.label+(editingPois?' — klikkaa poistaaksesi':''),{direction:'top'});
-    if(editingPois)mk.on('click',(ev)=>{L.DomEvent.stopPropagation(ev);G.pois=(G.pois||[]).filter(x=>x.id!==p.id);renderPois();toast('Kohdepiste poistettu ('+G.pois.length+' jäljellä)');});
+    // #5: pienempi merkki (ei vie niin paljon tilaa kartalta) + himmeämpi kun ei muokata.
+    const ic=L.divIcon({html:`<div style="font-size:12px;line-height:14px;text-align:center;filter:drop-shadow(0 0 1px #000a);opacity:${editingPois?1:0.55}">${def.icon}</div>`,className:'',iconSize:[15,15],iconAnchor:[8,8]});
+    // #6: aina klikattava → yhden kohdepisteen saa poistettua MILLOIN VAAN (ei tarvitse muokkaustilaa).
+    const mk=L.marker([p.lat,p.lng],{icon:ic,interactive:true,keyboard:false}).addTo(map);
+    mk.bindTooltip(def.label+' — klikkaa poistaaksesi',{direction:'top'});
+    mk.on('click',(ev)=>{L.DomEvent.stopPropagation(ev);
+      if(editingPois){G.pois=(G.pois||[]).filter(x=>x.id!==p.id);renderPois();toast('Kohdepiste poistettu ('+(G.pois||[]).length+' jäljellä)');}
+      else if(confirm('Poista kohdepiste: '+def.label+'?')){G.pois=(G.pois||[]).filter(x=>x.id!==p.id);renderPois();saveGame(false);toast('Kohdepiste poistettu ('+(G.pois||[]).length+' jäljellä)');}
+    });
     poiMarkers.push(mk);
   });
 }
@@ -2678,15 +2711,18 @@ window.resetStuckUnits=()=>{
 const unitRouteLines={};
 function refreshUnitMarker(u){
   if(G._offlineSim)return; // offline-simulaation aikana ei päivitetä markkereita (perf) — yksi pass lopussa
-  if(u.status==='asema'||u.status==='huolto'||u.status==='kohde'||u.status==='vapaa_valmius'||u.status==='otettu'){
+  // HARJOITUS-VPK: status on 'asema' (vaste asemalta), mutta auto näytetään ajelemassa näyttösijainnissa.
+  const drilling=u._drill&&u.status==='asema'&&u._drillLat!=null&&u._drillLng!=null;
+  if(!drilling&&(u.status==='asema'||u.status==='huolto'||u.status==='kohde'||u.status==='vapaa_valmius'||u.status==='otettu')){
     if(u.marker){map.removeLayer(u.marker);u.marker=null;}
     return;
   }
+  const plat=drilling?u._drillLat:u.lat, plng=drilling?u._drillLng:u.lng;
   if(!u.marker){
-    u.marker=L.marker([u.lat,u.lng],{icon:L.divIcon({html:`<div class="umk"><span class="b ${u.off?'off':''}">${u.name}</span></div>`,className:'',iconSize:[50,14],iconAnchor:[25,7]})}).addTo(map);
+    u.marker=L.marker([plat,plng],{icon:L.divIcon({html:`<div class="umk"><span class="b ${u.off?'off':''}">${u.name}</span></div>`,className:'',iconSize:[50,14],iconAnchor:[25,7]})}).addTo(map);
     u.marker.on('click',()=>openUnitInfo(u.id));
   }
-  u.marker.setLatLng([u.lat,u.lng]);
+  u.marker.setLatLng([plat,plng]);
   const el=u.marker.getElement();
   if(el){const b=el.querySelector('.b');if(b){b.style.borderColor=unitColor(u);b.style.background='#1a1f28';b.style.color='#fff';}}
 }
@@ -2906,7 +2942,10 @@ function randAddrFor(where){
 }
 async function spawnTask(){
   if(activeStations().length===0)return;
-  if(G.tasks.filter(t=>t.status!=='valmis').length>22)return; // nostettu 14→22
+  // #12: avointen/käynnissä olevien tehtävien KATTO skaalautuu kaluston kokoon — pieni laitos ei
+  // huku (ennen kiinteä 22 → ruutu täyttyi tehtävistä). Iso verkosto saa silti enemmän töitä.
+  const _openCeil=Math.max(6,Math.min(20,Math.round(fleetCapacity()*1.3)));
+  if(G.tasks.filter(t=>t.status!=='valmis').length>=_openCeil)return;
   let t=pickTask();if(!t)return;
   const loc=await pickLocationForTask(t);
   let workMin=rnd(t.dur[0],t.dur[1]);if(Math.random()<0.08)workMin*=1.8;
@@ -2982,7 +3021,11 @@ async function spawnTask(){
   const tk={id:'T'+(G.tidc++),c:shownC,base:shownC,realCode:realT.c,n:t.n,toimi:t.toimi,need:JSON.parse(JSON.stringify(realT.need)),minCrew:realT.minCrew,rew:realT.rew,info:desc,patients:realT.patients,sev:realT.sev||'none',timeCrit:realT.timeCrit||null,esc:t.esc||0,escTo:t.escTo||null,where:t.where||'any',lat:loc.lat,lng:loc.lng,urg:t.forceUrg||null,status:'avoin',assigned:[],created:G.clock,addr:taskAddr,addrBlurred:addrIsBlurred,onScene:false,escDone:false,lead:null,workNeeded:workMin*60,work:0,mislabeled:realT.c!==shownC,pilapuhelu:pilapuhelu,outcome:null};
   // Palotehtävän potilaalla voi olla esim. hengitystiepalovamma → lääkäri/L4 parantaa ennustetta.
   // EI pakollinen vaste (ei lukita tehtävää!) — vain ~35% potilaspaloista; vihje näkyy call-tekstissä.
-  if(tk.toimi==='pelastus'&&tk.patients>0&&Math.random()<0.35){tk.airwayRisk=true;tk.info+=' Mahdollinen hengitystiepalovamma — lääkäri/L4 kohteeseen suositeltavaa.';}
+  // Hengitystiepalovamman riski VAIN savua tuottavissa paloissa (rakennus-/ajoneuvo-/maastopalo, koodit
+  // 40X/41X/42X). EI esim. liikenne- tai muissa pelastustehtävissä — pyöräilijä auton kyljessä ei saa
+  // savuvammaa. EI myöskään suositusta tekstissä (pelaaja päättää vasteen itse); L4/lääkäri parantaa
+  // ennustetta silti taustalla (tk.airwayRisk).
+  if(tk.toimi==='pelastus'&&tk.patients>0&&/^4[012]/.test(String(tk.base||tk.c))&&Math.random()<0.35){tk.airwayRisk=true;tk.info+=' Potilas hengittänyt savua, hengitysvaikeutta.';}
   // Vesitehtävälle: laske RANTAPISTE (lähin tie) HETI, jonne maayksiköt ajavat (eivät veteen).
   if((t.where||'any')==='water'){
     try{const sh=await snapToRoad(loc.lat,loc.lng);tk.shore={lat:sh.lat,lng:sh.lng};}catch(e){}
@@ -3105,7 +3148,7 @@ function nearestUnits(tk){
     if(['vene','vene_pieni','vene_iso'].includes(u.vt)&&tk.where!=='water')return false;
     return true;
   }).map(u=>{
-    const spd=effectiveSpeed(u,urg);
+    const spd=etaSpeed(u,urg);
     const straight=km(u.lat,u.lng,tk.lat,tk.lng);
     let driveMin;
     const cached=G_rcache[_rcKey(u.lat,u.lng,tk)];
@@ -3142,7 +3185,7 @@ function dStatusInner(tk){
       const dk=u.routeDistance?(' · '+Math.round(u.routeDistance/100)/10+'km'):'';
       s='~'+lm+' min'+dk;
     }else{
-      const d=km(u.lat,u.lng,tk.lat,tk.lng);const spd=effectiveSpeed(u,tk.urg||'B');
+      const d=km(u.lat,u.lng,tk.lat,tk.lng);const spd=etaSpeed(u,tk.urg||'B');
       s='~'+Math.max(1,Math.round(d*1.32/spd*60))+' min';
     }
   }else if(u.status==='kohde')s='✓ kohteessa';else if(u.status==='paluu')s='paluumatkalla';else s=u.status;
@@ -3229,7 +3272,7 @@ function openUnitInfo(id){const u=G.units.find(x=>x.id===id);if(!u)return;
       const distKm=u.routeDistance?Math.round(u.routeDistance/100)/10:null;
       eta='perillä ~'+leftMin+' min'+(distKm?' · '+distKm+' km':'');
     } else {
-      const spd=effectiveSpeed(u,tk.urg);
+      const spd=etaSpeed(u,tk.urg);
       const d=km(u.lat,u.lng,tk.lat,tk.lng)*1.32;
       eta='perillä ~'+Math.max(1,Math.round(d/spd*60))+' min';
     }
@@ -3428,7 +3471,7 @@ window.pullToHere=(uid,tid)=>{
   if(!VTYPES[u.vt]?.heli)fetchRoute(u.lat,u.lng,tk.lat,tk.lng).then(res=>{
     if(u.taskId===tk.id&&(u.status==='matka'||u.status==='otettu')&&res){
       u.route=res.coords;u.ri=0;
-      const spd=effectiveSpeed(u,tk.urg||'B');
+      const spd=etaSpeed(u,tk.urg||'B');
       u.routeEta=G.clock+res.duration/(spd/50);u.routeDistance=res.distance;
     }
   });
@@ -3439,7 +3482,17 @@ window.pullToHere=(uid,tid)=>{
   renderDispatch();renderList();updateBadge();
   toast(u.name+' siirretty: '+(oldTk?oldTk.c+' → ':'')+tk.c);
 };
-window.setUrg=u=>{dCur.urg=u;renderDispatch();if(dCur)prefetchDispatchTimes(dCur);};
+window.setUrg=u=>{
+  if(!dCur)return;
+  dCur.urg=u;
+  // KORJAUS: ennen tämä kutsui renderDispatch():ia joka rakensi koko yksikkölistan uudelleen ja
+  // järjesti sen → valitut yksiköt vaikuttivat katoavan. Nyt päivitetään VAIN kiireellisyysnapit,
+  // koodin vieressä oleva tagi ja lähetysnappi. Valinta (dSel) ja listan järjestys säilyvät.
+  document.querySelectorAll('#dbody .urgb').forEach(b=>b.classList.toggle('sel',b.dataset.u===u));
+  const dc=document.getElementById('dcode');if(dc)dc.innerHTML=`${dCur.c} <span class="tag tag-${dCur.urg||'none'}">${dCur.urg||'?'}</span>`;
+  const goBtn=document.getElementById('dsend');if(goBtn)goBtn.disabled=dSel.size===0||!dCur.urg;
+  prefetchDispatchTimes(dCur);
+};
 window.toggleSel=id=>{
   if(dSel.has(id)){
     dSel.delete(id);
@@ -3563,9 +3616,20 @@ async function sendDispatch(next){
   // Suodata pois ei-hälytettävissä olevat (mutta salli partioivat)
   const validIds=ids.filter(id=>{const u=G.units.find(x=>x.id===id);if(!u)return false;
     if(u.status==='huolto'){toast(u.name+' on huollossa');return false;}
-    if(u.status==='muu'&&!['partio','kauppa','harjoitus'].includes(u.omamieli)){toast(u.name+' ei hälytettävissä juuri nyt');return false;} // tauko/harjoitus EIVÄT enää estä (korjaa: yksikkö ei lähtenytkään tehtävälle)
+    if(u.status==='muu'&&!['partio','kauppa','harjoitus','vpkajo'].includes(u.omamieli)){toast(u.name+' ei hälytettävissä juuri nyt');return false;} // tauko/harjoitus/vpk-ajo EIVÄT estä — vapaana ajeleva VPK voidaan hälyttää suoraan
     return true;});
-  validIds.forEach(id=>{
+  // PERÄVAUNU (0+0-miehitys) ei lähde ilman vetoautoa: tarkista että samalla tehtävällä on jo tai
+  // tähän hälytykseen tulee vetokykyinen pelastusauto (ei toinen perävaunu, ei vene/helikopteri).
+  const _isTow=x=>x&&x.toimi==='pelastus'&&!(VTYPES[x.vt]&&VTYPES[x.vt].trailer)&&!['vene','vene_pieni','vene_iso','hems'].includes(x.vt);
+  const _onTaskTow=(tk.assigned||[]).map(i=>G.units.find(u=>u.id===i)).filter(Boolean);
+  const finalIds=validIds.filter(id=>{const u=G.units.find(x=>x.id===id);if(!u)return false;
+    if(VTYPES[u.vt]&&VTYPES[u.vt].trailer){
+      const pool=validIds.map(i=>G.units.find(x=>x.id===i)).filter(Boolean).concat(_onTaskTow);
+      if(!pool.some(x=>x.id!==u.id&&_isTow(x))){toast(u.name+' on perävaunu — valitse mukaan vetoauto');return false;}
+    }
+    return true;});
+  if(!finalIds.length){return;}
+  finalIds.forEach(id=>{
     const u=G.units.find(x=>x.id===id);if(!u)return;
     const wasPatrol=u.status==='muu'&&u.omamieli==='partio';
     const wasValmius=u.status==='vapaa_valmius';
@@ -3577,7 +3641,10 @@ async function sendDispatch(next){
     // automatically after task complete (käyttäjän asetus säilyy)
     if(wasPatrol){u.omamieli=null;u.patrolTarget=null;u.route=null;u.ri=0;u._goingPit=false;u._pitUntil=0;}
     const wasVpkDrive=u.status==='muu'&&u.omamieli==='vpkajo'; const vpkWasFree=wasVpkDrive&&u._vpkFree; // VPK liikkeellä: vapaa=nopea, harjoitus=normaali
-    if(wasBreak||wasTraining||wasVpkDrive){u.omamieli=null;u.omamieliBack=null;u._driveTarget=null;u._driveUntil=0;u._vpkFree=false;}
+    if(wasBreak||wasTraining||wasVpkDrive){u.omamieli=null;u.omamieliBack=null;u._driveTarget=null;u._driveUntil=0;u._driveRoute=null;u._driveHoming=false;u._vpkFree=false;}
+    // Harjoitus-VPK: status oli 'asema' (vaste asemalta). Hälytettäessä harjoitusajelu loppuu, auto
+    // lähtee asemalta normaalisti. (u.lat/u.lng on jo asemalla.)
+    if(u._drill){u._drill=false;u._drillRoute=null;u._drillRi=0;u._drillPhase=null;u._drillLat=null;u._drillLng=null;u.lat=u.hx;u.lng=u.hy;try{refreshUnitMarker(u);}catch(e){}}
     // Jos yksikkö jo toisella tehtävällä, poista sieltä ensin
     if(u.taskId&&u.taskId!==tk.id){const ot=G.tasks.find(t=>t.id===u.taskId);if(ot){ot.assigned=ot.assigned.filter(i=>i!==id);ot.reqKey='';if(ot.assigned.length===0&&ot.status!=='valmis')ot.status='avoin';}}
     // Jos EI asemalla (ruokatauko/harjoitus/partio), yksikkö lähtee suoraan nykysijainnista → status 'matka'.
@@ -3610,7 +3677,7 @@ async function sendDispatch(next){
         // OSRM käyttää 80km/h referenssinopeutta — kerrotaan suhdeluvulla
         // OSRM käyttää n. 50 km/h kaupungissa keskinopeutena.
         // routeEta on peliajan termein — moveUnit etenee pelinopeudella, joten ei /TIME_MULT.
-        const osrmSpeedFactor=effectiveSpeed(u,tk.urg)/50;
+        const osrmSpeedFactor=etaSpeed(u,tk.urg)/50;
         u.routeEta=G.clock+(u.departAt>G.clock?(u.departAt-G.clock):0)+res.duration/osrmSpeedFactor;
         u.routeDistance=res.distance;
       }
@@ -3922,7 +3989,11 @@ function tick(dt){G.clock+=dt;
     // lattia relaksoituu vähintään luonnolliseen väliin. 0 = ei rajaa.
     const setGap=G.settings.maxTaskGap??300;
     const effGap=setGap>0?Math.max(setGap,baseInterval*1.5):0;
-    if(effGap>0&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;spawnTask();b.nextAt=G.clock+_expInterval(baseInterval);}
+    // #12: ÄLÄ pakota uutta tehtävää jos avoimia (yksiköittä odottavia) on jo kasassa — hiljainen
+    // hetki ruuhkan aikana on realistinen eikä ruutu täyty. Lattia toimii vain kun jono on lyhyt.
+    const _openWaiting=G.tasks.filter(t=>t.status==='avoin').length;
+    const _backlogOk=_openWaiting<Math.max(3,Math.round(fleetCapacity()*0.5));
+    if(effGap>0&&_backlogOk&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;spawnTask();b.nextAt=G.clock+_expInterval(baseInterval);}
   }
   // VPK-liikenne — vähennetty rajusti (oli liian usein). Vain ~5% entisestä.
   if(Math.random()<0.00002*dt){const vpkUnits=G.units.filter(u=>{const s=G.stations.find(x=>x.id===u.stationId);return s&&s.muoto==='vpk'&&u.toimi==='pelastus'&&u.status==='asema'&&!u.taskId;});if(vpkUnits.length){const u=vpkUnits[Math.floor(Math.random()*vpkUnits.length)];const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';const lines=['pyydämme lupaa kalustoharjoitukseen','pyydämme lupaa lähteä huoltoajolle'];const line=lines[Math.floor(Math.random()*lines.length)];radio(reg+' VPK',u.name,line);pendingVpkEvent(u,st,line);}}
@@ -4103,8 +4174,18 @@ const STATUS_TXT={asema:'Asemalla',otettu:'Tehtävä vastaanotettu',matka:'Matka
 /* ===== VPK ASEMAVALMIUS — spontaani vaihtelu (radio ilmoittaa) ===== */
 let lastVpkReady=0;
 function tickVpkReadiness(dt){
-  // Spontaani asemavalmius POISTETTU — se piti VPK:t jatkuvasti valmiudessa (epärealistista).
-  // Asemavalmius nyt vain: manuaalinen toggle, juhlapäivä-auto (vpkAutoBoost), tai aikataulu.
+  // Asemavalmiuden ENIMMÄISKESTO: VPK/sopimus 4 h, vakituinen 24 h (peliaikaa). Sen täytyttyä valmius
+  // päättyy itsestään — miehistö ei voi olla loputtomasti asemalla. (_atReadyUntil asetetaan toggleen.)
+  G.units.forEach(u=>{
+    if(u.atReadyStation&&u._atReadyUntil&&G.clock>u._atReadyUntil){
+      u.atReadyStation=false;u._atReadyUntil=null;
+      if(u.status==='vapaa_valmius'&&!u.taskId)u.status='asema';
+      try{refreshUnitMarker(u);}catch(e){}
+      const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';
+      const m=unitMuoto(u);const ch=(m==='vpk'||m==='sopimus')?reg+' VPK':pfx(u.toimi)+' '+reg+' INFO';
+      try{radio(ch,u.name,'asemavalmius päättyi (enimmäisaika täynnä), palataan normaaliin valmiuteen');}catch(e){}
+    }
+  });
 }
 
 /* ===== YLEISÖTAPAHTUMA-SIJOITUKSET ===== */
@@ -4138,7 +4219,7 @@ function tickDeployments(dt){
 let lastOmamieli=0;
 function tickOmamieli(dt){
   if(G.clock-lastOmamieli<120)return;lastOmamieli=G.clock;
-  const cands=G.units.filter(u=>u.status==='asema'&&u.vt!=='hems'&&!u.omamieli&&!u.taskId);
+  const cands=G.units.filter(u=>u.status==='asema'&&u.vt!=='hems'&&!u.omamieli&&!u.taskId&&!u._drill);
   if(!cands.length)return;
   const u=cands[Math.floor(Math.random()*cands.length)];
   const roll=Math.random();
@@ -4484,74 +4565,110 @@ function tickSelfRedeploy(dt){
     return; // yksi uudelleensijoitus per tarkistus
   }
 }
-// FEATURE 4: VPK-paloyksiköt käyvät joskus huviajelulla (harjoitus/tapahtuma/huoltoajo) → liikkuvat
-// kaupungilla. Liikkeellä ollessaan voivat tarjoutua LÄHELLÄ olevalle pelastustehtävälle joka tarvitsee
-// lisää yksiköitä (nopea lähtö, koska jo nurkilla). Harvinaista (IRL). Asetus G.settings.noVpkDrive.
-function moveVpkDrive(u,dt){
-  if(!u._driveUntil)u._driveUntil=G.clock+rnd(300,900); // self-heal (esim. reloadin jälkeen) → palaa lopulta
-  if(!u._driveTarget)u._driveTarget={lat:u.hx,lng:u.hy};
-  const goingHome=G.clock>u._driveUntil;
-  const tgt=goingHome?{lat:u.hx,lng:u.hy}:u._driveTarget;
-  const d=km(u.lat,u.lng,tgt.lat,tgt.lng);
-  if(d<0.15){
-    if(goingHome){u.status='asema';u.omamieli=null;u._driveTarget=null;u._driveUntil=0;u._vpkFree=false;u.lat=u.hx;u.lng=u.hy;refreshUnitMarker(u);return;}
-    const an=Math.random()*Math.PI*2,r=rnd(1,5),lngScale=111*Math.max(0.3,Math.cos(u.hx*Math.PI/180));
-    u._driveTarget={lat:u.hx+r*Math.sin(an)/111,lng:u.hy+r*Math.cos(an)/lngScale};refreshUnitMarker(u);return;
-  }
-  const spd=u.speed*0.8,step=(spd/3600)*dt,fr=Math.min(1,step/d);
-  u.lat+=(tgt.lat-u.lat)*fr;u.lng+=(tgt.lng-u.lng)*fr;refreshUnitMarker(u);
+// FEATURE 4 (uusittu Aaron toiveen mukaan): VPK on SUURIMMAN OSAN AJASTA ASEMALLA (status 'asema',
+// normaali ~15 min vaste, kuten IRL). JOSKUS:
+//  - HARJOITUS: auto ajelee teillä ja NÄKYY kartalla, MUTTA status pysyy 'asemalla' ja vaste lasketaan
+//    ASEMALTA. (u.lat/u.lng pidetään asemalla; vain näyttösijainti _drillLat/_drillLng liikkuu.)
+//  - VAPAA: status 'muu'/vpkajo, auto liikkuu oikeasti teillä, ~1 min vaste nykysijainnista, ja voi
+//    tarjoutua läheiselle pelastustehtävälle ("ollaan tässä lähellä, liitetään itsemme tähän").
+// KAIKKI liike seuraa OSRM-tiereittiä — EI suoraa linjaa → EI mereen. Jos reittiä ei saada, ei liikuta.
+// Asetus G.settings.noVpkDrive poistaa tämän kokonaan.
+function _vpkRoute(u,la1,ln1,la2,ln2,cb){
+  if(u._routePending)return;u._routePending=true;
+  fetchRoute(la1,ln1,la2,ln2).then(r=>{u._routePending=false;if(r&&r.coords&&r.coords.length)cb(r.coords);}).catch(()=>{u._routePending=false;});
 }
+// Satunnainen lähipiste asemalta. OSRM snäppää myös vesipisteen lähimmälle TIELLE, joten reitti pysyy maalla.
+function _vpkRandPt(u){const an=Math.random()*Math.PI*2,r=rnd(1.2,4),ls=111*Math.max(0.3,Math.cos(u.hx*Math.PI/180));return{lat:u.hx+r*Math.sin(an)/111,lng:u.hy+r*Math.cos(an)/ls};}
+
+// VAPAA VPK liikkeellä — oikea sijainti, seuraa tiereittiä.
+function moveVpkDrive(u,dt){
+  if(!u._driveUntil)u._driveUntil=G.clock+rnd(900,2100);
+  const goingHome=G.clock>u._driveUntil;
+  if(!u._driveRoute||!u._driveRoute.length){
+    if(goingHome){
+      if(km(u.lat,u.lng,u.hx,u.hy)<0.2){u.status='asema';u.omamieli=null;u._vpkFree=false;u._driveRoute=null;u._driveHoming=false;u.lat=u.hx;u.lng=u.hy;refreshUnitMarker(u);return;}
+      _vpkRoute(u,u.lat,u.lng,u.hx,u.hy,coords=>{u._driveRoute=coords;u._driveRi=0;u._driveHoming=true;});
+    } else {
+      const p=_vpkRandPt(u);_vpkRoute(u,u.lat,u.lng,p.lat,p.lng,coords=>{u._driveRoute=coords;u._driveRi=0;});
+    }
+    return;
+  }
+  const rc=u._driveRoute;
+  if(u._driveRi>=rc.length){
+    u._driveRoute=null;u._driveRi=0;
+    if(u._driveHoming){u._driveHoming=false;u.status='asema';u.omamieli=null;u._vpkFree=false;u.lat=u.hx;u.lng=u.hy;refreshUnitMarker(u);}
+    return;
+  }
+  const tx=rc[u._driveRi][0],ty=rc[u._driveRi][1],d=km(u.lat,u.lng,tx,ty);
+  if(d<0.05){u._driveRi++;refreshUnitMarker(u);return;}
+  const spd=effectiveSpeed(u,'C')*0.6,step=(spd/3600)*dt,fr=Math.min(1,step/d);
+  u.lat+=(tx-u.lat)*fr;u.lng+=(ty-u.lng)*fr;refreshUnitMarker(u);
+}
+
+// HARJOITUS-VPK: näyttöliike teillä, status PYSYY 'asema' (u.lat/u.lng ei muutu → vaste/ETA asemalta).
+function moveVpkDrill(u,dt){
+  if(u._drillLat==null){u._drillLat=u.hx;u._drillLng=u.hy;}
+  if(u._drillPhase==='parked'){if(G.clock>u._drillUntil)u._drillPhase='back';return;}
+  if(!u._drillRoute||!u._drillRoute.length){
+    if(u._drillPhase==='back'){
+      if(km(u._drillLat,u._drillLng,u.hx,u.hy)<0.2){u._drill=false;u._drillPhase=null;u._drillLat=null;u._drillLng=null;refreshUnitMarker(u);return;}
+      _vpkRoute(u,u._drillLat,u._drillLng,u.hx,u.hy,coords=>{u._drillRoute=coords;u._drillRi=0;});
+    } else {
+      const p=_vpkRandPt(u);_vpkRoute(u,u.hx,u.hy,p.lat,p.lng,coords=>{u._drillRoute=coords;u._drillRi=0;});
+    }
+    return;
+  }
+  const rc=u._drillRoute;
+  if(u._drillRi>=rc.length){
+    u._drillRoute=null;u._drillRi=0;
+    if(u._drillPhase==='out')u._drillPhase='parked';
+    else if(u._drillPhase==='back'){u._drill=false;u._drillPhase=null;u._drillLat=null;u._drillLng=null;refreshUnitMarker(u);}
+    return;
+  }
+  const tx=rc[u._drillRi][0],ty=rc[u._drillRi][1],d=km(u._drillLat,u._drillLng,tx,ty);
+  if(d<0.05){u._drillRi++;refreshUnitMarker(u);return;}
+  const spd=effectiveSpeed(u,'C')*0.6,step=(spd/3600)*dt,fr=Math.min(1,step/d);
+  u._drillLat+=(tx-u._drillLat)*fr;u._drillLng+=(ty-u._drillLng)*fr;refreshUnitMarker(u);
+}
+
 let _vpkDriveT=0;
 function tickVpkDrive(dt){
   if(G.settings.noVpkDrive)return;
-  if(_vpkDriveT&&G.clock-_vpkDriveT<120)return;_vpkDriveT=G.clock;
-  G._vpkExercise=G._vpkExercise||{};
-  for(const reg in G._vpkExercise){if(G._vpkExercise[reg].until<G.clock)delete G._vpkExercise[reg];}
-  // 1) Aloita joskus OUTING idle-VPK-paloyksiköllä. Useimmiten HARJOITUS (näkyy 'asemalla', normaali
-  //    vaste, vahvuus voi heitellä), joskus VAPAA (liikkeellä, heti käytettävissä).
-  const idle=G.units.filter(u=>u.toimi==='pelastus'&&unitMuoto(u)==='vpk'&&u.status==='asema'&&!u.taskId&&!u.spare&&!u.omamieli);
-  if(idle.length&&Math.random()<0.08){
+  if(_vpkDriveT&&G.clock-_vpkDriveT<180)return;_vpkDriveT=G.clock;
+  // 1) Aloita JOSKUS outing idle-VPK:lla. Useimmiten HARJOITUS (cosmeettinen, status pysyy asemalla),
+  //    harvemmin VAPAA (liikkuu oikeasti, ~1 min vaste). Useimmat VPK pysyvät asemalla (kuten IRL).
+  const idle=G.units.filter(u=>u.toimi==='pelastus'&&unitMuoto(u)==='vpk'&&u.status==='asema'&&!u.taskId&&!u.spare&&!u.omamieli&&!u._drill);
+  if(idle.length&&Math.random()<0.05){
     const u=idle[Math.floor(Math.random()*idle.length)];
     const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';
-    const ls=111*Math.max(0.3,Math.cos(u.hx*Math.PI/180));
-    const free=Math.random()<0.35;
-    u.omamieli='vpkajo';u.status='muu';u._vpkFree=free;u._vpkOffered=0;
+    const free=Math.random()<0.25; // enimmäkseen harjoitus
     if(free){
-      const an=Math.random()*Math.PI*2,r=rnd(1,5);
-      u._driveTarget={lat:u.hx+r*Math.sin(an)/111,lng:u.hy+r*Math.cos(an)/ls};u._driveUntil=G.clock+rnd(900,2400);
+      u.omamieli='vpkajo';u.status='muu';u._vpkFree=true;u._vpkOffered=0;
+      u._driveRoute=null;u._driveRi=0;u._driveHoming=false;u._driveUntil=G.clock+rnd(900,2100);
       if(Math.random()<0.5)radio(reg+' VPK',u.name,'liikkeellä kaupungilla, vapaana tarvittaessa');
     } else {
-      // Harjoitus: yhteinen piste alueelle → muut VPK voivat liittyä samaan
-      let ex=G._vpkExercise[reg];
-      if(!ex){const an=Math.random()*Math.PI*2,r=rnd(2,6);ex=G._vpkExercise[reg]={lat:u.hx+r*Math.sin(an)/111,lng:u.hy+r*Math.cos(an)/ls,until:G.clock+rnd(2400,5400),n:0};}
-      u._driveTarget={lat:ex.lat,lng:ex.lng};u._driveUntil=ex.until;ex.n=(ex.n||0)+1;
-      if(ex.n===2)radio(reg+' VPK','HÄKE','VPK-harjoitus alueella käynnissä — yksiköitä mukana, asemavalmiudessa');
+      u._drill=true;u._drillPhase='out';u._drillRoute=null;u._drillRi=0;u._drillLat=u.hx;u._drillLng=u.hy;u._drillUntil=G.clock+rnd(1200,3000);
+      // status PYSYY 'asema' → vaste/ETA lasketaan asemalta. (Hiljainen, ei pakollista radioilmoitusta.)
+      if(Math.random()<0.4)radio(reg+' VPK',u.name,'lähdemme kalustoharjoitukseen, pidämme asemavalmiuden');
     }
     refreshUnitMarker(u);
   }
-  // 2) Liikkeellä olevat VPK:t: VAPAA → liittyy SUORAAN (ei kyselyä); HARJOITUS → vain TARJOAA (pelaaja
-  //    hälyttää jos haluaa). Ei tarjota/liitytä jos jo tehtävällä. Harvinaista (IRL).
-  G.units.filter(u=>u.omamieli==='vpkajo'&&u.status==='muu'&&!u.taskId).forEach(u=>{
+  // 2) VAPAANA liikkuvat VPK:t voivat tarjoutua LÄHELLÄ olevalle pelastustehtävälle → liittyvät suoraan.
+  G.units.filter(u=>u.omamieli==='vpkajo'&&u.status==='muu'&&!u.taskId&&u._vpkFree).forEach(u=>{
     if(u._vpkOffered&&G.clock-u._vpkOffered<300)return;
     let tgt=null;
     for(const t of G.tasks){if(t.status==='valmis'||t.toimi!=='pelastus')continue;if((t.assigned||[]).includes(u.id))continue;if(km(u.lat,u.lng,t.lat,t.lng)>3)continue;const us=t.assigned.map(id=>G.units.find(x=>x.id===id)).filter(Boolean);if(!needMetBy(t,us)&&unitHelpsTask(u,t)){tgt=t;break;}}
     if(!tgt)return;
-    if(Math.random()>0.25)return;
+    if(Math.random()>0.3)return;
     u._vpkOffered=G.clock;
     const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';
-    if(u._vpkFree){
-      radio(reg+' VPK',u.name,'liikkeellä '+tgt.addr+' lähellä — liitymme mukaan');
-      u.omamieli=null;u._driveTarget=null;u._driveUntil=0;u._vpkFree=false;
-      u.status='matka';u.taskId=tgt.id;u.target={lat:tgt.lat,lng:tgt.lng};u.route=null;u.ri=0;u.departAt=G.clock+rnd(10,40);
-      if(!tgt.assigned.includes(u.id))tgt.assigned.push(u.id);
-      if(tgt.status==='avoin')tgt.status='ajossa';
-      setLead(tgt);
-      try{if(!goesStraight(u))fetchRoute(u.lat,u.lng,tgt.lat,tgt.lng).then(r=>{if(u.taskId===tgt.id&&u.status==='matka'&&r){u.route=r.coords;u.ri=0;}});}catch(e){}
-    } else {
-      // HARJOITUS (näkyy 'asemalla') → vain tarjous. Yksikkö on dispatchable normaalilla vasteella.
-      radio(reg+' VPK',u.name,'olemme '+tgt.addr+' lähellä — voitte liittää meidät jos tarvitsette');
-      try{alertTask(tgt,u.name+': voi liittyä tehtävälle — '+tgt.addr);}catch(e){}
-    }
+    radio(reg+' VPK',u.name,'ollaan tässä '+tgt.addr+' lähellä — liitetään itsemme tähän tehtävään');
+    u.omamieli=null;u._driveRoute=null;u._driveRi=0;u._driveHoming=false;u._driveUntil=0;u._vpkFree=false;
+    u.status='matka';u.taskId=tgt.id;u.target={lat:tgt.lat,lng:tgt.lng};u.route=null;u.ri=0;u.departAt=G.clock+rnd(20,60);
+    if(!tgt.assigned.includes(u.id))tgt.assigned.push(u.id);
+    if(tgt.status==='avoin')tgt.status='ajossa';
+    setLead(tgt);
+    try{if(!goesStraight(u))fetchRoute(u.lat,u.lng,tgt.lat,tgt.lng).then(r=>{if(u.taskId===tgt.id&&u.status==='matka'&&r){u.route=r.coords;u.ri=0;}});}catch(e){}
     try{refreshUnitMarker(u);renderList();updateBadge();}catch(e){}
   });
 }
@@ -4720,11 +4837,19 @@ function effectiveSpeed(u,urg){
   const nightBonus=(h>=23||h<5)&&['A','B'].includes(urg)?1.06:1.0;
   return base*urgMult*effectiveTraffic*nightBonus;
 }
+// #7 ETA: todellinen ajo hidastuu risteyksissä/valoissa/liikenteessä — moveUnit kertoo nopeuden
+// satunnaisella _spdFactorilla, jonka pitkän ajan keskiarvo on ~0.85. ARVIO käytti ennen TÄYTTÄ
+// effectiveSpeediä → näytetty ETA oli liian lyhyt ja yksikkö saapui myöhässä. Käytetään arviossa
+// realistista keskinopeutta, jolloin näytetty aika vastaa oikeaa saapumista paljon paremmin.
+const ETA_TRAFFIC=0.85;
+function etaSpeed(u,urg){return effectiveSpeed(u,urg)*ETA_TRAFFIC;}
 
 function moveUnit(u,dt){
   // Partioiva poliisi liikkuu omalla logiikallaan (ajaa reittiä alueella)
   if(u.omamieli==='partio'&&u.status==='muu'&&!u.taskId){movePatrol(u,dt);return;}
   if(u.omamieli==='vpkajo'&&u.status==='muu'&&!u.taskId){moveVpkDrive(u,dt);return;}
+  // HARJOITUS-VPK: status pysyy 'asema' (vaste asemalta), mutta auto ajelee näkyvästi teitä pitkin.
+  if(u._drill&&!u.taskId&&u.status==='asema'){moveVpkDrill(u,dt);return;}
   // 'otettu' = tehtävä vastaanotettu mutta vielä asemalla, odottaa lähtöä (departAt)
   if(u.status==='otettu'){
     if(u.departAt&&G.clock<u.departAt)return; // odottaa vielä asemalla
@@ -6045,50 +6170,55 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
       <button class="btn-x" style="flex:1;font-size:13px" onclick="var v=document.getElementById('codebox').value.trim();if(v)importCode(v);else toast('Liitä ensin koodi kenttään')">⬆️ Lataa koodista</button>
     </div>
     <textarea class="inp" id="codebox" style="height:52px;font-family:monospace;font-size:10px" placeholder="Liitä tallennuskoodi tähän…"></textarea>
-    <div class="meta" style="margin-top:6px;color:var(--A)">⚠️ Lataaminen korvaa nykyisen pelin tällä laitteella.</div></div>`;
-  document.getElementById('setbody').innerHTML=h;}
+
+```
+<div class="meta" style="margin-top:6px;color:var(--A)">⚠️ Lataaminen korvaa nykyisen pelin tällä laitteella.</div></div>`;
+```
+
+document.getElementById(‘setbody’).innerHTML=h;}
 
 /* ===== NAV ===== */
-function closePanels(){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));}
-function isOpen(id){return document.getElementById(id).classList.contains('open');}
-function setNav(p){currentNav=p;document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));}
+function closePanels(){document.querySelectorAll(’.panel’).forEach(p=>p.classList.remove(‘open’));}
+function isOpen(id){return document.getElementById(id).classList.contains(‘open’);}
+function setNav(p){currentNav=p;document.querySelectorAll(’#nav button’).forEach(b=>b.classList.toggle(‘on’,b.dataset.p===p));}
 // Palaa kartalle (sulkee paneelit). Käytetään ✕-napeissa.
-window.goMap=()=>{const wasMap=currentNav==='map';setNav('map');closePanels();document.getElementById('uinfo').classList.remove('open');map.invalidateSize();renderVpkQueue();if(!wasMap)restorePops();};
+window.goMap=()=>{const wasMap=currentNav===‘map’;setNav(‘map’);closePanels();document.getElementById(‘uinfo’).classList.remove(‘open’);map.invalidateSize();renderVpkQueue();if(!wasMap)restorePops();};
 function openPanel(p){
-  const wasMap=currentNav==='map';
-  // Jos painetaan jo auki olevaa välilehteä, palataan kartalle (toggle)
-  if(p===currentNav&&p!=='map'){window.goMap();return;}
-  setNav(p);closePanels();
-  if(p!=='map'){
-    if(wasMap)hideAllPops();
-    document.getElementById('uinfo').classList.remove('open');
-    document.getElementById('disp').classList.remove('open');
-  }
-  if(p==='map'){map.invalidateSize();renderVpkQueue();restorePops();return;}
-  renderVpkQueue();
-  document.getElementById('p-'+p).classList.add('open');
-  ({list:renderList,radio:renderRadio,build:renderBuild,miss:renderMiss,set:renderSet,ensh:renderEnsh})[p]?.();
+const wasMap=currentNav===‘map’;
+// Jos painetaan jo auki olevaa välilehteä, palataan kartalle (toggle)
+if(p===currentNav&&p!==‘map’){window.goMap();return;}
+setNav(p);closePanels();
+if(p!==‘map’){
+if(wasMap)hideAllPops();
+document.getElementById(‘uinfo’).classList.remove(‘open’);
+document.getElementById(‘disp’).classList.remove(‘open’);
+}
+if(p===‘map’){map.invalidateSize();renderVpkQueue();restorePops();return;}
+renderVpkQueue();
+document.getElementById(‘p-’+p).classList.add(‘open’);
+({list:renderList,radio:renderRadio,build:renderBuild,miss:renderMiss,set:renderSet,ensh:renderEnsh})[p]?.();
 }
 function renderEnsh(){
-  const stats=G.taskStats||{total:0,byCode:{},saved:0,severe:0,dead:0,respSum:0,respCount:0,transported:0};
-  const avgMin=stats.respCount>0?(stats.respSum/stats.respCount/60).toFixed(1):'–';
-  // Ensihoidon kuljetukset sairaalatasoittain
-  const hosp=allHospitals();
-  const tasoLabel={yliopisto:'Yliopistosairaala',alue:'Aluesairaala',terveys:'Terveysasema'};
-  // X-koodit
-  const xCodes=[
-    {x:'X-0',name:'Tekninen este',desc:'Tehtävää ei voitu hoitaa teknisen esteen takia.'},
-    {x:'X-1',name:'Kuollut',desc:'Potilas on menehtynyt. Jätetään odottamaan poliisia ja kuolinsyyntutkijaa.'},
-    {x:'X-2',name:'Terveydentila määritelty, ohjattu poliisin suojaan',desc:'Päihtyneenä otetaan poliisin suojaan, terveydentila tarkistettu.'},
-    {x:'X-3',name:'Pyydetty kohteeseen muuta apua',desc:'Tarvittu muun viranomaisen apu (pelastus 551, poliisi 552).'},
-    {x:'X-4',name:'Muu kuljetus',desc:'Potilas kuljetetaan jollain muulla tavalla (taksilla, omaisen kyydissä).'},
-    {x:'X-5',name:'Terveydentila määritelty, ei tarvetta ensihoidolle',desc:'Potilas hoidettavissa kotona ilman sairaalakäyntiä.'},
-    {x:'X-6',name:'Potilas kieltäytyy',desc:'Potilas kieltäytyy kuljetuksesta tai hoidosta.'},
-    {x:'X-7',name:'Potilasta ei löydy',desc:'Kohteesta ei löytynyt potilasta.'},
-    {x:'X-8',name:'Potilas hoidettu / kuljetettu kohteessa',desc:'Hoidettu kohteessa tai kuljetettu sairaalaan.'},
-    {x:'X-9',name:'Tehtävän peruutus',desc:'Tehtävä peruutettu kesken (esim. aiheeton).'},
-  ];
-  let h=`<div class="help">Suomen ensihoidon viralliset koodit ja tietopankki — hyödyllinen Häkellä lähettäessä.</div>
+const stats=G.taskStats||{total:0,byCode:{},saved:0,severe:0,dead:0,respSum:0,respCount:0,transported:0};
+const avgMin=stats.respCount>0?(stats.respSum/stats.respCount/60).toFixed(1):’–’;
+// Ensihoidon kuljetukset sairaalatasoittain
+const hosp=allHospitals();
+const tasoLabel={yliopisto:‘Yliopistosairaala’,alue:‘Aluesairaala’,terveys:‘Terveysasema’};
+// X-koodit
+const xCodes=[
+{x:‘X-0’,name:‘Tekninen este’,desc:‘Tehtävää ei voitu hoitaa teknisen esteen takia.’},
+{x:‘X-1’,name:‘Kuollut’,desc:‘Potilas on menehtynyt. Jätetään odottamaan poliisia ja kuolinsyyntutkijaa.’},
+{x:‘X-2’,name:‘Terveydentila määritelty, ohjattu poliisin suojaan’,desc:‘Päihtyneenä otetaan poliisin suojaan, terveydentila tarkistettu.’},
+{x:‘X-3’,name:‘Pyydetty kohteeseen muuta apua’,desc:‘Tarvittu muun viranomaisen apu (pelastus 551, poliisi 552).’},
+{x:‘X-4’,name:‘Muu kuljetus’,desc:‘Potilas kuljetetaan jollain muulla tavalla (taksilla, omaisen kyydissä).’},
+{x:‘X-5’,name:‘Terveydentila määritelty, ei tarvetta ensihoidolle’,desc:‘Potilas hoidettavissa kotona ilman sairaalakäyntiä.’},
+{x:‘X-6’,name:‘Potilas kieltäytyy’,desc:‘Potilas kieltäytyy kuljetuksesta tai hoidosta.’},
+{x:‘X-7’,name:‘Potilasta ei löydy’,desc:‘Kohteesta ei löytynyt potilasta.’},
+{x:‘X-8’,name:‘Potilas hoidettu / kuljetettu kohteessa’,desc:‘Hoidettu kohteessa tai kuljetettu sairaalaan.’},
+{x:‘X-9’,name:‘Tehtävän peruutus’,desc:‘Tehtävä peruutettu kesken (esim. aiheeton).’},
+];
+let h=`<div class="help">Suomen ensihoidon viralliset koodit ja tietopankki — hyödyllinen Häkellä lähettäessä.</div>
+
   <div class="card"><h3>📊 Tilastoja</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:13px">
       <div><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Pelastetut</div><div style="font-size:18px;font-weight:800;color:var(--acc2)">${stats.saved||0}</div></div>
@@ -6148,539 +6278,484 @@ document.getElementById('spawnsel').onchange=function(){
 
 /* ===== TALLENNUS ===== */
 window.exportCode=exportCode;window.importCode=importCode;
-window.savePackage=()=>{const name=(document.getElementById('pkg_name').value||'').trim();if(!name){toast('Anna paketille nimi');return;}const items=[];['sammutus','sailio','nostolava','raivaus','ambulanssi','poliisi','vene','muu','johto'].forEach(c=>{const n=parseInt(document.getElementById('pkg_'+c).value)||0;if(n>0)items.push({cls:c,n});});if(!items.length){toast('Valitse vähintään yksi yksikkö');return;}G.packages=G.packages||[];G.packages.push({name,items});toast('Paketti tallennettu: '+name);renderSet();saveGame(false);};
+window.savePackage=()=>{const name=(document.getElementById(‘pkg_name’).value||’’).trim();if(!name){toast(‘Anna paketille nimi’);return;}const items=[];[‘sammutus’,‘sailio’,‘nostolava’,‘raivaus’,‘ambulanssi’,‘poliisi’,‘vene’,‘muu’,‘johto’].forEach(c=>{const n=parseInt(document.getElementById(‘pkg_’+c).value)||0;if(n>0)items.push({cls:c,n});});if(!items.length){toast(‘Valitse vähintään yksi yksikkö’);return;}G.packages=G.packages||[];G.packages.push({name,items});toast(’Paketti tallennettu: ’+name);renderSet();saveGame(false);};
 window.delPackage=(i)=>{G.packages.splice(i,1);renderSet();saveGame(false);};
 function serializeGame(){
-  return {v:12,money:G.money,clock:G.clock,dayCount:G.dayCount||0,startDateISO:G.startDateISO||'2026-01-01',upkeepT:G._upkeepT||0,spawnRate:G.spawnRate,realisticSpawn:!!G.realisticSpawn,spawnRadius:G.spawnRadius,spawnCenter:G.spawnCenter,spawnAreas:G.spawnAreas||[],pois:G.pois||[],season:G.season,settings:G.settings,missDone:G.missDone,missClaimed:G.missClaimed,randomGoals:G.randomGoals||[],taskStats:G.taskStats,timeMult:TIME_MULT,turnoutMult:TURNOUT_MULT,radio:G.radio,tidc:G.tidc,uidc:G.uidc,lastSpawn:lastSpawn,customSairaalat:G.customSairaalat||[],removedSairaalat:G.removedSairaalat||[],openPops:G.openPops||null,vpkValmius:G.vpkValmius||{},patrolAreas:G.patrolAreas||{},disabledStations:G.disabledStations||{},hakeAreaSettings:G.hakeAreaSettings||{},hakeStats:G.hakeStats||{},boatNodes:G.boatNodes||[],boatLanes:G.boatLanes||[],
-  stations:G.stations.map(s=>({id:s.id,n:s.n,t:s.t,reg:s.reg,num:s.num,hake:s.hake,muoto:s.muoto,turnout:s.turnout,turnoutNight:s.turnoutNight,nightStart:s.nightStart,nightEnd:s.nightEnd,paallikkoKotona:s.paallikkoKotona,availableLoads:s.availableLoads||null,linkedFireStations:s.linkedFireStations||null,spawnRadius:s.spawnRadius??null,spawnDensity:s.spawnDensity??null,spawnOff:s.spawnOff||false,lat:s.lat,lng:s.lng})),
-  units:G.units.map(u=>({id:u.id,vt:u.vt,stationId:u.stationId,homeStationId:u.homeStationId||null,dutyAt:u.dutyAt||null,dutyAtPartial:u.dutyAtPartial||false,dutyAtDays:u.dutyAtDays||null,dutyAtHourStart:u.dutyAtHourStart??null,dutyAtHourEnd:u.dutyAtHourEnd??null,atReadyStation:u.atReadyStation||false,currentLoad:u.currentLoad||null,canDriveBoat:u.canDriveBoat||false,name:u.name,crew:u.crew,turnout:u.turnout,muoto:u.muoto||null,schedule:u.schedule||null,
-    // Tallenna KAIKKI relevantit tilat mukaan lukien kohde/matka/paluu
-    status:u.status,
-    taskId:u.taskId||null,
-    departAt:u.departAt||null,
-    omamieli:u.omamieli||false,omamieliBack:u.omamieliBack||null,
-    huoltoUntil:u.huoltoUntil||null,
-    patrolling:u.patrolling||false,patrolArea:u.patrolArea||null,trafficDuty:u.trafficDuty||false,patrolRoute:u.patrolRoute||null,patrolRouteIdx:u.patrolRouteIdx||0,
-    spare:u.spare||false,spareScope:u.spareScope||null,spareCanDispatch:u.spareCanDispatch||false,_coverFor:u._coverFor||null,_origName:u._origName||null,_origStation:u._origStation||null,canSukellus:u.canSukellus||false,
-    transport:u.transport||null,
-    lat:u.lat,lng:u.lng,hx:u.hx,hy:u.hy})),
-  tasks:G.tasks.filter(t=>t.status!=='valmis').map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||'any',shore:t.shore||null,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null,_leadAssessAt:t._leadAssessAt??null,_reqAnnounced:t._reqAnnounced||null,_reqLastAt:t._reqLastAt||null,_relNames:t._relNames||null,_relT:t._relT||null,_escT:t._escT||null,escSuggest:t.escSuggest||null,airwayRisk:t.airwayRisk||false,patrolGen:t.patrolGen||false})),
-  packages:G.packages||[],cloudId:G.cloudId||null,cloudEnabled:G.cloudEnabled||false,readyMigrated:true};
+return {v:12,money:G.money,clock:G.clock,dayCount:G.dayCount||0,startDateISO:G.startDateISO||‘2026-01-01’,upkeepT:G._upkeepT||0,spawnRate:G.spawnRate,realisticSpawn:!!G.realisticSpawn,spawnRadius:G.spawnRadius,spawnCenter:G.spawnCenter,spawnAreas:G.spawnAreas||[],pois:G.pois||[],season:G.season,settings:G.settings,missDone:G.missDone,missClaimed:G.missClaimed,randomGoals:G.randomGoals||[],taskStats:G.taskStats,timeMult:TIME_MULT,turnoutMult:TURNOUT_MULT,radio:G.radio,tidc:G.tidc,uidc:G.uidc,lastSpawn:lastSpawn,customSairaalat:G.customSairaalat||[],removedSairaalat:G.removedSairaalat||[],openPops:G.openPops||null,vpkValmius:G.vpkValmius||{},patrolAreas:G.patrolAreas||{},disabledStations:G.disabledStations||{},hakeAreaSettings:G.hakeAreaSettings||{},hakeStats:G.hakeStats||{},boatNodes:G.boatNodes||[],boatLanes:G.boatLanes||[],
+stations:G.stations.map(s=>({id:s.id,n:s.n,t:s.t,reg:s.reg,num:s.num,hake:s.hake,muoto:s.muoto,turnout:s.turnout,turnoutNight:s.turnoutNight,nightStart:s.nightStart,nightEnd:s.nightEnd,paallikkoKotona:s.paallikkoKotona,availableLoads:s.availableLoads||null,linkedFireStations:s.linkedFireStations||null,spawnRadius:s.spawnRadius??null,spawnDensity:s.spawnDensity??null,spawnOff:s.spawnOff||false,lat:s.lat,lng:s.lng})),
+units:G.units.map(u=>({id:u.id,vt:u.vt,stationId:u.stationId,homeStationId:u.homeStationId||null,dutyAt:u.dutyAt||null,dutyAtPartial:u.dutyAtPartial||false,dutyAtDays:u.dutyAtDays||null,dutyAtHourStart:u.dutyAtHourStart??null,dutyAtHourEnd:u.dutyAtHourEnd??null,atReadyStation:u.atReadyStation||false,_atReadyUntil:u._atReadyUntil||null,currentLoad:u.currentLoad||null,canDriveBoat:u.canDriveBoat||false,name:u.name,crew:u.crew,turnout:u.turnout,muoto:u.muoto||null,schedule:u.schedule||null,
+// Tallenna KAIKKI relevantit tilat mukaan lukien kohde/matka/paluu
+status:u.status,
+taskId:u.taskId||null,
+departAt:u.departAt||null,
+omamieli:u.omamieli||false,omamieliBack:u.omamieliBack||null,
+huoltoUntil:u.huoltoUntil||null,
+patrolling:u.patrolling||false,patrolArea:u.patrolArea||null,trafficDuty:u.trafficDuty||false,patrolRoute:u.patrolRoute||null,patrolRouteIdx:u.patrolRouteIdx||0,
+spare:u.spare||false,spareScope:u.spareScope||null,spareCanDispatch:u.spareCanDispatch||false,_coverFor:u._coverFor||null,_origName:u._origName||null,_origStation:u._origStation||null,canSukellus:u.canSukellus||false,
+transport:u.transport||null,
+lat:u.lat,lng:u.lng,hx:u.hx,hy:u.hy})),
+tasks:G.tasks.filter(t=>t.status!==‘valmis’).map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||‘any’,shore:t.shore||null,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null,_leadAssessAt:t._leadAssessAt??null,_reqAnnounced:t._reqAnnounced||null,_reqLastAt:t._reqLastAt||null,_relNames:t._relNames||null,_relT:t._relT||null,_escT:t._escT||null,escSuggest:t.escSuggest||null,airwayRisk:t.airwayRisk||false,patrolGen:t.patrolGen||false})),
+packages:G.packages||[],cloudId:G.cloudId||null,cloudEnabled:G.cloudEnabled||false,readyMigrated:true};
 }
-async function saveGame(manual){const json=JSON.stringify({...serializeGame(),lastSaveTs:Date.now()});let _lsOk=false;try{localStorage.setItem('hatakeskus_code',btoa(unescape(encodeURIComponent(json))));_lsOk=true;}catch(e){if(!G._lsWarned){G._lsWarned=true;try{toast('⚠️ Selain ei tallenna peliä (yksityinen selaus tai tallennus estetty). Salli evästeet/tallennus tälle sivustolle.');}catch(_){}}}try{await window.storage.set('hatakeskus_v2',json);if(manual&&_lsOk)toast('💾 Tallennettu');}catch(e){if(manual&&_lsOk)toast('💾 Tallennettu paikallisesti');}
-  // Pilvitallennus: työnnä tilin tallennus Firebaseen (debounce, ei joka kerta)
-  if(G.user&&!_isWiping)scheduleFbPush();
+async function saveGame(manual){const json=JSON.stringify({…serializeGame(),lastSaveTs:Date.now()});let _lsOk=false;try{localStorage.setItem(‘hatakeskus_code’,btoa(unescape(encodeURIComponent(json))));_lsOk=true;}catch(e){if(!G._lsWarned){G.*lsWarned=true;try{toast(‘⚠️ Selain ei tallenna peliä (yksityinen selaus tai tallennus estetty). Salli evästeet/tallennus tälle sivustolle.’);}catch(*){}}}try{await window.storage.set(‘hatakeskus_v2’,json);if(manual&&_lsOk)toast(‘💾 Tallennettu’);}catch(e){if(manual&&_lsOk)toast(‘💾 Tallennettu paikallisesti’);}
+// Pilvitallennus: työnnä tilin tallennus Firebaseen (debounce, ei joka kerta)
+if(G.user&&!_isWiping)scheduleFbPush();
 }
 
 /* ===== PILVISYNKRONOINTI (valinnainen, automaattinen edistyksen siirto laitteiden välillä) =====
-   Käyttää jsonblob.com -palvelua (ilmainen, ei tiliä). Yksi "synkronointikoodi" jaetaan
-   laitteiden välillä. Kone tallentaa → puhelin hakee automaattisesti (ja toisinpäin). */
-// PILVISYNKRONOINTI kvdb.io:lla — luotettava, ei tiliä. Synkronointikoodi = "ämpäri" (bucket),
+Käyttää jsonblob.com -palvelua (ilmainen, ei tiliä). Yksi “synkronointikoodi” jaetaan
+laitteiden välillä. Kone tallentaa → puhelin hakee automaattisesti (ja toisinpäin). */
+// PILVISYNKRONOINTI kvdb.io:lla — luotettava, ei tiliä. Synkronointikoodi = “ämpäri” (bucket),
 // joka palautuu vastauksen RUNGOSSA (ei CORS-estettyä otsaketta kuten jsonblobissa).
 /* ===== PILVISYNKRONOINTI — usean palvelun yritys + uudelleenyritys + edistyspohjainen sovitus =====
-   cloudId muoto "<provider>:<id>". Kokeillaan useita palveluita; jokin niistä toimii ympäristöstäsi
-   (myös file:// origin null). Jos verkko pettää, yritetään uudelleen kun yhteys palaa, ja
-   synkronoidaan AINA siihen tallennukseen joka on PIDEMMÄLLÄ (enemmän hoidettuja tehtäviä). */
+cloudId muoto “<provider>:<id>”. Kokeillaan useita palveluita; jokin niistä toimii ympäristöstäsi
+(myös file:// origin null). Jos verkko pettää, yritetään uudelleen kun yhteys palaa, ja
+synkronoidaan AINA siihen tallennukseen joka on PIDEMMÄLLÄ (enemmän hoidettuja tehtäviä). */
 let fbAuth=null,fbDb=null,fbReady=false;
-let _fbPushT=null,_fbBusy=false,_myPushTs=0;
+let *fbPushT=null,*fbBusy=false,*myPushTs=0;
 // Onko oma Firebase-config asetettu (firebase-config.js)? Tarkistaa myös ettei se ole malliarvo.
-function fbConfigured(){const c=window.FIREBASE_CONFIG;return !!(c&&typeof c==='object'&&c.apiKey&&c.projectId&&!/PASTE|XXXX|your[-_]|tähän/i.test(c.apiKey));}
+function fbConfigured(){const c=window.FIREBASE_CONFIG;return !!(c&&typeof c===‘object’&&c.apiKey&&c.projectId&&!/PASTE|XXXX|your[-*]|tähän/i.test(c.apiKey));}
 function fbInit(){
-  if(fbReady)return;
-  if(typeof firebase==='undefined'||!fbConfigured())return; // SDK puuttuu tai configia ei asetettu → vain paikallinen tallennus
-  try{
-    firebase.initializeApp(window.FIREBASE_CONFIG);
-    fbAuth=firebase.auth();fbDb=firebase.firestore();fbReady=true;
-    // OFFLINE-JONO: Firestore tallentaa kirjoitukset paikalliseen välimuistiin myös ilman nettiä ja
-    // lähettää ne automaattisesti kun verkko palaa → lyhyt katko ei hukkaa edistymistä.
-    try{fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}
-    // Kun kirjautuminen muuttuu: lataa kyseisen käyttäjän tallennus pilvestä
-    fbAuth.onAuthStateChanged(async(user)=>{
-      if(user){G.user={uid:user.uid,name:user.displayName||user.email||'Pelaaja',email:user.email||''};try{await fbLoadUserSave();}catch(e){}}
-      else{G.user=null;}
-      try{renderSet();}catch(e){}
-    });
-    // MOBIILI-KIRJAUTUMINEN (redirect): kun palataan Google-uudelleenohjauksesta, viimeistele kirjautuminen
-    // ja näytä mahdollinen virhe. onAuthStateChanged asettaa käyttäjän + lataa pilvitallennuksen.
-    try{ fbAuth.getRedirectResult().then(res=>{ if(res&&res.user){try{toast('☁️ Kirjauduttu sisään');}catch(_){}} }).catch(e=>{ try{toast('Kirjautuminen epäonnistui: '+((e&&e.code)||'?'));}catch(_){}}); }catch(e){}
-  }catch(e){console.warn('Firebase init epäonnistui',e);}
+if(fbReady)return;
+if(typeof firebase===‘undefined’||!fbConfigured())return; // SDK puuttuu tai configia ei asetettu → vain paikallinen tallennus
+try{
+firebase.initializeApp(window.FIREBASE_CONFIG);
+fbAuth=firebase.auth();fbDb=firebase.firestore();fbReady=true;
+// OFFLINE-JONO: Firestore tallentaa kirjoitukset paikalliseen välimuistiin myös ilman nettiä ja
+// lähettää ne automaattisesti kun verkko palaa → lyhyt katko ei hukkaa edistymistä.
+try{fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}
+// Kun kirjautuminen muuttuu: lataa kyseisen käyttäjän tallennus pilvestä
+fbAuth.onAuthStateChanged(async(user)=>{
+if(user){G.user={uid:user.uid,name:user.displayName||user.email||‘Pelaaja’,email:user.email||’’};try{await fbLoadUserSave();}catch(e){}}
+else{G.user=null;}
+try{renderSet();}catch(e){}
+});
+// MOBIILI-KIRJAUTUMINEN (redirect): kun palataan Google-uudelleenohjauksesta, viimeistele kirjautuminen
+// ja näytä mahdollinen virhe. onAuthStateChanged asettaa käyttäjän + lataa pilvitallennuksen.
+try{ fbAuth.getRedirectResult().then(res=>{ if(res&&res.user){try{toast(‘☁️ Kirjauduttu sisään’);}catch(*){}} }).catch(e=>{ try{toast(‘Kirjautuminen epäonnistui: ‘+((e&&e.code)||’?’));}catch(*){}}); }catch(e){}
+}catch(e){console.warn(‘Firebase init epäonnistui’,e);}
 }
 window.fbSignIn=async()=>{
-  if(!fbReady){toast('Tilit ei käytössä — Firebase-config (firebase-config.js) puuttuu, ks. ohje');return;}
-  const prov=new firebase.auth.GoogleAuthProvider();
-  // KORJAUS (puhelin ei tallentanut pilveen): popup-kirjautuminen estyy useimmissa PUHELINSELAIMISSA →
-  // kirjautuminen ei mennyt läpi → ei G.user → ei pilvitallennusta. Mobiilissa käytetään UUDELLEENOHJAUSTA
-  // (signInWithRedirect); työpöydällä popup + varalla redirect jos popup estyy.
-  const isMobile=/Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(navigator.userAgent)||(('ontouchstart' in window)&&window.matchMedia('(max-width:820px)').matches);
-  try{
-    if(isMobile){ toast('Avataan Google-kirjautuminen…'); await fbAuth.signInWithRedirect(prov); }
-    else { await fbAuth.signInWithPopup(prov); }
-  }catch(e){
-    // Popup estetty/epäonnistui → kokeile uudelleenohjausta
-    try{ await fbAuth.signInWithRedirect(prov); }
-    catch(e2){ toast('Kirjautuminen epäonnistui: '+((e2&&e2.code)||(e&&e.code)||(e&&e.message)||'?')); }
-  }
+if(!fbReady){toast(‘Tilit ei käytössä — Firebase-config (firebase-config.js) puuttuu, ks. ohje’);return;}
+const prov=new firebase.auth.GoogleAuthProvider();
+// KORJAUS (puhelin ei tallentanut pilveen): popup-kirjautuminen estyy useimmissa PUHELINSELAIMISSA →
+// kirjautuminen ei mennyt läpi → ei G.user → ei pilvitallennusta. Mobiilissa käytetään UUDELLEENOHJAUSTA
+// (signInWithRedirect); työpöydällä popup + varalla redirect jos popup estyy.
+const isMobile=/Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(navigator.userAgent)||((‘ontouchstart’ in window)&&window.matchMedia(’(max-width:820px)’).matches);
+try{
+if(isMobile){ toast(‘Avataan Google-kirjautuminen…’); await fbAuth.signInWithRedirect(prov); }
+else { await fbAuth.signInWithPopup(prov); }
+}catch(e){
+// Popup estetty/epäonnistui → kokeile uudelleenohjausta
+try{ await fbAuth.signInWithRedirect(prov); }
+catch(e2){ toast(‘Kirjautuminen epäonnistui: ‘+((e2&&e2.code)||(e&&e.code)||(e&&e.message)||’?’)); }
+}
 };
-window.fbSignOut=async()=>{if(fbAuth){try{await fbAuth.signOut();toast('Kirjauduttu ulos');}catch(e){}}};
+window.fbSignOut=async()=>{if(fbAuth){try{await fbAuth.signOut();toast(‘Kirjauduttu ulos’);}catch(e){}}};
 function decodePayload(b64){try{return JSON.parse(decodeURIComponent(escape(atob(b64))));}catch(e){return null;}}
 // Lataa kirjautuneen käyttäjän tallennus pilvestä (adoptoi jos PIDEMMÄLLÄ kuin paikallinen).
 async function fbLoadUserSave(){
-  if(!fbReady||!G.user)return;
-  let snap;try{snap=await fbDb.collection('saves').doc(G.user.uid).get();}catch(e){return;}
-  if(snap&&snap.exists){
-    const d=snap.data()||{};const remote=d.data?decodePayload(d.data):null;
-    if(remote){
-      // TUOREUSPERUSTAINEN auto-lataus: jos pilvitallennus on UUDEMPI kuin tämän laitteen viimeisin
-      // tallennus (= toista laitetta pelattu viimeksi) → adoptoi automaattisesti. missDone vain tasapelin
-      // ratkaisija. Popupit (avoimet ikkunat) PIDETÄÄN paikallisina → eivät tule toiselta laitteelta.
-      const rTs=d.ts||remote.lastSaveTs||0, lTs=G.lastSaveTs||0;
-      if(rTs>lTs || (rTs===lTs && (remote.missDone||0)>(G.missDone||0))){
-        remote.openPops=G.openPops||null;
-        applyLoaded(remote);G.lastSaveTs=rTs||Date.now();_myPushTs=d.ts||_myPushTs;
-        try{localStorage.setItem('hatakeskus_code',btoa(unescape(encodeURIComponent(JSON.stringify(remote)))));}catch(e){}
-        G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
-        toast('☁️ Tilisi peli haettu pilvestä');return;
-      }
-    }
-  }
-  fbPushDo(); // paikallinen yhtä pitkällä/pidemmällä → tallenna pilveen
+if(!fbReady||!G.user)return;
+let snap;try{snap=await fbDb.collection(‘saves’).doc(G.user.uid).get();}catch(e){return;}
+if(snap&&snap.exists){
+const d=snap.data()||{};const remote=d.data?decodePayload(d.data):null;
+if(remote){
+// TUOREUSPERUSTAINEN auto-lataus: jos pilvitallennus on UUDEMPI kuin tämän laitteen viimeisin
+// tallennus (= toista laitetta pelattu viimeksi) → adoptoi automaattisesti. missDone vain tasapelin
+// ratkaisija. Popupit (avoimet ikkunat) PIDETÄÄN paikallisina → eivät tule toiselta laitteelta.
+const rTs=d.ts||remote.lastSaveTs||0, lTs=G.lastSaveTs||0;
+if(rTs>lTs || (rTs===lTs && (remote.missDone||0)>(G.missDone||0))){
+remote.openPops=G.openPops||null;
+applyLoaded(remote);G.lastSaveTs=rTs||Date.now();_myPushTs=d.ts||_myPushTs;
+try{localStorage.setItem(‘hatakeskus_code’,btoa(unescape(encodeURIComponent(JSON.stringify(remote)))));}catch(e){}
+// PUHELIN-KORJAUS: pilvitallennuksen lataus on usein AINOA lataus puhelimella (paikallinen
+// tallennus voi olla estetty). Aja offline-etenemys nyt → peliaika + tehtävät etenevät sen
+// ajalta kun olit poissa (katto 7 vrk, ks. spawnCatchUp). Ennen tätä aika ei edennyt puhelimella.
+try{spawnCatchUp();}catch(e){}
+G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
+toast(‘☁️ Tilisi peli haettu pilvestä’);return;
+}
+}
+}
+fbPushDo(); // paikallinen yhtä pitkällä/pidemmällä → tallenna pilveen
 }
 function scheduleFbPush(){if(!fbReady||!G.user||_fbPushT)return;_fbPushT=setTimeout(()=>{_fbPushT=null;fbPushDo();},6000);}
 // Pysyvä laitetunniste (selainkohtainen) → erottaa oman pushin toisen laitteen tallennuksesta synkassa.
-function _fbDeviceId(){try{let id=localStorage.getItem('hk_devid');if(!id){id='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('hk_devid',id);}return id;}catch(e){return 'd0';}}
+function _fbDeviceId(){try{let id=localStorage.getItem(‘hk_devid’);if(!id){id=‘d’+Math.random().toString(36).slice(2,10);localStorage.setItem(‘hk_devid’,id);}return id;}catch(e){return ‘d0’;}}
 // HUOM: sisäinen async-funktio uudelleennimetty fbPushNow→fbPushDo. Aiemmin window.fbPushNow-wrapper
 // (alla) ylikirjoitti samannimisen funktiojulistuksen → kutsui itseään → ääretön rekursio / stack
 // overflow → PILVEEN-TYÖNTÖ KAATUI AINA (autosave + nappi). Nyt wrapper kutsuu fbPushDo:ta.
 async function fbPushDo(){
-  if(!fbReady||!G.user||_fbBusy)return;_fbBusy=true;const ts=Date.now();
-  try{
-    const data=btoa(unescape(encodeURIComponent(JSON.stringify({...serializeGame(),lastSaveTs:ts}))));
-    await fbDb.collection('saves').doc(G.user.uid).set({data,missDone:G.missDone||0,ts,device:_fbDeviceId(),name:G.user.name,email:G.user.email});
-    _myPushTs=ts;G.lastSaveTs=ts;
-  }catch(e){/* yritetään seuraavalla tallennuksella */}
-  finally{_fbBusy=false;}
+if(!fbReady||!G.user||_fbBusy)return;_fbBusy=true;const ts=Date.now();
+try{
+const data=btoa(unescape(encodeURIComponent(JSON.stringify({…serializeGame(),lastSaveTs:ts}))));
+await fbDb.collection(‘saves’).doc(G.user.uid).set({data,missDone:G.missDone||0,ts,device:_fbDeviceId(),name:G.user.name,email:G.user.email});
+_myPushTs=ts;G.lastSaveTs=ts;
+}catch(e){/* yritetään seuraavalla tallennuksella */}
+finally{_fbBusy=false;}
 }
-window.fbPushNow=()=>{fbPushDo().then(()=>{if(G.user)toast('☁️ Tallennettu pilveen');});};
-// ANTI-BUG: pakota pilvitallennuksen lataus tälle laitteelle (ohittaa "uusin voittaa" -logiikan).
+window.fbPushNow=()=>{fbPushDo().then(()=>{if(G.user)toast(‘☁️ Tallennettu pilveen’);});};
+// ANTI-BUG: pakota pilvitallennuksen lataus tälle laitteelle (ohittaa “uusin voittaa” -logiikan).
 // Auta tilanteessa jossa peli on tyhjä/väärä vaikka kirjautunut: pelaa+Tallenna nyt toisella
 // laitteella, sitten Hae pilvestä tällä.
 window.fbForcePull=async()=>{
-  if(!fbReady||!G.user){toast('Kirjaudu ensin Google-tilillä');return;}
-  let snap;try{snap=await fbDb.collection('saves').doc(G.user.uid).get();}catch(e){toast('Pilviyhteys epäonnistui — kokeile hetken päästä');return;}
-  if(!snap||!snap.exists){toast('Pilvessä ei vielä tallennusta tällä tilillä. Pelaa ja paina ☁️⬆️ Tallenna nyt sillä laitteella jolla peli on.');return;}
-  const d=snap.data()||{};const remote=d.data?decodePayload(d.data):null;
-  if(!remote){toast('Pilvitallennus on vioittunut');return;}
-  if((G.missDone||0)>3&&!confirm('Korvataanko tämän laitteen peli pilvitallennuksella ('+(d.missDone||0)+' tehtävää suoritettu)? Tämän laitteen nykyinen peli häviää.'))return;
-  remote.openPops=G.openPops||null; // ÄLÄ adoptoi toisen laitteen radioikkunoita (jäivät puhelimelle auki, peittivät kartan)
-  try{applyLoaded(remote);}catch(e){toast('Lataus epäonnistui: '+e.message);return;}
-  G.lastSaveTs=remote.lastSaveTs||d.ts||Date.now();_myPushTs=d.ts||_myPushTs;
-  G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});
-  try{renderList();updateBadge();updateMoney();renderSet();}catch(e){}
-  toast('☁️⬇️ Pilvitallennus haettu ('+(d.missDone||0)+' tehtävää suoritettu)');
+if(!fbReady||!G.user){toast(‘Kirjaudu ensin Google-tilillä’);return;}
+let snap;try{snap=await fbDb.collection(‘saves’).doc(G.user.uid).get();}catch(e){toast(‘Pilviyhteys epäonnistui — kokeile hetken päästä’);return;}
+if(!snap||!snap.exists){toast(‘Pilvessä ei vielä tallennusta tällä tilillä. Pelaa ja paina ☁️⬆️ Tallenna nyt sillä laitteella jolla peli on.’);return;}
+const d=snap.data()||{};const remote=d.data?decodePayload(d.data):null;
+if(!remote){toast(‘Pilvitallennus on vioittunut’);return;}
+if((G.missDone||0)>3&&!confirm(‘Korvataanko tämän laitteen peli pilvitallennuksella (’+(d.missDone||0)+’ tehtävää suoritettu)? Tämän laitteen nykyinen peli häviää.’))return;
+remote.openPops=G.openPops||null; // ÄLÄ adoptoi toisen laitteen radioikkunoita (jäivät puhelimelle auki, peittivät kartan)
+try{applyLoaded(remote);}catch(e){toast(‘Lataus epäonnistui: ‘+e.message);return;}
+G.lastSaveTs=remote.lastSaveTs||d.ts||Date.now();_myPushTs=d.ts||_myPushTs;
+G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});
+try{renderList();updateBadge();updateMoney();renderSet();}catch(e){}
+toast(‘☁️⬇️ Pilvitallennus haettu (’+(d.missDone||0)+’ tehtävää suoritettu)’);
 };
 // Säännöllinen pull: jos TOINEN laite tallensi uudemman (ei oma push) → adoptoi (markkerit siivotaan applyLoadedissa).
 async function fbPeriodicPull(){
-  if(!fbReady||!G.user||_fbBusy||_isWiping)return;
-  let snap;try{snap=await fbDb.collection('saves').doc(G.user.uid).get();}catch(e){return;}
-  if(!snap||!snap.exists)return;const d=snap.data()||{};if(!d.data||!d.ts||d.ts===_myPushTs)return;
-  // Auto-synkka: adoptoi VAIN toisen laitteen UUDEMPI tallennus. Oma laite ohitetaan (tunniste).
-  // AKTIIVISTA laitetta ei ylikirjoiteta (jos juuri pelannut <90s) → ei menetä omia hälytyksiä; sen
-  // omat pushit päivittävät toisen (passiivisen) laitteen. Popupit pysyvät laitekohtaisina.
-  if(d.device&&d.device===_fbDeviceId())return;
-  if((d.ts||0)<=(G.lastSaveTs||0)+3000)return;
-  if(G._lastActivity&&Date.now()-G._lastActivity<90000){
-    // KONFLIKTIVAROITUS (crossplay): toinen laite tallensi uudemman, MUTTA tämä laite on aktiivinen →
-    // ei ylikirjoiteta (suojaa omat hälytykset). Tämä tarkoittaa että SAMAA tiliä pelataan kahdella
-    // laitteella yhtä aikaa, jolloin "uusin voittaa" voi hukata edistymistä → varoita (kerran per 2 min).
-    if(!G._dualWarnT||Date.now()-G._dualWarnT>120000){G._dualWarnT=Date.now();toast('⚠️ Tiliä pelataan myös toisella laitteella samaan aikaan — pelaa vain yhdellä laitteella kerrallaan, ettei edistyminen mene päällekkäin.');}
-    return; // tämä laite aktiivinen → ei adoptoida
-  }
-  const remote=decodePayload(d.data);if(!remote)return;
-  remote.openPops=G.openPops||null;
-  applyLoaded(remote);G.lastSaveTs=d.ts;_myPushTs=d.ts;
-  G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
-  toast('☁️ Päivitetty toisen laitteen tallennuksesta');
+if(!fbReady||!G.user||_fbBusy||_isWiping)return;
+let snap;try{snap=await fbDb.collection(‘saves’).doc(G.user.uid).get();}catch(e){return;}
+if(!snap||!snap.exists)return;const d=snap.data()||{};if(!d.data||!d.ts||d.ts===_myPushTs)return;
+// Auto-synkka: adoptoi VAIN toisen laitteen UUDEMPI tallennus. Oma laite ohitetaan (tunniste).
+// AKTIIVISTA laitetta ei ylikirjoiteta (jos juuri pelannut <90s) → ei menetä omia hälytyksiä; sen
+// omat pushit päivittävät toisen (passiivisen) laitteen. Popupit pysyvät laitekohtaisina.
+if(d.device&&d.device===_fbDeviceId())return;
+if((d.ts||0)<=(G.lastSaveTs||0)+3000)return;
+if(G._lastActivity&&Date.now()-G._lastActivity<90000){
+// KONFLIKTIVAROITUS (crossplay): toinen laite tallensi uudemman, MUTTA tämä laite on aktiivinen →
+// ei ylikirjoiteta (suojaa omat hälytykset). Tämä tarkoittaa että SAMAA tiliä pelataan kahdella
+// laitteella yhtä aikaa, jolloin “uusin voittaa” voi hukata edistymistä → varoita (kerran per 2 min).
+if(!G._dualWarnT||Date.now()-G._dualWarnT>120000){G.*dualWarnT=Date.now();toast(‘⚠️ Tiliä pelataan myös toisella laitteella samaan aikaan — pelaa vain yhdellä laitteella kerrallaan, ettei edistyminen mene päällekkäin.’);}
+return; // tämä laite aktiivinen → ei adoptoida
+}
+const remote=decodePayload(d.data);if(!remote)return;
+remote.openPops=G.openPops||null;
+applyLoaded(remote);G.lastSaveTs=d.ts;*myPushTs=d.ts;
+G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
+toast(‘☁️ Päivitetty toisen laitteen tallennuksesta’);
 }
 setInterval(fbPeriodicPull,120000);
-window.addEventListener('online',()=>{if(fbReady&&G.user)fbPeriodicPull();});
-function exportCode(){const code=btoa(unescape(encodeURIComponent(JSON.stringify(serializeGame()))));navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast('📋 Tallennuskoodi kopioitu leikepöydälle')).catch(()=>{});return code;}
-function importCode(code){try{const d=JSON.parse(decodeURIComponent(escape(atob(code.trim()))));applyLoaded(d);toast('✅ Peli ladattu koodista');setTimeout(()=>location.reload(),400);}catch(e){toast('Virheellinen tallennuskoodi');}}
+window.addEventListener(‘online’,()=>{if(fbReady&&G.user)fbPeriodicPull();});
+function exportCode(){const code=btoa(unescape(encodeURIComponent(JSON.stringify(serializeGame()))));navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast(‘📋 Tallennuskoodi kopioitu leikepöydälle’)).catch(()=>{});return code;}
+function importCode(code){try{const d=JSON.parse(decodeURIComponent(escape(atob(code.trim()))));applyLoaded(d);toast(‘✅ Peli ladattu koodista’);setTimeout(()=>location.reload(),400);}catch(e){toast(‘Virheellinen tallennuskoodi’);}}
 // Lataa peli tiedostona (helppo siirtää puhelin <-> kone)
 function downloadSave(){
-  const code=btoa(unescape(encodeURIComponent(JSON.stringify(serializeGame()))));
-  const d=new Date();
-  const stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
-  const blob=new Blob([code],{type:'text/plain'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download='hatakeskus_tallennus_'+stamp+'.txt';
-  document.body.appendChild(a);a.click();
-  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
-  toast('💾 Tallennustiedosto ladattu');
+const code=btoa(unescape(encodeURIComponent(JSON.stringify(serializeGame()))));
+const d=new Date();
+const stamp=d.getFullYear()+’-’+String(d.getMonth()+1).padStart(2,‘0’)+’-’+String(d.getDate()).padStart(2,‘0’)+’*’+String(d.getHours()).padStart(2,‘0’)+String(d.getMinutes()).padStart(2,‘0’);
+const blob=new Blob([code],{type:‘text/plain’});
+const url=URL.createObjectURL(blob);
+const a=document.createElement(‘a’);
+a.href=url;a.download=’hatakeskus_tallennus*’+stamp+’.txt’;
+document.body.appendChild(a);a.click();
+setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
+toast(‘💾 Tallennustiedosto ladattu’);
 }
 // Lue peli tiedostosta
 function loadSaveFile(input){
-  const f=input.files&&input.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=e=>{const code=(e.target.result||'').trim();if(code){importCode(code);}else toast('Tiedosto oli tyhjä');};
-  r.onerror=()=>toast('Tiedoston luku epäonnistui');
-  r.readAsText(f);
+const f=input.files&&input.files[0];if(!f)return;
+const r=new FileReader();
+r.onload=e=>{const code=(e.target.result||’’).trim();if(code){importCode(code);}else toast(‘Tiedosto oli tyhjä’);};
+r.onerror=()=>toast(‘Tiedoston luku epäonnistui’);
+r.readAsText(f);
 }
 window.downloadSave=downloadSave;window.loadSaveFile=loadSaveFile;
 
 /* ===== HÄTÄKESKUS-SIVU: tilastot ja alueasetukset ===== */
 function openHake(name){
-  const hk=HAKEKESKUKSET.find(h=>h.n===name);if(!hk)return;
-  // Etsi hätäkeskukseen liitetyt asemat
-  const myStations=G.stations.filter(s=>s.hake===name);
-  const myUnits=G.units.filter(u=>myStations.some(s=>s.id===u.stationId));
-  const myRegions=[...new Set(myStations.map(s=>s.reg).filter(Boolean))];
-  // PER-HÄTÄKESKUS tilastot (ei jaeta keskusten välillä)
-  const stats=(G.hakeStats&&G.hakeStats[name])||{total:0,byCode:{},saved:0,severe:0,dead:0,respSum:0,respCount:0,transported:0,respByUrg:{}};
-  const topCodes=Object.entries(stats.byCode||{}).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  const avgMin=stats.respCount>0?(stats.respSum/stats.respCount/60).toFixed(1):'–';
-  // Per-kiireellisyysluokka keskimääräinen vasteaika
-  const urgRows=['A','B','C','D'].map(u=>{const r=(stats.respByUrg||{})[u];if(!r||!r.count)return null;return {u,min:(r.sum/r.count/60).toFixed(1),n:r.count};}).filter(Boolean);
-  // Yksiköiden tilajakauma
-  const statusCount={};
-  myUnits.forEach(u=>{const k=STATUS_TXT[u.status]||u.status;statusCount[k]=(statusCount[k]||0)+1;});
-  const muotoBreakdown={};
-  myUnits.forEach(u=>{const m=unitMuoto(u)||'?';muotoBreakdown[m]=(muotoBreakdown[m]||0)+1;});
-  // Alueen perustaso-asetukset (G.hakeAreaSettings per nimi)
-  G.hakeAreaSettings=G.hakeAreaSettings||{};
-  const set=G.hakeAreaSettings[name]||{spawnBoost:1,priority:'normal'};
-  let body=`
-    <div style="background:linear-gradient(180deg,#1a1200,#0e1217);border:1px solid var(--acc);border-radius:9px;padding:13px;margin-bottom:12px">
-      <div style="font-family:var(--fdisp);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:18px;color:var(--acc)">📞 ${name}</div>
-      <div class="smallnote" style="margin-top:4px">Vastaanottaa hätäpuhelut ja koordinoi alueen pelastus- ja ensihoitoyksiköitä</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
-      <div class="card" style="margin:0;padding:11px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Asemat alueella</div><div style="font-size:24px;font-weight:800;color:var(--acc)">${myStations.length}</div></div>
-      <div class="card" style="margin:0;padding:11px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Yksiköitä</div><div style="font-size:24px;font-weight:800;color:var(--acc2)">${myUnits.length}</div></div>
-      <div class="card" style="margin:0;padding:11px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Tehtäviä hoidettu</div><div style="font-size:24px;font-weight:800">${stats.total||0}</div></div>
-      <div class="card" style="margin:0;padding:11px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Keskim. vasteaika</div><div style="font-size:24px;font-weight:800">${avgMin} <span style="font-size:13px;font-weight:400">min</span></div></div>
-    </div>
-    <div class="card"><h3>👥 Potilastilastot</h3>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:14px">
-        <span style="color:#39c06a">✓ Pelastettu <b>${stats.saved||0}</b></span>
-        <span style="color:#ffd11a">🩹 Vakavia <b>${stats.severe||0}</b></span>
-        <span style="color:#ff5555">💀 Menehtyi <b>${stats.dead||0}</b></span>
-        <span style="color:#26d07c">🏥 Kuljetettu <b>${stats.transported||0}</b></span>
-      </div>
-    </div>
-    <div class="card"><h3>⏱️ Keskim. vasteaika kiireellisyysluokittain</h3>
-      <div class="smallnote" style="margin-bottom:6px">Aika hälytyksestä siihen kun ensimmäinen yksikkö on kohteessa.</div>
-      ${urgRows.length?urgRows.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)"><span class="tag tag-${r.u}">${r.u}</span><div style="flex:1;height:8px;background:var(--bg3);border-radius:5px;overflow:hidden"><div style="height:100%;width:${Math.min(100,r.min/20*100)}%;background:${URG_COL[r.u]}"></div></div><span class="mono" style="min-width:64px;text-align:right"><b>${r.min}</b> min</span><span class="smallnote" style="min-width:42px;text-align:right">${r.n} kpl</span></div>`).join(''):'<div class="smallnote">Ei vielä dataa.</div>'}
-    </div>
-    <div class="card"><h3>🚒 Yksiköiden tila</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        ${Object.entries(statusCount).map(([k,v])=>`<span style="background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:4px 9px;font-size:12px">${k} <b>${v}</b></span>`).join('')||'<span class="smallnote">Ei yksiköitä</span>'}
-      </div>
-      ${Object.keys(muotoBreakdown).length?`<div style="margin-top:8px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px;margin-bottom:5px">Muotojen jakauma</div>${Object.entries(muotoBreakdown).map(([k,v])=>`<span class="smallnote" style="margin-right:10px">${MUOTO_LABEL[k]||k}: <b style="color:var(--txt)">${v}</b></span>`).join('')}</div>`:''}
-    </div>
-    ${myRegions.length?`<div class="card"><h3>📍 Vastuualueet</h3><div style="margin-top:5px">${myRegions.map(r=>`<span class="tag tag-none" style="margin-right:5px;background:var(--acc);color:var(--acc-ink)">${r}</span>`).join('')}</div></div>`:''}
-    ${topCodes.length?`<div class="card"><h3>📊 Yleisimmät tehtäväkoodit</h3>${topCodes.map(([c,n])=>{const def=TASKS.find(t=>t.c===c);return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span><span class="mono" style="color:var(--acc)">${c}</span> <span style="color:var(--dim)">${def?def.n:''}</span></span><span class="mono">${n} kpl</span></div>`}).join('')}</div>`:''}
-    <div class="card"><h3>⚙️ Alueen asetukset</h3>
-      <div class="toggle"><span>Tehtäväboosti tällä alueella</span><input type="range" min="0.3" max="3" step="0.1" value="${set.spawnBoost||1}" oninput="G.hakeAreaSettings['${name}']={...G.hakeAreaSettings['${name}']||{},spawnBoost:parseFloat(this.value)};document.getElementById('hkb_${hk.lat.toFixed(2)}').textContent=parseFloat(this.value).toFixed(1)+'×'"><span class="mono" id="hkb_${hk.lat.toFixed(2)}">${(set.spawnBoost||1).toFixed(1)}×</span></div>
-      <div class="smallnote">Muuttaa tämän hätäkeskuksen alueen tehtävien syntynopeutta. Käytä esim. ruuhka-aikoja simuloidaksesi.</div>
-    </div>
-    <div class="card"><h3>📞 Yhteystiedot ja roolit</h3>
-      <div class="smallnote" style="line-height:1.7">
-        <b>Vastaava päivystäjä:</b> sinä<br>
-        <b>Kanavat:</b> ${myRegions.map(r=>'PE/'+r+' INFO, EN/'+r+' INFO, PO/'+r+' INFO').join(', ')||'—'}<br>
-        <b>Hätäkeskuksen ANTO:</b> PE ANTO, EN ANTO, PO ANTO<br>
-        <b>VPK-kanavat:</b> ${[...new Set(myStations.filter(s=>s.muoto==='vpk'||myUnits.some(u=>u.stationId===s.id&&u.muoto==='vpk')).map(s=>s.reg+' VPK'))].join(', ')||'—'}
-      </div>
-    </div>`;
-  document.getElementById('smtitle').textContent='📞 '+name;
-  document.getElementById('smbody').innerHTML=body;
-  document.getElementById('smod').classList.add('open');
+const hk=HAKEKESKUKSET.find(h=>h.n===name);if(!hk)return;
+// Etsi hätäkeskukseen liitetyt asemat
+const myStations=G.stations.filter(s=>s.hake===name);
+const myUnits=G.units.filter(u=>myStations.some(s=>s.id===u.stationId));
+const myRegions=[…new Set(myStations.map(s=>s.reg).filter(Boolean))];
+// PER-HÄTÄKESKUS tilastot (ei jaeta keskusten välillä)
+const stats=(G.hakeStats&&G.hakeStats[name])||{total:0,byCode:{},saved:0,severe:0,dead:0,respSum:0,respCount:0,transported:0,respByUrg:{}};
+const topCodes=Object.entries(stats.byCode||{}).sort((a,b)=>b[1]-a[1]).slice(0,10);
+const avgMin=stats.respCount>0?(stats.respSum/stats.respCount/60).toFixed(1):’–’;
+// Per-kiireellisyysluokka keskimääräinen vasteaika
+const urgRows=[‘A’,‘B’,‘C’,‘D’].map(u=>{const r=(stats.respByUrg||{})[u];if(!r||!r.count)return null;return {u,min:(r.sum/r.count/60).toFixed(1),n:r.count};}).filter(Boolean);
+// Yksiköiden tilajakauma
+const statusCount={};
+myUnits.forEach(u=>{const k=STATUS_TXT[u.status]||u.status;statusCount[k]=(statusCount[k]||0)+1;});
+const muotoBreakdown={};
+myUnits.forEach(u=>{const m=unitMuoto(u)||’?’;muotoBreakdown[m]=(muotoBreakdown[m]||0)+1;});
+// Alueen perustaso-asetukset (G.hakeAreaSettings per nimi)
+G.hakeAreaSettings=G.hakeAreaSettings||{};
+const set=G.hakeAreaSettings[name]||{spawnBoost:1,priority:‘normal’};
+let body=` <div style="background:linear-gradient(180deg,#1a1200,#0e1217);border:1px solid var(--acc);border-radius:9px;padding:13px;margin-bottom:12px"> <div style="font-family:var(--fdisp);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:18px;color:var(--acc)">📞 ${name}</div> <div class="smallnote" style="margin-top:4px">Vastaanottaa hätäpuhelut ja koordinoi alueen pelastus- ja ensihoitoyksiköitä</div> </div> <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px"> <div class="card" style="margin:0;padding:11px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Asemat alueella</div><div style="font-size:24px;font-weight:800;color:var(--acc)">${myStations.length}</div></div> <div class="card" style="margin:0;padding:11px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Yksiköitä</div><div style="font-size:24px;font-weight:800;color:var(--acc2)">${myUnits.length}</div></div> <div class="card" style="margin:0;padding:11px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Tehtäviä hoidettu</div><div style="font-size:24px;font-weight:800">${stats.total||0}</div></div> <div class="card" style="margin:0;padding:11px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Keskim. vasteaika</div><div style="font-size:24px;font-weight:800">${avgMin} <span style="font-size:13px;font-weight:400">min</span></div></div> </div> <div class="card"><h3>👥 Potilastilastot</h3> <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;font-size:14px"> <span style="color:#39c06a">✓ Pelastettu <b>${stats.saved||0}</b></span> <span style="color:#ffd11a">🩹 Vakavia <b>${stats.severe||0}</b></span> <span style="color:#ff5555">💀 Menehtyi <b>${stats.dead||0}</b></span> <span style="color:#26d07c">🏥 Kuljetettu <b>${stats.transported||0}</b></span> </div> </div> <div class="card"><h3>⏱️ Keskim. vasteaika kiireellisyysluokittain</h3> <div class="smallnote" style="margin-bottom:6px">Aika hälytyksestä siihen kun ensimmäinen yksikkö on kohteessa.</div> ${urgRows.length?urgRows.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)"><span class="tag tag-${r.u}">${r.u}</span><div style="flex:1;height:8px;background:var(--bg3);border-radius:5px;overflow:hidden"><div style="height:100%;width:${Math.min(100,r.min/20*100)}%;background:${URG_COL[r.u]}"></div></div><span class="mono" style="min-width:64px;text-align:right"><b>${r.min}</b> min</span><span class="smallnote" style="min-width:42px;text-align:right">${r.n} kpl</span></div>`).join(''):'<div class="smallnote">Ei vielä dataa.</div>'} </div> <div class="card"><h3>🚒 Yksiköiden tila</h3> <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"> ${Object.entries(statusCount).map(([k,v])=>`<span style="background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:4px 9px;font-size:12px">${k} <b>${v}</b></span>`).join('')||'<span class="smallnote">Ei yksiköitä</span>'} </div> ${Object.keys(muotoBreakdown).length?`<div style="margin-top:8px"><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px;margin-bottom:5px">Muotojen jakauma</div>${Object.entries(muotoBreakdown).map(([k,v])=>`<span class="smallnote" style="margin-right:10px">${MUOTO_LABEL[k]||k}: <b style="color:var(--txt)">${v}</b></span>`).join(’’)}</div>`:''} </div> ${myRegions.length?`<div class="card"><h3>📍 Vastuualueet</h3><div style="margin-top:5px">${myRegions.map(r=>`<span class="tag tag-none" style="margin-right:5px;background:var(--acc);color:var(--acc-ink)">${r}</span>`).join(’’)}</div></div>`:''} ${topCodes.length?`<div class="card"><h3>📊 Yleisimmät tehtäväkoodit</h3>${topCodes.map(([c,n])=>{const def=TASKS.find(t=>t.c===c);return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span><span class="mono" style="color:var(--acc)">${c}</span> <span style="color:var(--dim)">${def?def.n:''}</span></span><span class="mono">${n} kpl</span></div>`}).join(’’)}</div>`:''} <div class="card"><h3>⚙️ Alueen asetukset</h3> <div class="toggle"><span>Tehtäväboosti tällä alueella</span><input type="range" min="0.3" max="3" step="0.1" value="${set.spawnBoost||1}" oninput="G.hakeAreaSettings['${name}']={...G.hakeAreaSettings['${name}']||{},spawnBoost:parseFloat(this.value)};document.getElementById('hkb_${hk.lat.toFixed(2)}').textContent=parseFloat(this.value).toFixed(1)+'×'"><span class="mono" id="hkb_${hk.lat.toFixed(2)}">${(set.spawnBoost||1).toFixed(1)}×</span></div> <div class="smallnote">Muuttaa tämän hätäkeskuksen alueen tehtävien syntynopeutta. Käytä esim. ruuhka-aikoja simuloidaksesi.</div> </div> <div class="card"><h3>📞 Yhteystiedot ja roolit</h3> <div class="smallnote" style="line-height:1.7"> <b>Vastaava päivystäjä:</b> sinä<br> <b>Kanavat:</b> ${myRegions.map(r=>'PE/'+r+' INFO, EN/'+r+' INFO, PO/'+r+' INFO').join(', ')||'—'}<br> <b>Hätäkeskuksen ANTO:</b> PE ANTO, EN ANTO, PO ANTO<br> <b>VPK-kanavat:</b> ${[...new Set(myStations.filter(s=>s.muoto==='vpk'||myUnits.some(u=>u.stationId===s.id&&u.muoto==='vpk')).map(s=>s.reg+' VPK'))].join(', ')||'—'} </div> </div>`;
+document.getElementById(‘smtitle’).textContent=’📞 ’+name;
+document.getElementById(‘smbody’).innerHTML=body;
+document.getElementById(‘smod’).classList.add(‘open’);
 }
 window.openHake=openHake;
 
 /* ===== KALENTERI-NÄKYMÄ ===== */
 let _calViewOffset=0; // 0=tämä kk, -1=edellinen, +1=seuraava
 function openCalendar(){
-  _calViewOffset=0;
-  renderCalendar();
-  document.getElementById('smod').classList.add('open');
+_calViewOffset=0;
+renderCalendar();
+document.getElementById(‘smod’).classList.add(‘open’);
 }
 window.openCalendar=openCalendar;
 window.calMove=(off)=>{_calViewOffset+=off;renderCalendar();};
 function renderCalendar(){
-  const today=gameDate();
-  const view=new Date(today);view.setMonth(view.getMonth()+_calViewOffset);view.setDate(1);
-  const year=view.getFullYear(),month=view.getMonth();
-  const firstDay=new Date(year,month,1);
-  const lastDay=new Date(year,month+1,0).getDate();
-  const startDow=(firstDay.getDay()+6)%7; // muutetaan ma=0, su=6
-  // Rakenna kalenteritaulukko
-  let grid='<table style="width:100%;border-collapse:collapse;text-align:center;font-family:var(--fmono);font-size:12.5px"><tr>';
-  ['Ma','Ti','Ke','To','Pe','La','Su'].forEach(d=>{grid+=`<th style="padding:4px;color:var(--dim);font-size:10px;letter-spacing:1px">${d}</th>`;});
-  grid+='</tr><tr>';
-  for(let i=0;i<startDow;i++)grid+='<td style="padding:6px"></td>';
-  let dow=startDow;
-  for(let d=1;d<=lastDay;d++){
-    const isToday=year===today.getFullYear()&&month===today.getMonth()&&d===today.getDate();
-    const ev=CALENDAR_EVENTS.find(e=>e.m===month+1&&e.d===d);
-    const boostUnits=G.units.filter(u=>u.schedule&&u.schedule.mode==='oncall'&&(u.schedule.boostedDates||[]).includes(year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0')));
-    let bg='var(--bg2)',col='var(--txt)';
-    if(isToday){bg='var(--acc)';col='var(--acc-ink)';}
-    else if(ev)bg='#1a1200';
-    const evIcon=ev?ev.icon:'';
-    const dot=boostUnits.length?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acc2);margin-left:2px"></span>':'';
-    const tooltip=(ev?ev.name:'')+(boostUnits.length?(ev?' · ':'')+boostUnits.length+' yks. boost':'');
-    grid+=`<td style="padding:6px 2px;border:1px solid var(--line);background:${bg};color:${col};${isToday?'font-weight:800':''}" title="${tooltip}"><div>${d}</div>${evIcon?`<div style="font-size:11px">${evIcon}</div>`:''}${dot}</td>`;
-    dow=(dow+1)%7;
-    if(dow===0&&d<lastDay)grid+='</tr><tr>';
-  }
-  while(dow!==0){grid+='<td></td>';dow=(dow+1)%7;}
-  grid+='</tr></table>';
-  // Tulevat tapahtumat (seuraavat 14 päivää)
-  let upcoming='';
-  for(let off=0;off<30;off++){
-    const d=gameDate(off);
-    const ev=todayEvent(d);
-    if(ev){
-      const days=off===0?'tänään':off===1?'huomenna':off+' päivän päästä';
-      upcoming+=`<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="font-size:18px">${ev.icon}</span><div style="flex:1"><b>${ev.name}</b><br><span class="smallnote">${fmtGameDate(d)} · ${days}</span></div><span class="smallnote">${ev.spawnBoost>1?'+'+Math.round((ev.spawnBoost-1)*100)+'% tehtäviä':ev.spawnBoost<1?'-'+Math.round((1-ev.spawnBoost)*100)+'% tehtäviä':''}</span></div>`;
-    }
-  }
-  // Tämän hetken tapahtuma
-  const todayEv=todayEvent();
-  const todayBoostUnits=G.units.filter(u=>u.schedule&&u.schedule.mode==='oncall'&&(u.schedule.boostedDates||[]).includes(isoDate()));
-  document.getElementById('smtitle').textContent='📅 Kalenteri';
-  document.getElementById('smbody').innerHTML=`
-    <div style="background:linear-gradient(180deg,#1a1200,#0e1217);border:1px solid var(--acc);border-radius:9px;padding:13px;margin-bottom:12px">
-      <div style="font-family:var(--fdisp);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:13px;color:var(--acc)">Tänään</div>
-      <div style="font-size:18px;font-weight:700;margin-top:3px">${fmtGameDateLong()}</div>
-      ${todayEv?`<div style="margin-top:8px;font-size:14px">${todayEv.icon} <b>${todayEv.name}</b><div class="smallnote">${todayEv.spawnBoost>1?'Tehtäväkerroin '+todayEv.spawnBoost+'× — odotettavissa enemmän hälytyksiä':todayEv.spawnBoost<1?'Tehtäväkerroin '+todayEv.spawnBoost+'× — rauhallisempi päivä':''}</div></div>`:'<div class="smallnote" style="margin-top:5px">Tavallinen päivä, ei erityistapahtumia.</div>'}
-      ${todayBoostUnits.length?`<div style="margin-top:8px;background:var(--bg3);border-radius:6px;padding:8px;font-size:12.5px"><b>⚡ Päivystyspäivä</b><br><span class="smallnote">${todayBoostUnits.length} yksikköä 1-min valmiudessa:</span><br><span class="mono">${todayBoostUnits.map(u=>u.name).join(', ')}</span></div>`:''}
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <button class="btn-x" onclick="calMove(-1)" style="padding:6px 12px">‹</button>
-      <div style="flex:1;text-align:center;font-weight:700;font-family:var(--fdisp);letter-spacing:1px;text-transform:uppercase">${FIN_MONTHS[month]} ${year}</div>
-      <button class="btn-x" onclick="calMove(1)" style="padding:6px 12px">›</button>
-    </div>
-    ${grid}
-    <div class="card" style="margin-top:14px"><h3>📆 Tulevat tapahtumat (30 pv)</h3>${upcoming||'<div class="smallnote">Ei tulevia tapahtumia.</div>'}</div>
-    <div class="card"><h3>⚡ Yksiköiden päivystyspäivät</h3>
-      <div class="smallnote" style="margin-bottom:8px">Hallitse yksikön päivystyspäiviä aseman yksikkönäkymässä (klikkaa yksikköä → "Aikataulu").</div>
-      ${G.units.filter(u=>u.schedule&&u.schedule.mode==='oncall').length?
-        G.units.filter(u=>u.schedule&&u.schedule.mode==='oncall').map(u=>{
-          const sched=u.schedule||{};
-          const boosts=(sched.boostedDates||[]).filter(d=>d>=isoDate()).slice(0,5);
-          return `<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span class="mono"><b>${u.name}</b></span> · oncall ${Math.round((sched.oncallTurnout||600)/60)}min<br><span class="smallnote">Tulevat 1-min päivät: ${boosts.length?boosts.join(', '):'ei suunniteltuja'}</span></div>`;
-        }).join('')
-        :'<div class="smallnote">Ei päivystysmoduulissa olevia yksiköitä. Aseta aikataulu yksikölle aseman yksikkönäkymässä.</div>'}
-    </div>`;
+const today=gameDate();
+const view=new Date(today);view.setMonth(view.getMonth()+_calViewOffset);view.setDate(1);
+const year=view.getFullYear(),month=view.getMonth();
+const firstDay=new Date(year,month,1);
+const lastDay=new Date(year,month+1,0).getDate();
+const startDow=(firstDay.getDay()+6)%7; // muutetaan ma=0, su=6
+// Rakenna kalenteritaulukko
+let grid=’<table style="width:100%;border-collapse:collapse;text-align:center;font-family:var(--fmono);font-size:12.5px"><tr>’;
+[‘Ma’,‘Ti’,‘Ke’,‘To’,‘Pe’,‘La’,‘Su’].forEach(d=>{grid+=`<th style="padding:4px;color:var(--dim);font-size:10px;letter-spacing:1px">${d}</th>`;});
+grid+=’</tr><tr>’;
+for(let i=0;i<startDow;i++)grid+=’<td style="padding:6px"></td>’;
+let dow=startDow;
+for(let d=1;d<=lastDay;d++){
+const isToday=year===today.getFullYear()&&month===today.getMonth()&&d===today.getDate();
+const ev=CALENDAR_EVENTS.find(e=>e.m===month+1&&e.d===d);
+const boostUnits=G.units.filter(u=>u.schedule&&u.schedule.mode===‘oncall’&&(u.schedule.boostedDates||[]).includes(year+’-’+String(month+1).padStart(2,‘0’)+’-’+String(d).padStart(2,‘0’)));
+let bg=‘var(–bg2)’,col=‘var(–txt)’;
+if(isToday){bg=‘var(–acc)’;col=‘var(–acc-ink)’;}
+else if(ev)bg=’#1a1200’;
+const evIcon=ev?ev.icon:’’;
+const dot=boostUnits.length?’<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acc2);margin-left:2px"></span>’:’’;
+const tooltip=(ev?ev.name:’’)+(boostUnits.length?(ev?’ · ‘:’’)+boostUnits.length+’ yks. boost’:’’);
+grid+=`<td style="padding:6px 2px;border:1px solid var(--line);background:${bg};color:${col};${isToday?'font-weight:800':''}" title="${tooltip}"><div>${d}</div>${evIcon?`<div style="font-size:11px">${evIcon}</div>`:''}${dot}</td>`;
+dow=(dow+1)%7;
+if(dow===0&&d<lastDay)grid+=’</tr><tr>’;
+}
+while(dow!==0){grid+=’<td></td>’;dow=(dow+1)%7;}
+grid+=’</tr></table>’;
+// Tulevat tapahtumat (seuraavat 14 päivää)
+let upcoming=’’;
+for(let off=0;off<30;off++){
+const d=gameDate(off);
+const ev=todayEvent(d);
+if(ev){
+const days=off===0?‘tänään’:off===1?‘huomenna’:off+’ päivän päästä’;
+upcoming+=`<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="font-size:18px">${ev.icon}</span><div style="flex:1"><b>${ev.name}</b><br><span class="smallnote">${fmtGameDate(d)} · ${days}</span></div><span class="smallnote">${ev.spawnBoost>1?'+'+Math.round((ev.spawnBoost-1)*100)+'% tehtäviä':ev.spawnBoost<1?'-'+Math.round((1-ev.spawnBoost)*100)+'% tehtäviä':''}</span></div>`;
+}
+}
+// Tämän hetken tapahtuma
+const todayEv=todayEvent();
+const todayBoostUnits=G.units.filter(u=>u.schedule&&u.schedule.mode===‘oncall’&&(u.schedule.boostedDates||[]).includes(isoDate()));
+document.getElementById(‘smtitle’).textContent=‘📅 Kalenteri’;
+document.getElementById(‘smbody’).innerHTML=` <div style="background:linear-gradient(180deg,#1a1200,#0e1217);border:1px solid var(--acc);border-radius:9px;padding:13px;margin-bottom:12px"> <div style="font-family:var(--fdisp);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:13px;color:var(--acc)">Tänään</div> <div style="font-size:18px;font-weight:700;margin-top:3px">${fmtGameDateLong()}</div> ${todayEv?`<div style="margin-top:8px;font-size:14px">${todayEv.icon} <b>${todayEv.name}</b><div class="smallnote">${todayEv.spawnBoost>1?’Tehtäväkerroin ‘+todayEv.spawnBoost+‘× — odotettavissa enemmän hälytyksiä’:todayEv.spawnBoost<1?‘Tehtäväkerroin ‘+todayEv.spawnBoost+‘× — rauhallisempi päivä’:’’}</div></div>`:'<div class="smallnote" style="margin-top:5px">Tavallinen päivä, ei erityistapahtumia.</div>'} ${todayBoostUnits.length?`<div style="margin-top:8px;background:var(--bg3);border-radius:6px;padding:8px;font-size:12.5px"><b>⚡ Päivystyspäivä</b><br><span class="smallnote">${todayBoostUnits.length} yksikköä 1-min valmiudessa:</span><br><span class="mono">${todayBoostUnits.map(u=>u.name).join(’, ‘)}</span></div>`:''} </div> <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"> <button class="btn-x" onclick="calMove(-1)" style="padding:6px 12px">‹</button> <div style="flex:1;text-align:center;font-weight:700;font-family:var(--fdisp);letter-spacing:1px;text-transform:uppercase">${FIN_MONTHS[month]} ${year}</div> <button class="btn-x" onclick="calMove(1)" style="padding:6px 12px">›</button> </div> ${grid} <div class="card" style="margin-top:14px"><h3>📆 Tulevat tapahtumat (30 pv)</h3>${upcoming||'<div class="smallnote">Ei tulevia tapahtumia.</div>'}</div> <div class="card"><h3>⚡ Yksiköiden päivystyspäivät</h3> <div class="smallnote" style="margin-bottom:8px">Hallitse yksikön päivystyspäiviä aseman yksikkönäkymässä (klikkaa yksikköä → "Aikataulu").</div> ${G.units.filter(u=>u.schedule&&u.schedule.mode==='oncall').length? G.units.filter(u=>u.schedule&&u.schedule.mode==='oncall').map(u=>{ const sched=u.schedule||{}; const boosts=(sched.boostedDates||[]).filter(d=>d>=isoDate()).slice(0,5); return `<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span class="mono"><b>${u.name}</b></span> · oncall ${Math.round((sched.oncallTurnout||600)/60)}min<br><span class="smallnote">Tulevat 1-min päivät: ${boosts.length?boosts.join(’, ’):‘ei suunniteltuja’}</span></div>`; }).join('') :'<div class="smallnote">Ei päivystysmoduulissa olevia yksiköitä. Aseta aikataulu yksikölle aseman yksikkönäkymässä.</div>'} </div>`;
 }
 
-
 async function shareSave(){
-  const code=btoa(unescape(encodeURIComponent(JSON.stringify(serializeGame()))));
-  if(navigator.share){
-    try{
-      await navigator.share({title:'Hätäkeskus tallennuskoodi',text:code});
-      toast('✅ Jaettu!');
-    }catch(e){if(e.name!=='AbortError')toast('Jakaminen epäonnistui');}
-  } else {
-    navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast('📋 Tallennuskoodi kopioitu leikepöydälle')).catch(()=>{});
-  }
+const code=btoa(unescape(encodeURIComponent(JSON.stringify(serializeGame()))));
+if(navigator.share){
+try{
+await navigator.share({title:‘Hätäkeskus tallennuskoodi’,text:code});
+toast(‘✅ Jaettu!’);
+}catch(e){if(e.name!==‘AbortError’)toast(‘Jakaminen epäonnistui’);}
+} else {
+navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast(‘📋 Tallennuskoodi kopioitu leikepöydälle’)).catch(()=>{});
+}
 }
 window.shareSave=shareSave;
 function applyLoaded(d){
-  Object.assign(G,{money:d.money,clock:d.clock,dayCount:d.dayCount||0,startDateISO:d.startDateISO||'2026-01-01',spawnRate:d.spawnRate??1,realisticSpawn:!!d.realisticSpawn,spawnRadius:d.spawnRadius??2.5,season:d.season||'kesä',missDone:d.missDone||0,missClaimed:d.missClaimed||[],randomGoals:d.randomGoals||[]});
-  G._upkeepT=d.upkeepT||d.clock||0;
-  if(d.spawnCenter)G.spawnCenter=d.spawnCenter;
-  G.spawnAreas=d.spawnAreas||[];
-  G.pois=d.pois||[];try{renderPois();}catch(e){}
-  G.disabledStations=d.disabledStations||{};
-  G.customSairaalat=d.customSairaalat||[];
-  G.removedSairaalat=d.removedSairaalat||[];
-  if(typeof d.lastSpawn==='number')lastSpawn=d.lastSpawn;
-  G.openPops=d.openPops||null;
-  if(d.taskStats)G.taskStats=d.taskStats;
-  G.settings=Object.assign(G.settings,d.settings||{});
-  if(d.timeMult)TIME_MULT=d.timeMult;if(d.turnoutMult)TURNOUT_MULT=d.turnoutMult;
-  if(d.radio)G.radio=d.radio;
-  G.vpkValmius=d.vpkValmius||{};
-  G.patrolAreas=d.patrolAreas||{};
-  G.hakeAreaSettings=d.hakeAreaSettings||{};
-  G.hakeStats=d.hakeStats||{};
-  G.boatNodes=d.boatNodes||[];
-  G.boatLanes=d.boatLanes||[];
-  if(d.cloudId!==undefined)G.cloudId=d.cloudId;
-  if(d.cloudEnabled!==undefined)G.cloudEnabled=d.cloudEnabled;
-  // KRIITTINEN: poista KAIKKI vanhat markkerit kartalta ENNEN kuin objektit heitetään pois.
-  // Muuten Leaflet-markkerit jäävät orvoiksi (haamuiksi) kartalle — näin kävi kun pilvisynkka
-  // kutsuu applyLoaded:ia 60 s välein kesken pelin: sama yksikkö ilmestyi useaan kertaan,
-  // tehtävämarkkerit jäivät jumiin ja yksiköt osoittivat poistettuun tehtävään ("matkalla" ikuisesti).
-  try{
-    G.units.forEach(u=>{if(u.marker){map.removeLayer(u.marker);u.marker=null;}});
-    G.tasks.forEach(t=>{if(t.marker){map.removeLayer(t.marker);t.marker=null;}});
-    G.stations.forEach(s=>{if(s.marker){map.removeLayer(s.marker);s.marker=null;}});
-  }catch(e){}
-  G.stations=[];G.units=[];
-  (d.stations||[]).forEach(s=>{G.stations.push(s);addStationMarker(s);});
-  // Lataa tehtävät ensin jotta unit.taskId validoidaan
-  G.tasks=[];(d.tasks||[]).forEach(t=>{
-    const tk=Object.assign({status:'avoin',assigned:[],onScene:false,escDone:false,lead:null,work:0,reqKey:''},t);
-    if(tk.created==null)tk.created=G.clock; // vain jos puuttuu vanhasta tallennuksesta
-    // SAVE-KORJAUS (v83): vanha versio saattoi lisätä need.suoja useita kertoja → tehtävä pyysi suojaa
-    // vaikka säiliöitä/nostolavoja oli jo paikalla. Suojaa tarvitaan KORKEINTAAN 1 → korjaa vanha tallennus.
-    if(tk.need&&tk.need.suoja>1)tk.need.suoja=1;
-    G.tasks.push(tk);tk.marker=makeTaskMarker(tk);
-  });
-  (d.units||[]).forEach(u=>{
-    const st=G.stations.find(x=>x.id===u.stationId);if(!st)return;
-    const nu=addUnit(st,u.vt,u.name);
-    // KRIITTINEN: säilytä alkuperäinen id, jotta tehtävien assigned[]-viittaukset
-    // osoittavat oikeaan yksikköön reloadissa (muuten tehtävä ei etene / yksiköt
-    // näyttävät olevan väärässä tilassa).
-    if(u.id)nu.id=u.id;
-    if(u.crew)nu.crew=u.crew;if(u.turnout!=null)nu.turnout=u.turnout;
-    if(u.muoto)nu.muoto=u.muoto;
-    if(u.schedule)nu.schedule=u.schedule;
-    if(u.atReadyStation)nu.atReadyStation=true;
-    if(u.homeStationId)nu.homeStationId=u.homeStationId;
-    if(u.currentLoad!==undefined)nu.currentLoad=u.currentLoad;
-    if(u.dutyAt)nu.dutyAt=u.dutyAt;
-    if(u.canDriveBoat)nu.canDriveBoat=true;
-    if(u.dutyAtPartial)nu.dutyAtPartial=true;
-    if(u.dutyAtDays)nu.dutyAtDays=u.dutyAtDays;
-    if(u.dutyAtHourStart!=null)nu.dutyAtHourStart=u.dutyAtHourStart;
-    if(u.dutyAtHourEnd!=null)nu.dutyAtHourEnd=u.dutyAtHourEnd;
-    // Sovella duty-sijainti heti latauksen jälkeen
-    if(nu.dutyAt)try{applyDutyLocation(nu);}catch(e){}
-    if(u.lat!=null)nu.lat=u.lat;if(u.lng!=null)nu.lng=u.lng;
-    if(u.hx!=null)nu.hx=u.hx;if(u.hy!=null)nu.hy=u.hy;
-    if(u.patrolling)nu.patrolling=true;
-    if(u.spare)nu.spare=true;
-    if(u.spareScope)nu.spareScope=u.spareScope;
-    if(u.spareCanDispatch)nu.spareCanDispatch=true;
-    if(u.canSukellus)nu.canSukellus=true;
-    if(u._coverFor)nu._coverFor=u._coverFor;
-    if(u._origName)nu._origName=u._origName;
-    if(u._origStation)nu._origStation=u._origStation;
-    if(u.patrolArea)nu.patrolArea=u.patrolArea;
-    if(u.trafficDuty)nu.trafficDuty=true;
-    if(u.patrolRoute)nu.patrolRoute=u.patrolRoute;
-    if(u.patrolRouteIdx)nu.patrolRouteIdx=u.patrolRouteIdx;
-    nu.taskId=u.taskId||null;
-    if(u.departAt)nu.departAt=u.departAt;
-    // Palauta kaikki tilat suoraan
-    const valid=['asema','huolto','muu','kohde','matka','paluu','vapaa_valmius','otettu','kuljetus'];
-    if(valid.includes(u.status))nu.status=u.status;
-    if(u.status==='huolto'&&u.huoltoUntil)nu.huoltoUntil=u.huoltoUntil;
-    if(u.status==='muu'){if(u.omamieli)nu.omamieli=u.omamieli;if(u.omamieliBack)nu.omamieliBack=u.omamieliBack;}
-    // Potilaskuljetus: palauta kuljetustiedot ja reitti sairaalaan
-    if(u.status==='kuljetus'&&u.transport){
-      nu.transport=u.transport;nu.taskId=null;
-      nu.target={lat:u.transport.hlat,lng:u.transport.hlng};
-      fetchRoute(nu.lat,nu.lng,nu.target.lat,nu.target.lng).then(r=>{if(nu.status==='kuljetus'){nu.route=r;nu.ri=0;}});
-    }
-    // Kohteessa oleva yksikkö: pysyy paikallaan, EI hae reittiä (on jo perillä)
-    if(u.status==='kohde'&&u.taskId){
-      const tk=G.tasks.find(t=>t.id===u.taskId);
-      if(tk){nu.target={lat:tk.lat,lng:tk.lng};nu.route=null;nu.ri=0;}
-      else{nu.status='paluu';nu.taskId=null;nu.target={lat:nu.hx,lng:nu.hy};fetchRoute(nu.lat,nu.lng,nu.hx,nu.hy).then(r=>{if(nu.status==='paluu'){nu.route=r;nu.ri=0;}});}
-    }
-    // Matkalla/otettu: aseta target ja hae reitti uudelleen (jatkaa nykysijainnista)
-    if((u.status==='matka'||u.status==='otettu')&&u.taskId){
-      const tk=G.tasks.find(t=>t.id===u.taskId);
-      if(tk){nu.target={lat:tk.lat,lng:tk.lng};}
-      else{nu.status='asema';nu.taskId=null;nu.lat=nu.hx;nu.lng=nu.hy;}
-    }
-    if(u.status==='paluu'){nu.target={lat:nu.hx,lng:nu.hy};}
-    if((nu.status==='matka'||nu.status==='otettu')&&nu.target){
-      fetchRoute(nu.lat,nu.lng,nu.target.lat,nu.target.lng).then(res=>{
-        if((nu.status==='matka'||nu.status==='otettu')&&res){nu.route=res;nu.ri=0;
-          const tk2=G.tasks.find(t=>t.id===nu.taskId);
-          const spd=effectiveSpeed(nu,(tk2&&tk2.urg)||'B');
-          nu.routeEta=G.clock+(nu.departAt&&nu.departAt>G.clock?nu.departAt-G.clock:0)+res.duration/(spd/50);
-          nu.routeDistance=res.distance;
-        }
-      });
-    }
-    if(u.status==='paluu'){fetchRoute(nu.lat,nu.lng,nu.hx,nu.hy).then(r=>{if(nu.status==='paluu'){nu.route=r;nu.ri=0;}});}
-    refreshUnitMarker(nu);
-  });
-  // Varmista ettei uidc törmää ladattuihin id:eihin
-  let maxU=0;G.units.forEach(u=>{const m=/^U(\d+)$/.exec(u.id);if(m)maxU=Math.max(maxU,+m[1]);});
-  if(G.uidc<=maxU)G.uidc=maxU+1;
-  G.packages=d.packages||[];
-  if(d.tidc)G.tidc=d.tidc;if(d.uidc&&d.uidc>G.uidc)G.uidc=d.uidc;
-  // Siivoa rikkinäiset viittaukset: poista assigned-listasta yksiköt joita ei löydy
-  // tai jotka eivät enää ole tällä tehtävällä, ja avaa tehtävä jos tyhjä.
-  G.tasks.forEach(tk=>{
-    if(!tk.assigned)tk.assigned=[];
-    tk.assigned=tk.assigned.filter(id=>{const u=G.units.find(x=>x.id===id);return u&&u.taskId===tk.id;});
-    if(tk.assigned.length===0&&tk.status!=='valmis'){tk.status='avoin';tk.onScene=false;tk.reqKey='';}
-    else if(tk.assigned.length>0&&tk.status==='avoin')tk.status='ajossa';
-    // varmista että johtaja on yhä paikalla
-    if(tk.lead&&!tk.assigned.some(id=>{const u=G.units.find(x=>x.id===id);return u&&u.name===tk.lead;}))tk.lead=null;
-  });
-  // KERTASIIVOUS: vanha bugi jätti yksiköitä jumiin asemavalmiuteen (atReadyStation/vapaa_valmius).
-  // Nollataan ne kerran — pelaaja voi laittaa valmiuteen uudelleen halutessaan.
-  if(!d.readyMigrated){
-    G.units.forEach(u=>{u.atReadyStation=false;u._holidayBoostCache=null;if(u.status==='vapaa_valmius'&&!u.taskId)u.status='asema';});
-    G.vpkValmius={};
-    G._readyMigrated=true;
-  } else {G._readyMigrated=true;}
-  ensureVpkChannels();renderList&&renderList();updateBadge&&updateBadge();
-  // KÄYTTÄJÄ: estä "yhtäkkiä saavutit monta tavoitetta" -ilmoitukset latauksen/pilvisynkan jälkeen.
-  // Merkitse JO valmiit tavoitteet ilmoitetuiksi → vain UUDET valmistumiset toastataan. (Tämä ajetaan
-  // KAIKISSA latauspoluissa, myös pilviadoptiossa fbLoadUserSave/fbPeriodicPull/fbForcePull.)
-  try{ G._goalNotified=G._goalNotified||{}; getGoals().forEach(g=>{ if(goalProgress(g)>=g.n) G._goalNotified[g.id]=true; }); }catch(e){}
+Object.assign(G,{money:d.money,clock:d.clock,dayCount:d.dayCount||0,startDateISO:d.startDateISO||‘2026-01-01’,spawnRate:d.spawnRate??1,realisticSpawn:!!d.realisticSpawn,spawnRadius:d.spawnRadius??2.5,season:d.season||‘kesä’,missDone:d.missDone||0,missClaimed:d.missClaimed||[],randomGoals:d.randomGoals||[]});
+G._upkeepT=d.upkeepT||d.clock||0;
+if(d.spawnCenter)G.spawnCenter=d.spawnCenter;
+G.spawnAreas=d.spawnAreas||[];
+G.pois=d.pois||[];try{renderPois();}catch(e){}
+G.disabledStations=d.disabledStations||{};
+G.customSairaalat=d.customSairaalat||[];
+G.removedSairaalat=d.removedSairaalat||[];
+if(typeof d.lastSpawn===‘number’)lastSpawn=d.lastSpawn;
+G.openPops=d.openPops||null;
+if(d.taskStats)G.taskStats=d.taskStats;
+G.settings=Object.assign(G.settings,d.settings||{});
+if(d.timeMult)TIME_MULT=d.timeMult;if(d.turnoutMult)TURNOUT_MULT=d.turnoutMult;
+if(d.radio)G.radio=d.radio;
+G.vpkValmius=d.vpkValmius||{};
+G.patrolAreas=d.patrolAreas||{};
+G.hakeAreaSettings=d.hakeAreaSettings||{};
+G.hakeStats=d.hakeStats||{};
+G.boatNodes=d.boatNodes||[];
+G.boatLanes=d.boatLanes||[];
+if(d.cloudId!==undefined)G.cloudId=d.cloudId;
+if(d.cloudEnabled!==undefined)G.cloudEnabled=d.cloudEnabled;
+// KRIITTINEN: poista KAIKKI vanhat markkerit kartalta ENNEN kuin objektit heitetään pois.
+// Muuten Leaflet-markkerit jäävät orvoiksi (haamuiksi) kartalle — näin kävi kun pilvisynkka
+// kutsuu applyLoaded:ia 60 s välein kesken pelin: sama yksikkö ilmestyi useaan kertaan,
+// tehtävämarkkerit jäivät jumiin ja yksiköt osoittivat poistettuun tehtävään (“matkalla” ikuisesti).
+try{
+G.units.forEach(u=>{if(u.marker){map.removeLayer(u.marker);u.marker=null;}});
+G.tasks.forEach(t=>{if(t.marker){map.removeLayer(t.marker);t.marker=null;}});
+G.stations.forEach(s=>{if(s.marker){map.removeLayer(s.marker);s.marker=null;}});
+}catch(e){}
+G.stations=[];G.units=[];
+(d.stations||[]).forEach(s=>{G.stations.push(s);addStationMarker(s);});
+// Lataa tehtävät ensin jotta unit.taskId validoidaan
+G.tasks=[];(d.tasks||[]).forEach(t=>{
+const tk=Object.assign({status:‘avoin’,assigned:[],onScene:false,escDone:false,lead:null,work:0,reqKey:’’},t);
+if(tk.created==null)tk.created=G.clock; // vain jos puuttuu vanhasta tallennuksesta
+// SAVE-KORJAUS (v83): vanha versio saattoi lisätä need.suoja useita kertoja → tehtävä pyysi suojaa
+// vaikka säiliöitä/nostolavoja oli jo paikalla. Suojaa tarvitaan KORKEINTAAN 1 → korjaa vanha tallennus.
+if(tk.need&&tk.need.suoja>1)tk.need.suoja=1;
+G.tasks.push(tk);tk.marker=makeTaskMarker(tk);
+});
+(d.units||[]).forEach(u=>{
+const st=G.stations.find(x=>x.id===u.stationId);if(!st)return;
+const nu=addUnit(st,u.vt,u.name);
+// KRIITTINEN: säilytä alkuperäinen id, jotta tehtävien assigned[]-viittaukset
+// osoittavat oikeaan yksikköön reloadissa (muuten tehtävä ei etene / yksiköt
+// näyttävät olevan väärässä tilassa).
+if(u.id)nu.id=u.id;
+if(u.crew)nu.crew=u.crew;if(u.turnout!=null)nu.turnout=u.turnout;
+if(u.muoto)nu.muoto=u.muoto;
+if(u.schedule)nu.schedule=u.schedule;
+if(u.atReadyStation)nu.atReadyStation=true;
+if(u._atReadyUntil)nu._atReadyUntil=u._atReadyUntil;
+if(u.homeStationId)nu.homeStationId=u.homeStationId;
+if(u.currentLoad!==undefined)nu.currentLoad=u.currentLoad;
+if(u.dutyAt)nu.dutyAt=u.dutyAt;
+if(u.canDriveBoat)nu.canDriveBoat=true;
+if(u.dutyAtPartial)nu.dutyAtPartial=true;
+if(u.dutyAtDays)nu.dutyAtDays=u.dutyAtDays;
+if(u.dutyAtHourStart!=null)nu.dutyAtHourStart=u.dutyAtHourStart;
+if(u.dutyAtHourEnd!=null)nu.dutyAtHourEnd=u.dutyAtHourEnd;
+// Sovella duty-sijainti heti latauksen jälkeen
+if(nu.dutyAt)try{applyDutyLocation(nu);}catch(e){}
+if(u.lat!=null)nu.lat=u.lat;if(u.lng!=null)nu.lng=u.lng;
+if(u.hx!=null)nu.hx=u.hx;if(u.hy!=null)nu.hy=u.hy;
+if(u.patrolling)nu.patrolling=true;
+if(u.spare)nu.spare=true;
+if(u.spareScope)nu.spareScope=u.spareScope;
+if(u.spareCanDispatch)nu.spareCanDispatch=true;
+if(u.canSukellus)nu.canSukellus=true;
+if(u._coverFor)nu._coverFor=u._coverFor;
+if(u._origName)nu._origName=u._origName;
+if(u._origStation)nu._origStation=u._origStation;
+if(u.patrolArea)nu.patrolArea=u.patrolArea;
+if(u.trafficDuty)nu.trafficDuty=true;
+if(u.patrolRoute)nu.patrolRoute=u.patrolRoute;
+if(u.patrolRouteIdx)nu.patrolRouteIdx=u.patrolRouteIdx;
+nu.taskId=u.taskId||null;
+if(u.departAt)nu.departAt=u.departAt;
+// Palauta kaikki tilat suoraan
+const valid=[‘asema’,‘huolto’,‘muu’,‘kohde’,‘matka’,‘paluu’,‘vapaa_valmius’,‘otettu’,‘kuljetus’];
+if(valid.includes(u.status))nu.status=u.status;
+if(u.status===‘huolto’&&u.huoltoUntil)nu.huoltoUntil=u.huoltoUntil;
+if(u.status===‘muu’){if(u.omamieli)nu.omamieli=u.omamieli;if(u.omamieliBack)nu.omamieliBack=u.omamieliBack;}
+// Potilaskuljetus: palauta kuljetustiedot ja reitti sairaalaan
+if(u.status===‘kuljetus’&&u.transport){
+nu.transport=u.transport;nu.taskId=null;
+nu.target={lat:u.transport.hlat,lng:u.transport.hlng};
+fetchRoute(nu.lat,nu.lng,nu.target.lat,nu.target.lng).then(r=>{if(nu.status===‘kuljetus’){nu.route=r;nu.ri=0;}});
+}
+// Kohteessa oleva yksikkö: pysyy paikallaan, EI hae reittiä (on jo perillä)
+if(u.status===‘kohde’&&u.taskId){
+const tk=G.tasks.find(t=>t.id===u.taskId);
+if(tk){nu.target={lat:tk.lat,lng:tk.lng};nu.route=null;nu.ri=0;}
+else{nu.status=‘paluu’;nu.taskId=null;nu.target={lat:nu.hx,lng:nu.hy};fetchRoute(nu.lat,nu.lng,nu.hx,nu.hy).then(r=>{if(nu.status===‘paluu’){nu.route=r;nu.ri=0;}});}
+}
+// Matkalla/otettu: aseta target ja hae reitti uudelleen (jatkaa nykysijainnista)
+if((u.status===‘matka’||u.status===‘otettu’)&&u.taskId){
+const tk=G.tasks.find(t=>t.id===u.taskId);
+if(tk){nu.target={lat:tk.lat,lng:tk.lng};}
+else{nu.status=‘asema’;nu.taskId=null;nu.lat=nu.hx;nu.lng=nu.hy;}
+}
+if(u.status===‘paluu’){nu.target={lat:nu.hx,lng:nu.hy};}
+if((nu.status===‘matka’||nu.status===‘otettu’)&&nu.target){
+fetchRoute(nu.lat,nu.lng,nu.target.lat,nu.target.lng).then(res=>{
+if((nu.status===‘matka’||nu.status===‘otettu’)&&res){nu.route=res;nu.ri=0;
+const tk2=G.tasks.find(t=>t.id===nu.taskId);
+const spd=effectiveSpeed(nu,(tk2&&tk2.urg)||‘B’);
+nu.routeEta=G.clock+(nu.departAt&&nu.departAt>G.clock?nu.departAt-G.clock:0)+res.duration/(spd/50);
+nu.routeDistance=res.distance;
+}
+});
+}
+if(u.status===‘paluu’){fetchRoute(nu.lat,nu.lng,nu.hx,nu.hy).then(r=>{if(nu.status===‘paluu’){nu.route=r;nu.ri=0;}});}
+refreshUnitMarker(nu);
+});
+// Varmista ettei uidc törmää ladattuihin id:eihin
+let maxU=0;G.units.forEach(u=>{const m=/^U(\d+)$/.exec(u.id);if(m)maxU=Math.max(maxU,+m[1]);});
+if(G.uidc<=maxU)G.uidc=maxU+1;
+G.packages=d.packages||[];
+if(d.tidc)G.tidc=d.tidc;if(d.uidc&&d.uidc>G.uidc)G.uidc=d.uidc;
+// Siivoa rikkinäiset viittaukset: poista assigned-listasta yksiköt joita ei löydy
+// tai jotka eivät enää ole tällä tehtävällä, ja avaa tehtävä jos tyhjä.
+G.tasks.forEach(tk=>{
+if(!tk.assigned)tk.assigned=[];
+tk.assigned=tk.assigned.filter(id=>{const u=G.units.find(x=>x.id===id);return u&&u.taskId===tk.id;});
+if(tk.assigned.length===0&&tk.status!==‘valmis’){tk.status=‘avoin’;tk.onScene=false;tk.reqKey=’’;}
+else if(tk.assigned.length>0&&tk.status===‘avoin’)tk.status=‘ajossa’;
+// varmista että johtaja on yhä paikalla
+if(tk.lead&&!tk.assigned.some(id=>{const u=G.units.find(x=>x.id===id);return u&&u.name===tk.lead;}))tk.lead=null;
+});
+// KERTASIIVOUS: vanha bugi jätti yksiköitä jumiin asemavalmiuteen (atReadyStation/vapaa_valmius).
+// Nollataan ne kerran — pelaaja voi laittaa valmiuteen uudelleen halutessaan.
+if(!d.readyMigrated){
+G.units.forEach(u=>{u.atReadyStation=false;u._holidayBoostCache=null;if(u.status===‘vapaa_valmius’&&!u.taskId)u.status=‘asema’;});
+G.vpkValmius={};
+G._readyMigrated=true;
+} else {G._readyMigrated=true;}
+ensureVpkChannels();renderList&&renderList();updateBadge&&updateBadge();
+// KÄYTTÄJÄ: estä “yhtäkkiä saavutit monta tavoitetta” -ilmoitukset latauksen/pilvisynkan jälkeen.
+// Merkitse JO valmiit tavoitteet ilmoitetuiksi → vain UUDET valmistumiset toastataan. (Tämä ajetaan
+// KAIKISSA latauspoluissa, myös pilviadoptiossa fbLoadUserSave/fbPeriodicPull/fbForcePull.)
+try{ G._goalNotified=G._goalNotified||{}; getGoals().forEach(g=>{ if(goalProgress(g)>=g.n) G._goalNotified[g.id]=true; }); }catch(e){}
 }
 
 /* OFFLINE-AIKA: peliaika pyörii taustalla kun peli on suljettuna.
-   - Edistetään G.clock + dayCount reaali-ajan mukaan, MUTTA ei ylläpitokuluja
-     siltä ajalta (vältetään isoja yllätyslaskuja).
-   - Ylläpidon ajastin G._upkeepT siirretään samaan kohtaan G.clockin kanssa.
-   - Tehtäviä spawnataan korkeintaan muutama (että ei ole 50 tehtävää ruudulla).
-*/
-// OFFLINE-SIMULAATIO: aja peliä eteenpäin "pikakelauksella" — yksiköt liikkuvat,
-// tehtävät etenevät ja valmistuvat, mutta EI ylläpitokuluja, radiospämiä eikä
-// markkeripäivityksiä (perf). Yksi visuaalinen pass lopussa.
-function simulateOffline(totalSec){
+
+- Edistetään G.clock + dayCount reaali-ajan mukaan, MUTTA ei ylläpitokuluja
+  siltä ajalta (vältetään isoja yllätyslaskuja).
+- Ylläpidon ajastin G._upkeepT siirretään samaan kohtaan G.clockin kanssa.
+- Tehtäviä spawnataan korkeintaan muutama (että ei ole 50 tehtävää ruudulla).
+  */
+  // OFFLINE-SIMULAATIO: aja peliä eteenpäin “pikakelauksella” — yksiköt liikkuvat,
+  // tehtävät etenevät ja valmistuvat, mutta EI ylläpitokuluja, radiospämiä eikä
+  // markkeripäivityksiä (perf). Yksi visuaalinen pass lopussa.
+  function simulateOffline(totalSec){
   if(totalSec<=0)return;
   G._offlineSim=true;
   const MAX_ITER=2000;
   const step=Math.max(3,Math.ceil(totalSec/MAX_ITER));
   let elapsed=0,safety=0;
   while(elapsed<totalSec&&safety<MAX_ITER+50){
-    safety++;
-    const dt=Math.min(step,totalSec-elapsed);
-    G.clock+=dt;
-    if(G.clock>=86400){const days=Math.floor(G.clock/86400);G.dayCount=(G.dayCount||0)+days;G.clock-=days*86400;}
-    // Yksiköiden liike + huollon valmistuminen
-    G.units.forEach(u=>{
-      if(u.status==='huolto'&&u.huoltoUntil&&G.clock>u.huoltoUntil){u.status='asema';u.huoltoUntil=null;}
-      try{moveUnit(u,dt);}catch(e){}
-    });
-    // Tehtävien eteneminen ja valmistuminen (EI checkNeglect → ei rankaista offline-ajalta)
-    G.tasks.slice().forEach(t=>{try{progressTask(t,dt);}catch(e){}});
-    elapsed+=dt;
+  safety++;
+  const dt=Math.min(step,totalSec-elapsed);
+  G.clock+=dt;
+  if(G.clock>=86400){const days=Math.floor(G.clock/86400);G.dayCount=(G.dayCount||0)+days;G.clock-=days*86400;}
+  // Yksiköiden liike + huollon valmistuminen
+  G.units.forEach(u=>{
+  if(u.status===‘huolto’&&u.huoltoUntil&&G.clock>u.huoltoUntil){u.status=‘asema’;u.huoltoUntil=null;}
+  try{moveUnit(u,dt);}catch(e){}
+  });
+  // Tehtävien eteneminen ja valmistuminen (EI checkNeglect → ei rankaista offline-ajalta)
+  G.tasks.slice().forEach(t=>{try{progressTask(t,dt);}catch(e){}});
+  elapsed+=dt;
   }
   G._offlineSim=false;
   // Siirrä ylläpidon ajastin nykyhetkeen — ei isoja laskuja offline-ajalta
   G._upkeepT=G.clock;
   // KRIITTINEN: nollaa odottavien (ei vielä saavutettujen) tehtävien ajastin, ettei checkNeglect
-  // anna heti sakkoja offline-kellon hypyn takia (tämä aiheutti "menetin rahaa poissa ollessa").
+  // anna heti sakkoja offline-kellon hypyn takia (tämä aiheutti “menetin rahaa poissa ollessa”).
   G.tasks.forEach(t=>{
-    if(t.status!=='valmis'&&!t.firstArrival){t.created=G.clock;t.warned=false;t.escNeglect=false;}
+  if(t.status!==‘valmis’&&!t.firstArrival){t.created=G.clock;t.warned=false;t.escNeglect=false;}
   });
   // Visuaalinen päivitys kerran
   try{G.units.forEach(refreshUnitMarker);}catch(e){}
   try{renderList();updateBadge();}catch(e){}
-}
-function spawnCatchUp(){
+  }
+  function spawnCatchUp(){
+  // Aja VAIN KERRAN sivun latauksen aikana — sama funktio kutsutaan sekä paikallisesta latauksesta
+  // (loadGame) että pilvilatauksesta (fbLoadUserSave). Kumpi ehtii ensin oikealla aikaleimalla, ajaa
+  // etenemisen; toinen ohitetaan ettei aika hyppää kahteen kertaan.
+  if(G._catchUpRan)return;
   const realNow=Date.now();const savedTs=G.lastSaveTs||0;
   if(!savedTs)return;
   const realGapMs=Math.min(realNow-savedTs,7*24*60*60*1000);
   if(realGapMs<60*1000)return;
+  G._catchUpRan=true;
   const gameGapSec=Math.floor(realGapMs/1000*TIME_MULT);
   // AJA offline-simulaatio: yksiköt saapuvat, tehtävät etenevät/valmistuvat
   simulateOffline(gameGapSec);
@@ -6688,21 +6763,21 @@ function spawnCatchUp(){
   // Katto 48 peli-tuntia jottei kerry valtavia summia pitkästä tauosta.
   const offHours=Math.min(3,Math.floor(gameGapSec/3600)); // KATTO 3 peli-tuntia (oli 48) — ei valtavia passiivisia summia poissaolosta; raha tulee pääosin offline-suoritetuista tehtävistä
   if(offHours>0){
-    let perH=0;
-    G.stations.forEach(s=>{
-      perH+=s.t==='hems'?220:s.t==='pelastus'?180:s.t==='ensihoito'?180:s.t==='poliisi'?150:70;
-      perH+=G.units.filter(u=>u.stationId===s.id&&!u._coverFor).length*12;
-    });
-    const offIncome=perH*offHours;
-    if(offIncome>0){G.money+=offIncome;updateMoney();G._offlineIncome=offIncome;}
+  let perH=0;
+  G.stations.forEach(s=>{
+  perH+=s.t===‘hems’?220:s.t===‘pelastus’?180:s.t===‘ensihoito’?180:s.t===‘poliisi’?150:70;
+  perH+=G.units.filter(u=>u.stationId===s.id&&!u._coverFor).length*12;
+  });
+  const offIncome=perH*offHours;
+  if(offIncome>0){G.money+=offIncome;updateMoney();G._offlineIncome=offIncome;}
   }
   // Päivitä päivämäärä-UI
-  try{document.getElementById('gamedate').textContent=fmtGameDate();const ev=todayEvent();const evEl=document.getElementById('eventpill');if(evEl){if(ev){evEl.style.display='';evEl.innerHTML=ev.icon+' <b>'+ev.name+'</b>';}else{evEl.style.display='none';}}}catch(e){}
+  try{document.getElementById(‘gamedate’).textContent=fmtGameDate();const ev=todayEvent();const evEl=document.getElementById(‘eventpill’);if(evEl){if(ev){evEl.style.display=’’;evEl.innerHTML=ev.icon+’ <b>’+ev.name+’</b>’;}else{evEl.style.display=‘none’;}}}catch(e){}
   const realMin=Math.round(realGapMs/60000);
   const gameMin=Math.round(gameGapSec/60);
-  const realTxt=realMin>=60?Math.floor(realMin/60)+'h '+(realMin%60)+'min':realMin+' min';
-  const gameTxt=gameMin>=60?Math.floor(gameMin/60)+'h '+(gameMin%60)+'min':gameMin+' min';
-  if(realMin>=5)setTimeout(()=>toast('🕐 Olit poissa '+realTxt+' (peliaikana '+gameTxt+'). Yksiköt etenivät taustalla'+(G._offlineIncome?'. Valtion tuki +'+G._offlineIncome.toLocaleString('fi-FI')+'€':'')+'.'),800);
+  const realTxt=realMin>=60?Math.floor(realMin/60)+‘h ‘+(realMin%60)+‘min’:realMin+’ min’;
+  const gameTxt=gameMin>=60?Math.floor(gameMin/60)+‘h ‘+(gameMin%60)+‘min’:gameMin+’ min’;
+  if(realMin>=5)setTimeout(()=>toast(‘🕐 Olit poissa ‘+realTxt+’ (peliaikana ‘+gameTxt+’). Yksiköt etenivät taustalla’+(G._offlineIncome?’. Valtion tuki +’+G._offlineIncome.toLocaleString(‘fi-FI’)+‘€’:’’)+’.’),800);
   // Lisää uusia tehtäviä (kunnioita spawnRate 0 ja offlineMaxTasks-asetus)
   if(!G.spawnRate||G.spawnRate<=0)return;
   const maxOffline=G.settings.offlineMaxTasks??3;
@@ -6710,72 +6785,73 @@ function spawnCatchUp(){
   const extraTasks=Math.min(maxOffline,Math.floor(realGapMs/600000));
   if(extraTasks<1)return;
   let added=0;
-  function tryAdd(){if(added>=extraTasks||G.tasks.filter(t=>t.status!=='valmis').length>8)return;added++;spawnTask().then(()=>setTimeout(tryAdd,500));}
+  function tryAdd(){if(added>=extraTasks||G.tasks.filter(t=>t.status!==‘valmis’).length>8)return;added++;spawnTask().then(()=>setTimeout(tryAdd,500));}
   setTimeout(tryAdd,2500);
-}
-async function loadGame(){try{const code=localStorage.getItem('hatakeskus_code');if(code){const d=JSON.parse(decodeURIComponent(escape(atob(code))));G.lastSaveTs=d.lastSaveTs||0;applyLoaded(d);spawnCatchUp();return true;}}catch(e){}try{const r=await window.storage.get('hatakeskus_v2');if(r&&r.value){const d=JSON.parse(r.value);G.lastSaveTs=d.lastSaveTs||0;applyLoaded(d);spawnCatchUp();return true;}}catch(e){}return false;}
-let _isWiping=false;
-async function wipe(){
+  }
+  async function loadGame(){try{const code=localStorage.getItem(‘hatakeskus_code’);if(code){const d=JSON.parse(decodeURIComponent(escape(atob(code))));G.lastSaveTs=d.lastSaveTs||0;applyLoaded(d);spawnCatchUp();return true;}}catch(e){}try{const r=await window.storage.get(‘hatakeskus_v2’);if(r&&r.value){const d=JSON.parse(r.value);G.lastSaveTs=d.lastSaveTs||0;applyLoaded(d);spawnCatchUp();return true;}}catch(e){}return false;}
+  let _isWiping=false;
+  async function wipe(){
   _isWiping=true; // estä beforeunload tallentamasta peliä takaisin
   // PILVI: poista myös pilvitallennus, ettei vanha peli palaa heti takaisin synkan kautta nollauksen
   // jälkeen. Race 3s timeoutilla, ettei reload jää jumiin jos verkko on hidas/poikki.
-  if(fbReady&&G.user){try{await Promise.race([fbDb.collection('saves').doc(G.user.uid).delete(),new Promise(r=>setTimeout(r,3000))]);}catch(e){}}
-  try{window.storage.delete('hatakeskus_v2');}catch(e){}
-  try{localStorage.removeItem('hatakeskus_code');}catch(e){}
-  try{localStorage.removeItem('hatakeskus_v2');}catch(e){}
+  if(fbReady&&G.user){try{await Promise.race([fbDb.collection(‘saves’).doc(G.user.uid).delete(),new Promise(r=>setTimeout(r,3000))]);}catch(e){}}
+  try{window.storage.delete(‘hatakeskus_v2’);}catch(e){}
+  try{localStorage.removeItem(‘hatakeskus_code’);}catch(e){}
+  try{localStorage.removeItem(‘hatakeskus_v2’);}catch(e){}
   _myPushTs=0; G.lastSaveTs=0;
   location.reload();
-}
+  }
 
 /* ===== KÄYNNISTYS ===== */
 async function init(){
-  ensureChannels();
-  G.selChannel=Object.keys(G.radio)[0];
-  const loaded=await loadGame();
-  // TILIT & PILVITALLENNUS: alusta Firebase. Kun käyttäjä kirjautuu, onAuthStateChanged lataa
-  // hänen tallennuksensa pilvestä (fbLoadUserSave). Jos configia ei ole → vain paikallinen.
-  try{fbInit();}catch(e){}
-  G.units.forEach(u=>refreshUnitMarker(u));
-  updateMoney();renderList();updateBadge();
-  // Päivitä päivämäärä-näkymä alkutilaan
-  try{document.getElementById('gamedate').textContent=fmtGameDate();const ev=todayEvent();const evEl=document.getElementById('eventpill');if(evEl){if(ev){evEl.style.display='';evEl.innerHTML=ev.icon+' <b>'+ev.name+'</b>';}else{evEl.style.display='none';}}}catch(e){}
-  // Pidä haastetavoitteet täynnä alkuun
-  try{maintainRandomGoals();
-    // Merkitse KAIKKI jo-saavutetut tavoitteet ilmoitetuiksi heti latauksessa,
-    // jotta vanhat (jo täytetyt/lunastetut) tavoitteet eivät ilmoita uudestaan joka tehtävän jälkeen.
-    G._goalNotified=G._goalNotified||{};
-    getGoals().forEach(g=>{if(goalProgress(g)>=g.n)G._goalNotified[g.id]=true;});
-    updateGoalNotif();
-  }catch(e){}
-  if(!loaded){
-    if(location.hostname==='localhost'||location.hostname==='127.0.0.1'){
-      // Ensimmäinen avaus localhost-tilassa — vanha data on file://-originissa
-      setTimeout(()=>{toast('💡 Siirrä aiempi tallennuksesi: Asetukset → Siirrä peli → Kopioi koodi (vanhassa pelissä) → Liitä tähän. Nyt pilvisynkronointi toimii!');},1500);
-    } else {
-      toast('Tervetuloa! Rakenna ensin asema Asemat-välilehdeltä.');
-    }
-  }
-  currentNav='map';
-  // Palauta spawnsel-valinta tallennetusta tilasta
-  try{const ss=document.getElementById('spawnsel');if(ss){if(G.realisticSpawn)ss.value='real';else{const v=String(G.spawnRate);if([...ss.options].some(o=>o.value===v))ss.value=v;}}}catch(e){}
-  setTimeout(()=>{try{restorePops();}catch(e){}},300);
-  HAKEKESKUKSET.forEach(h=>{const m=L.marker([h.lat,h.lng],{icon:L.divIcon({html:`<div class="smk">📞</div>`,className:'',iconSize:[20,20],iconAnchor:[10,10]})}).addTo(map).bindTooltip(h.n+' — klikkaa');m.on('click',()=>openHake(h.n));});
-  renderHospitals();
-  let last=performance.now();
-  setInterval(()=>{const now=performance.now();let real=(now-last)/1000;last=now;if(real>1)real=1;tick(real*TIME_MULT);updateFab();updateDispatchLive();},150);
-  setInterval(()=>saveGame(false),20000);
-  // KRIITTINEN: tallenna heti kun peli suljetaan tai ikkuna piilotetaan,
-  // jotta yksiköiden hälytykset ja asetukset eivät katoa.
-  // POIKKEUS: jos käyttäjä nollasi pelin (wipe), älä tallenna takaisin!
-  window.addEventListener('beforeunload',()=>{if(_isWiping)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
-  document.addEventListener('visibilitychange',()=>{if(_isWiping||!document.hidden)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
-  // PAGEHIDE: luotettavin "sovellus suljetaan/taustalle" -signaali (etenkin puhelin) → työnnä pilveen
-  // HETI, ettei tarvitse painaa "Tallenna nyt". Firestoren offline-jono lähettää sen kun verkko palaa.
-  window.addEventListener('pagehide',()=>{if(_isWiping)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
-  // Ikkunan koon muutos / puhelimen kääntö: pidä avoimet radioikkunat näytöllä
-  window.addEventListener('resize',()=>{try{Object.values(openRadioWins).forEach(w=>{if(w&&w.style.display!=='none')clampWinIntoView(w);});}catch(e){}});
+ensureChannels();
+G.selChannel=Object.keys(G.radio)[0];
+const loaded=await loadGame();
+// TILIT & PILVITALLENNUS: alusta Firebase. Kun käyttäjä kirjautuu, onAuthStateChanged lataa
+// hänen tallennuksensa pilvestä (fbLoadUserSave). Jos configia ei ole → vain paikallinen.
+try{fbInit();}catch(e){}
+G.units.forEach(u=>refreshUnitMarker(u));
+updateMoney();renderList();updateBadge();
+// Päivitä päivämäärä-näkymä alkutilaan
+try{document.getElementById(‘gamedate’).textContent=fmtGameDate();const ev=todayEvent();const evEl=document.getElementById(‘eventpill’);if(evEl){if(ev){evEl.style.display=’’;evEl.innerHTML=ev.icon+’ <b>’+ev.name+’</b>’;}else{evEl.style.display=‘none’;}}}catch(e){}
+// Pidä haastetavoitteet täynnä alkuun
+try{maintainRandomGoals();
+// Merkitse KAIKKI jo-saavutetut tavoitteet ilmoitetuiksi heti latauksessa,
+// jotta vanhat (jo täytetyt/lunastetut) tavoitteet eivät ilmoita uudestaan joka tehtävän jälkeen.
+G._goalNotified=G._goalNotified||{};
+getGoals().forEach(g=>{if(goalProgress(g)>=g.n)G._goalNotified[g.id]=true;});
+updateGoalNotif();
+}catch(e){}
+if(!loaded){
+if(location.hostname===‘localhost’||location.hostname===‘127.0.0.1’){
+// Ensimmäinen avaus localhost-tilassa — vanha data on file://-originissa
+setTimeout(()=>{toast(‘💡 Siirrä aiempi tallennuksesi: Asetukset → Siirrä peli → Kopioi koodi (vanhassa pelissä) → Liitä tähän. Nyt pilvisynkronointi toimii!’);},1500);
+} else {
+toast(‘Tervetuloa! Rakenna ensin asema Asemat-välilehdeltä.’);
+}
+}
+currentNav=‘map’;
+// Palauta spawnsel-valinta tallennetusta tilasta
+try{const ss=document.getElementById(‘spawnsel’);if(ss){if(G.realisticSpawn)ss.value=‘real’;else{const v=String(G.spawnRate);if([…ss.options].some(o=>o.value===v))ss.value=v;}}}catch(e){}
+setTimeout(()=>{try{restorePops();}catch(e){}},300);
+HAKEKESKUKSET.forEach(h=>{const m=L.marker([h.lat,h.lng],{icon:L.divIcon({html:`<div class="smk">📞</div>`,className:’’,iconSize:[20,20],iconAnchor:[10,10]})}).addTo(map).bindTooltip(h.n+’ — klikkaa’);m.on(‘click’,()=>openHake(h.n));});
+renderHospitals();
+let last=performance.now();
+setInterval(()=>{const now=performance.now();let real=(now-last)/1000;last=now;if(real>1)real=1;tick(real*TIME_MULT);updateFab();updateDispatchLive();},150);
+setInterval(()=>saveGame(false),20000);
+// KRIITTINEN: tallenna heti kun peli suljetaan tai ikkuna piilotetaan,
+// jotta yksiköiden hälytykset ja asetukset eivät katoa.
+// POIKKEUS: jos käyttäjä nollasi pelin (wipe), älä tallenna takaisin!
+window.addEventListener(‘beforeunload’,()=>{if(_isWiping)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
+document.addEventListener(‘visibilitychange’,()=>{if(_isWiping||!document.hidden)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
+// PAGEHIDE: luotettavin “sovellus suljetaan/taustalle” -signaali (etenkin puhelin) → työnnä pilveen
+// HETI, ettei tarvitse painaa “Tallenna nyt”. Firestoren offline-jono lähettää sen kun verkko palaa.
+window.addEventListener(‘pagehide’,()=>{if(_isWiping)return;try{saveGame(false);}catch(e){}try{if(fbReady&&G.user)fbPushDo();}catch(e){}});
+// Ikkunan koon muutos / puhelimen kääntö: pidä avoimet radioikkunat näytöllä
+window.addEventListener(‘resize’,()=>{try{Object.values(openRadioWins).forEach(w=>{if(w&&w.style.display!==‘none’)clampWinIntoView(w);});}catch(e){}});
 }
 init();
 </script>
+
 </body>
 </html>
