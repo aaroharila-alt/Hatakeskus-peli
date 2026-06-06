@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
 <!-- HÄTÄKESKUS - dispatch sim v88 (Kohdepisteet eivät enää poistu vahingossa: poisto vain muokkaustilassa JA kysyy varmistuksen. Normaalipelissä kohdepisteen klikkaus ei tee mitään. Muuten kuten v87) -->
 <!-- HÄTÄKESKUS - dispatch sim v87 (ETA-järjestys korjattu: lähetyslistan arvio saattoi näyttää kaukaisemman aseman lähempää nopeampana, koska se vertaili OIKEAA tiereittiä (jo ladattu, pidempi) optimistiseen linnuntie-arvioon. Korjaus: linnuntie-arvion kerroin 1.32 -> 1.55 (vesistöt/sillat huomioiden, esim. saaret), ja OSRM-tiereitti haetaan 14 lähimmälle asemalle (oli 10) jotta järjestys perustuu oikeisiin teihin. Muuten kuten v86) -->
@@ -476,7 +477,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v89'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v90'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -6842,8 +6843,11 @@ function spawnCatchUp(){
   if(realGapMs<60*1000)return;
   G._catchUpRan=true;
   const gameGapSec=Math.floor(realGapMs/1000*TIME_MULT);
-  // AJA offline-simulaatio: yksiköt saapuvat, tehtävät etenevät/valmistuvat
+  // AJA offline-simulaatio: yksiköt ajavat, tehtävät etenevät, kuljetukset ja paluut valmistuvat.
+  // Otetaan ennen-tilanne talteen jotta voidaan kertoa montako tehtävää valmistui poissaolon aikana.
+  const _preOpenIds=G.tasks.filter(t=>t.status!=='valmis').map(t=>t.id);
   simulateOffline(gameGapSec);
+  const _completedOff=_preOpenIds.filter(id=>{const t=G.tasks.find(x=>x.id===id);return !t||t.status==='valmis';}).length;
   // OFFLINE-TULO: myönnä valtion tuki kuluneilta peli-tunneilta (et menetä rahaa poissa ollessa).
   // Katto 48 peli-tuntia jottei kerry valtavia summia pitkästä tauosta.
   const offHours=Math.min(3,Math.floor(gameGapSec/3600)); // KATTO 3 peli-tuntia (oli 48) — ei valtavia passiivisia summia poissaolosta; raha tulee pääosin offline-suoritetuista tehtävistä
@@ -6862,7 +6866,7 @@ function spawnCatchUp(){
   const gameMin=Math.round(gameGapSec/60);
   const realTxt=realMin>=60?Math.floor(realMin/60)+'h '+(realMin%60)+'min':realMin+' min';
   const gameTxt=gameMin>=60?Math.floor(gameMin/60)+'h '+(gameMin%60)+'min':gameMin+' min';
-  if(realMin>=5)setTimeout(()=>toast('🕐 Olit poissa '+realTxt+' (peliaikana '+gameTxt+'). Yksiköt etenivät taustalla'+(G._offlineIncome?'. Valtion tuki +'+G._offlineIncome.toLocaleString('fi-FI')+'€':'')+'.'),800);
+  if(realMin>=5)setTimeout(()=>toast('🕐 Olit poissa '+realTxt+' (peliaikana '+gameTxt+'). Yksiköt etenivät taustalla'+(_completedOff?' · '+_completedOff+' tehtävää valmistui':'')+(G._offlineIncome?'. Valtion tuki +'+G._offlineIncome.toLocaleString('fi-FI')+'€':'')+'.'),800);
   // Lisää uusia tehtäviä (kunnioita spawnRate 0 ja offlineMaxTasks-asetus)
   if(!G.spawnRate||G.spawnRate<=0)return;
   const maxOffline=G.settings.offlineMaxTasks??3;
