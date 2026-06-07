@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HÄTÄKESKUS - dispatch sim v130 (LISAA TEHTAVAVARIAATIOITA + OHJE KOODIIN: uusi EXTRA_VARIANTS2-taulukko (42 uutta hatapuhelun kuvausta 26 yleisimmalle koodille: 704 rintakipu, 703 hengitysvaikeus, 745 kaatuminen, 702 tajuttomuus, 774 yleistila, 783/784/781/782 kivut/trauma, 771 sokeri, 706 AVH, 744 haava, 770 sairauskohtaus, 700 eloton, 786 paihde; 202 liikenne pieni, 103/401/411 pelastus; 201/032/031/331/341/111/361 poliisi). Yhdistyy samalla dedup-logiikalla, ei muokkaa isoa EXTRA_VARIANTS-taulukkoa. KAIKKI noudattavat saantoja: oikea potilasmaara (7xx ja 202 = YKSI potilas, ei monipotilas-sanoja), vakavuus vastaa sev:ia, realistinen soittaja, kuiva paivystajatyyli. Koodiin lisatty OHJEKOMMENTTI naista saannoista seuraavia muokkaajia varten (sis. v129 ESC_REASON-saanto). Tarkistettu: yksikaan yhden potilaan koodi ei sisalla "useita loukkaantuneita" tms.) -->
+<!-- HÄTÄKESKUS - dispatch sim v136 (PELAAJA VALITSEE KOODIN: tehtaviin ei ole enaa valmiiksi valittua koodia - pelaaja maarittaa sen. codeConfirmed(tk) = onko koodi valittu (onScene/initialAnnounced/hTask lasketaan valmiiksi vahvistetuiksi). Koodi nakyy "?"/"—" hälytysnäkymän otsikossa, tehtavalistassa, kartan merkissa ja popupissa kunnes pelaaja valitsee. Pudotusvalikko korvattu HAETTAVALLA koodivalitsimella: codesearch-input + codelist, hae numerolla TAI nimella (codeListHtml/filterCodes). Valinta kutsuu setTaskCodea joka asettaa _codeConfirmed=true. LAHETA-nappi vaatii nyt valitun koodin (kaikki 3 disabled-ehtoa). Tehtavan NIMI nakyy yha -> auttaa loytamaan oikean koodin ja pitaa vakavuuden oikeana.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -443,7 +443,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 <nav id="nav">
   <button data-p="map" class="on"><span class="ic">🗺️</span>Kartta</button>
   <button data-p="list"><span class="ic">📋</span>Tehtävät<span class="badge" id="navbadge" style="display:none">0</span></button>
-  <button data-p="radio"><span class="ic">📻</span>Radio</button>
+  <button data-p="radio"><span class="ic">📻</span>Radio<span class="badge" id="radiobadge" style="display:none">!</span></button>
   <button data-p="build"><span class="ic">🏢</span>Asemat</button>
 </nav>
 
@@ -502,7 +502,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v130'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v136'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -1952,11 +1952,11 @@ let currentNav='map';
 /* ===== MARKKERIT ===== */
 function makeTaskMarker(tk){
   const col=TOIMI_COL[tk.toimi]||'#aaa';
-  const ic=L.divIcon({html:`<div class="tmk ${tk.alert?'alert':''}"><div class="d" style="background:${col}"></div><span class="ex">❗</span><span class="lbl" id="lbl-${tk.id}">${tk.c}${tk.urg||''}</span></div>`,className:'',iconSize:[14,14],iconAnchor:[7,7]});
+  const ic=L.divIcon({html:`<div class="tmk ${tk.alert?'alert':''}"><div class="d" style="background:${col}"></div><span class="ex">❗</span><span class="lbl" id="lbl-${tk.id}">${codeConfirmed(tk)?tk.c:'—'}${tk.urg||''}</span></div>`,className:'',iconSize:[14,14],iconAnchor:[7,7]});
   const mk=L.marker([tk.lat,tk.lng],{icon:ic}).addTo(map);
   mk.on('click',()=>openDispatch(tk.id));return mk;
 }
-function refreshTaskLabel(tk){const e=document.getElementById('lbl-'+tk.id);if(e){e.textContent=tk.c+(tk.urg||'');e.style.color=URG_COL[tk.urg||'N'];}}
+function refreshTaskLabel(tk){const e=document.getElementById('lbl-'+tk.id);if(e){e.textContent=(codeConfirmed(tk)?tk.c:'—')+(tk.urg||'');e.style.color=URG_COL[tk.urg||'N'];}}
 function refreshTaskAlert(tk){const el=tk.marker&&tk.marker.getElement();if(!el)return;const t=el.querySelector('.tmk');if(t)t.classList.toggle('alert',!!tk.alert);}
 // Poista ❗ kun tehtävän tarpeet on katettu (pelaaja on vastannut). Estää ❗:n jäämisen jumiin.
 function clearAlertIfResolved(tk){
@@ -3621,9 +3621,10 @@ function dSelSummary(tk){
   const rows=[...dSel].map(id=>{const u=G.units.find(x=>x.id===id);if(!u)return'';const lab=(VTYPES[u.vt]&&VTYPES[u.vt].label)||u.cls||'';const eta=etaMap[id]!=null?Math.round(etaMap[id])+' min':'';return `<div class="dsum-row"><b class="mono">${u.name}</b><span class="dsum-t">${lab}</span><span class="dsum-eta">${eta}</span></div>`;}).join('');
   return `<div class="sec" style="padding-top:2px"><div class="dsum"><div class="dsum-h">📋 Lähtee kohteeseen (${dSel.size})</div>${rows}<span class="chip" onclick="clearDsel()" style="margin-top:8px;display:inline-block">✕ Tyhjennä valinta</span></div></div>`;
 }
+function codeConfirmed(tk){return !!(tk&&(tk._codeConfirmed||tk.hTask||tk.onScene||tk.initialAnnounced));}
 function renderDispatch(){
   const tk=dCur;
-  document.getElementById('dcode').innerHTML=`${tk.c} <span class="tag tag-${tk.urg||'none'}">${tk.urg||'?'}</span>`;
+  document.getElementById('dcode').innerHTML=`${codeConfirmed(tk)?tk.c:'?'} <span class="tag tag-${tk.urg||'none'}">${tk.urg||'?'}</span>`;
   document.getElementById('dname').textContent=' '+tk.n;
   document.getElementById('daddr').textContent='📍 '+tk.addr;
   let near=nearestUnits(tk).filter(x=>classFilter(x.u,dFilter));
@@ -3631,7 +3632,9 @@ function renderDispatch(){
    <div class="sec"><div class="smallnote">${tk.info}${tk.patients?` · ilmoituksen mukaan potilaita ${tk.patients}`:''}</div></div>
    <div id="dstat">${dStatusInner(tk)}</div>
    <div class="sec"><h4>Kiireellisyys <span style="font-weight:400;color:var(--dim);font-size:11px">— päättele kuvauksesta</span></h4><div class="urg">${['A','B','C','D'].map(u=>`<div class="urgb ${tk.urg===u?'sel':''}" data-u="${u}" onclick="setUrg('${u}')">${u}</div>`).join('')}</div></div>
-   <div class="sec"><h4>Koodi</h4><select class="codesel" onchange="setTaskCode(this.value)">${TASKS.filter(t=>t.toimi===tk.toimi).sort((a,b)=>((parseInt(a.c,10)||0)-(parseInt(b.c,10)||0))||String(a.c).localeCompare(String(b.c))).map(t=>`<option value="${t.c}" ${t.c===tk.c?'selected':''}>${t.c} ${t.n}</option>`).join('')}</select></div>
+   <div class="sec"><h4>Koodi <span style="font-weight:400;color:var(--dim);font-size:11px">— valitse koodi, hae numerolla</span></h4>
+    <input id="codesearch" class="codesel" placeholder="Hae koodia numerolla tai nimellä…" oninput="filterCodes(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
+    <div id="codelist" style="max-height:170px;overflow:auto;margin-top:4px;border:1px solid #1c242c;border-radius:6px">${codeListHtml(tk.toimi,'')}</div></div>
    <div class="sec"><h4>Vastepaketit</h4>${packagesFor(tk).length?`<div class="pkgbar">${packagesFor(tk).map((p,i)=>`<button class="pkgbtn star" onclick="applyPkg(${i})">${p.label}</button>`).join('')}</div>`:`<div class="smallnote">Ei omia vastepaketteja. Tee niitä ☰-valikon <b>📦 Vastepaketit</b> -kohdasta.</div>`}</div>
    ${dSelSummary(tk)}
    <div class="sec"><h4>Lähimmät yksiköt${dSel.size?` — valittu ${dSel.size}`:''}</h4>
@@ -3639,7 +3642,7 @@ function renderDispatch(){
      <div style="margin:4px 0 8px"><label style="font-size:12px;color:var(--dim);cursor:pointer"><input type="checkbox" ${dShowBusy?'checked':''} onchange="dShowBusy=this.checked;renderDispatch()"> Näytä myös toisilla tehtävillä olevat yksiköt</label></div>
      ${mergedUnitRows(tk)}
    </div>`;
-  document.getElementById('dsend').disabled=dSel.size===0||!dCur.urg;
+  document.getElementById('dsend').disabled=dSel.size===0||!dCur.urg||!codeConfirmed(dCur);
 }
 function mergedUnitRows(tk){
   const urg=tk.urg||'B';
@@ -3758,7 +3761,7 @@ window.setUrg=u=>{
   // koodin vieressä oleva tagi ja lähetysnappi. Valinta (dSel) ja listan järjestys säilyvät.
   document.querySelectorAll('#dbody .urgb').forEach(b=>b.classList.toggle('sel',b.dataset.u===u));
   const dc=document.getElementById('dcode');if(dc)dc.innerHTML=`${dCur.c} <span class="tag tag-${dCur.urg||'none'}">${dCur.urg||'?'}</span>`;
-  const goBtn=document.getElementById('dsend');if(goBtn)goBtn.disabled=dSel.size===0||!dCur.urg;
+  const goBtn=document.getElementById('dsend');if(goBtn)goBtn.disabled=dSel.size===0||!dCur.urg||!codeConfirmed(dCur);
   prefetchDispatchTimes(dCur);
 };
 window.toggleSel=id=>{
@@ -3782,7 +3785,7 @@ window.toggleSel=id=>{
     const box=row.querySelector('.selbox');if(box)box.textContent=sel?'✓':'';
   }
   // Päivitä lähetysnappulan tila
-  const goBtn=document.getElementById('dsend');if(goBtn)goBtn.disabled=dSel.size===0||!dCur.urg;
+  const goBtn=document.getElementById('dsend');if(goBtn)goBtn.disabled=dSel.size===0||!dCur.urg||!codeConfirmed(dCur);
   renderList();
 };
 window.applyPkg=i=>{
@@ -4064,9 +4067,20 @@ function applyTaskDef(tk,code,isEsc){
 }
 // Pelaaja vaihtaa tehtäväkoodin lähetysnäkymässä → päivitä KOKO vaste (ei vain näyttökoodia).
 // Korjaa bugin jossa eskalaatio sanoi "nostetaan 402 koodille 402" (base/escTo jäi vanhaksi).
+// Koodilista hälytysnäkymässä: haettavissa numerolla tai nimellä. Ei esivalintaa — pelaaja valitsee.
+function codeListHtml(toimi,q){
+  q=(q||'').trim().toLowerCase();
+  let list=TASKS.filter(t=>t.toimi===toimi);
+  if(q)list=list.filter(t=>String(t.c).toLowerCase().includes(q)||(t.n||'').toLowerCase().includes(q));
+  list.sort((a,b)=>((parseInt(a.c,10)||0)-(parseInt(b.c,10)||0))||String(a.c).localeCompare(String(b.c)));
+  if(!list.length)return '<div class="smallnote" style="padding:8px">Ei osumia</div>';
+  return list.slice(0,50).map(t=>`<div class="cli" onclick="setTaskCode('${t.c}')" style="padding:7px 9px;border-bottom:1px solid #1c242c;cursor:pointer;font-size:13px"><b class="mono" style="color:var(--acc)">${t.c}</b> ${t.n}</div>`).join('');
+}
+window.filterCodes=(q)=>{if(!dCur)return;const el=document.getElementById('codelist');if(el)el.innerHTML=codeListHtml(dCur.toimi,q);};
 window.setTaskCode=(code)=>{
   if(!dCur)return;const def=TASKS.find(t=>t.c===code);if(!def||def.toimi!==dCur.toimi)return;
   applyTaskDef(dCur,code,false);
+  dCur._codeConfirmed=true;                       // pelaaja valitsi koodin
   dCur.mislabeled=false;dCur.realCode=code;     // pelaaja itse määritti → ei "väärä koodi" -korjausta
   dCur.reqDone=false;dCur.requestedOnInfo=false; // uusi vaste → johtaja voi taas pyytää lisää
   dCur.escSuggest=null;                          // pelaaja toimi johtajan suosituksen mukaan → poista suositusmerkki
@@ -4134,10 +4148,17 @@ function radio(ch,from,msg){
   G.radioUnreadTotal=(G.radioUnreadTotal||0)+1;
   if(G.selChannel===ch&&isOpen('p-radio')){G.radio[ch].forEach(x=>x.unread=false);renderRadio();updateBadge();}
   if(openRadioWins[ch]){G.radio[ch].forEach(x=>x.unread=false);renderRadioWin(ch);updateBadge();}
+  try{updateBadge();}catch(e){} // päivitä alapalkin Radio-huomio heti, vaikka kanava ei ole auki
   // Korostus haalistuu ~6 s kuluttua (reaaliaikaa) — sitten poistetaan "uusi"-merkki
   setTimeout(()=>{m._isNew=false;if(openRadioWins[ch])renderRadioWin(ch);},6000);
 }
 function radioUnreadCount(){let n=0;for(const ch in G.radio){(G.radio[ch]||[]).forEach(m=>{if(m.unread)n++;});}return n;}
+// TÄRKEÄT lukemattomat: johtajan pyynnöt, korotukset, lisävaste yms. tulevat INFO/VPK-kanaville.
+// ANTO-kanavat ovat rutiinihälytyksiä (lähetetyt yksiköt) — niistä EI näytetä alapalkin huomiota.
+function importantRadioUnread(){let n=0;for(const ch in G.radio){if(ch.includes('ANTO'))continue;(G.radio[ch]||[]).forEach(m=>{if(m.unread)n++;});}return n;}
+// ENSIHOIDON LOKI (tietokanta): kuljetuskohteet, X-koodit ja ennakkoilmoitukset kirjataan tanne -> nakyy
+// Ensihoito-valilehdella (Ei radioon, ei nosta huomiota). kind: 'kuljetus' | 'xkoodi' | 'ennakko'.
+function emsLogAdd(tk,disp,kind){G.emsLog=G.emsLog||[];G.emsLog.push({t:G.clock,c:tk.c,addr:tk.addr||'',disp:disp,kind:kind||'kuljetus'});if(G.emsLog.length>60)G.emsLog.shift();try{if(currentNav==='ensh')renderEnsh();}catch(e){}}
 function clearRadioUnread(ch){if(!ch){for(const c in G.radio)(G.radio[c]||[]).forEach(m=>m.unread=false);return;}(G.radio[ch]||[]).forEach(m=>m.unread=false);}
 const openRadioWins={};let rwZ=560;
 // Varmistaa että radioikkuna on näytön sisällä (estää "katoamisen" ruudun ulkopuolelle)
@@ -4195,11 +4216,11 @@ window.radioOpenUnit=(name)=>{
   // Ei tehtävällä → avaa yksikön tiedot (sieltä näkee tilan/sijainnin).
   try{openUnitInfo(u.id);}catch(e){ toast(name+' ei ole juuri nyt tehtävällä'); }
 };
-function renderRadioWin(ch){const w=openRadioWins[ch];if(!w)return;clearRadioUnread(ch);const f=G.radio[ch]||[];w.querySelector('.rb').innerHTML=f.slice(-25).reverse().map(m=>`<div class="m${m._isNew?' new':''}"><span class="mono" style="color:var(--dim)">${fmtClock(m.t)}</span> ${m._isNew?'<span class="nb">UUSI</span>':''}<b style="color:var(--acc)">${linkifyUnits(m.from)}:</b> ${linkifyUnits(m.msg)}</div>`).join('')||'<div style="color:var(--dim)">Ei liikennettä</div>';}
+function renderRadioWin(ch){const w=openRadioWins[ch];if(!w)return;clearRadioUnread(ch);try{updateBadge();}catch(e){}const f=G.radio[ch]||[];w.querySelector('.rb').innerHTML=f.slice(-25).reverse().map(m=>`<div class="m${m._isNew?' new':''}"><span class="mono" style="color:var(--dim)">${fmtClock(m.t)}</span> ${m._isNew?'<span class="nb">UUSI</span>':''}<b style="color:var(--acc)">${linkifyUnits(m.from)}:</b> ${linkifyUnits(m.msg)}</div>`).join('')||'<div style="color:var(--dim)">Ei liikennettä</div>';}
 function makeDraggable(el,handle){let sx,sy,ox,oy;const down=e=>{const p=e.touches?e.touches[0]:e;sx=p.clientX;sy=p.clientY;ox=el.offsetLeft;oy=el.offsetTop;el.style.zIndex=++rwZ;document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});document.addEventListener('mouseup',up);document.addEventListener('touchend',up);e.preventDefault();};const move=e=>{const p=e.touches?e.touches[0]:e;el.style.left=(ox+p.clientX-sx)+'px';el.style.top=(oy+p.clientY-sy)+'px';if(e.cancelable)e.preventDefault();};const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('touchmove',move);document.removeEventListener('mouseup',up);document.removeEventListener('touchend',up);try{clampWinIntoView(el);capturePopState();}catch(e){}};handle.addEventListener('mousedown',down);handle.addEventListener('touchstart',down,{passive:false});}
 let taskPopOpen=false;
 window.toggleTaskPop=()=>{taskPopOpen=!taskPopOpen;document.getElementById('taskpop').classList.toggle('open',taskPopOpen);if(taskPopOpen)renderTaskPop();capturePopState();};
-function renderTaskPop(){if(!taskPopOpen)return;const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{if((a.status==='avoin')!==(b.status==='avoin'))return a.status==='avoin'?-1:1;const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4));});document.getElementById('taskpopbody').innerHTML=open.map(t=>`<div class="ti u-${t.urg||'N'}" style="border-left-color:${URG_COL[t.urg||'N']}" onclick="popOpenTask('${t.id}')"><span style="flex:1">${t.alert?'❗':''}${t.c}${t.urg||''} ${t.n}</span>${t.status==='avoin'?'<span style="color:var(--A)">●</span>':''}</div>`).join('')||'<div class="smallnote" style="padding:8px">Ei tehtäviä</div>';}
+function renderTaskPop(){if(!taskPopOpen)return;const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{if((a.status==='avoin')!==(b.status==='avoin'))return a.status==='avoin'?-1:1;const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4));});document.getElementById('taskpopbody').innerHTML=open.map(t=>`<div class="ti u-${t.urg||'N'}" style="border-left-color:${URG_COL[t.urg||'N']}" onclick="popOpenTask('${t.id}')"><span style="flex:1">${t.alert?'❗':''}${codeConfirmed(t)?t.c:'—'}${t.urg||''} ${t.n}</span>${t.status==='avoin'?'<span style="color:var(--A)">●</span>':''}</div>`).join('')||'<div class="smallnote" style="padding:8px">Ei tehtäviä</div>';}
 window.popOpenTask=(id)=>{const tk=G.tasks.find(t=>t.id===id);if(!tk)return;map.panTo([tk.lat,tk.lng]);openDispatch(id);};
 
 /* ===== POP-UP TILAN MUISTAMINEN (kartta-näkymä) ===== */
@@ -4241,6 +4262,7 @@ function restorePops(){
 function renderRadio(){const tabs=Object.keys(G.radio);if(!G.selChannel||!G.radio[G.selChannel])G.selChannel=tabs[0];
   // Merkitse valitun kanavan viestit luetuiksi
   if(G.selChannel)clearRadioUnread(G.selChannel);
+  try{updateBadge();}catch(e){} // tyhjennä alapalkin Radio-huomio luetusta
   // Korosta kanava jossa on lukematonta
   document.getElementById('rtabs').innerHTML=tabs.map(c=>{const unread=(G.radio[c]||[]).filter(m=>m.unread).length;return `<div class="rch ${G.selChannel===c?'on':''}" onclick="G.selChannel='${c}';renderRadio()">${c}${unread?' <span style="background:var(--A);color:#fff;font-size:9px;padding:0 4px;border-radius:3px;margin-left:4px">'+unread+'</span>':''}</div>`;}).join('');
   const f=G.radio[G.selChannel]||[];
@@ -6024,6 +6046,10 @@ function finalizeOutcomeStats(tk){
 
 /* ===== POTILASKULJETUS ===== */
 // Tarvitseeko tehtävä potilaan kuljetuksen sairaalaan?
+// Naita EI jateta kohteeseen jos potilas elaa: elvytetty (ROSC), elvytys, tajuttomuus, rintakipu,
+// rytmihairio, aivohalvaus, synnytys -> AINA kuljetus (esim. eloton joka ei kuollutkaan). Jos kaikki
+// kuolivat, survivors<=0 hoitaa asian aiemmin (vainaja jaa paikalle, X-1).
+const ALWAYS_TRANSPORT=new Set(['700','701','702','704','705','706','791']);
 function taskNeedsTransport(tk){
   if(tk.toimi!=='ensihoito'&&!(tk.patients>0&&tk.sev&&tk.sev!=='none'))return false;
   if(!tk.patients||tk.patients<1)return false;
@@ -6032,8 +6058,16 @@ function taskNeedsTransport(tk){
   const o=tk.outcome||{};
   const survivors=tk.patients-(o.dead||0);
   if(survivors<=0)return false;
-  // Lievät: osa hoidetaan paikan päällä ilman kuljetusta
-  if(tk.sev==='low'&&Math.random()<0.5)return false;
+  // Aina-kuljetus perustuu TODELLISEEN tilanteeseen (realCode), ei ilmoittajan mahdollisesti
+  // yliarvioimaan koodiin. Jos soittaja yliarvioi (esim. "eloton" joka hengittaa, "rintakipu" joka
+  // on lihaskipu), realCode on lievempi -> ei pakkokuljetusta, vaan vakavuuspohjainen paatos.
+  if(ALWAYS_TRANSPORT.has(tk.realCode||tk.base||tk.c))return true; // aito hengenvaarallinen/aikakriittinen: aina kuljetus jos elaa
+  // EI-KULJETUS: osa potilaista hoidetaan kohteessa eika kuljeteta (X-5/X-8). Todellisuudessa
+  // n. 40% ensihoitotehtavista paattyy ilman kuljetusta (Paulin 2022, 40263 potilasta). Mita
+  // lievempi tila, sita todennakoisemmin ei kuljeteta. Monta potilasta -> aina kuljetus.
+  if(tk.patients>1)return true;
+  const pNoTransport={critical:0.05,high:0.15,medium:0.45,low:0.75}[tk.sev]||0.30;
+  if(Math.random()<pNoTransport)return false;
   return true;
 }
 // Mihin sairaalaan? Vakavuus määrää VÄHIMMÄISTASON; korkeampi taso kelpaa AINA
@@ -6041,13 +6075,19 @@ function taskNeedsTransport(tk){
 function hospCapacity(h){return {yliopisto:8,alue:5,terveys:3}[h.taso]||5;}
 function hospLoad(id){return (G.hospAdmits||[]).filter(a=>a.id===id&&a.until>G.clock).length;}
 function hospFull(h){return hospLoad(h.id)>=hospCapacity(h);}
+// Keskitetyt/aikakriittiset hoidot eivat onnistu terveysasemalla -> vahimmaistaso keskussairaala (alue).
+// AVH (trombolyysi/trombektomia), rintakipu/STEMI (pallolaajennus), rytmihairio, synnytys, elvytetty (ROSC, teho).
+function codeMinHospLevel(tk){return ['704','705','706','791','700','701'].includes(tk.realCode||tk.base||tk.c)?1:0;}
+function bypassReason(tk){const c=tk.realCode||tk.base||tk.c;return c==='706'?'aivohalvaus, vaatii erikoissairaalan':(c==='704'||c==='705')?'sydanoire, vaatii erikoissairaalan':c==='791'?'synnytys':(c==='700'||c==='701')?'elvytetty potilas, vaatii tehohoidon':'vaatii erikoissairaalan';}
 function pickHospital(tk){
   const rank={terveys:0,alue:1,yliopisto:2};
   let minLvl;
   if(tk.sev==='critical')minLvl=2;       // vain yliopisto (vaativa hoito)
   else if(tk.sev==='high')minLvl=1;      // alue tai yliopisto
   else minLvl=0;                          // mikä tahansa: terveys / alue / yliopisto
+  minLvl=Math.max(minLvl,codeMinHospLevel(tk)); // keskitetyt hoidot nostavat vahimmaistasoa
   const all=allHospitals();
+  const absNearest=all.slice().sort((a,b)=>km(tk.lat,tk.lng,a.lat,a.lng)-km(tk.lat,tk.lng,b.lat,b.lng))[0];
   let pool=all.filter(h=>(rank[h.taso]??1)>=minLvl);
   if(!pool.length)pool=all.slice();
   if(!pool.length)return null;
@@ -6063,7 +6103,9 @@ function pickHospital(tk){
   // KUORMITUS: lähin EI-täysi sairaala. Jos lähin on täynnä, potilas ohjataan seuraavaksi lähimpään (kauemmas).
   const free=pool.find(h=>!hospFull(h));
   if(free){
-    if(free!==pool[0]&&G.settings.showCallouts)toast('🏥 '+hospitalShortName(pool[0])+' täynnä — potilas ohjataan '+hospitalShortName(free)+' (kauemmas)');
+    if(absNearest&&(rank[absNearest.taso]??1)<minLvl&&free.id!==absNearest.id&&G.settings.showCallouts)
+      toast('🏥 '+hospitalShortName(absNearest)+' ei sovellu ('+bypassReason(tk)+') — potilas '+hospitalShortName(free));
+    else if(free!==pool[0]&&G.settings.showCallouts)toast('🏥 '+hospitalShortName(pool[0])+' täynnä — potilas ohjataan '+hospitalShortName(free)+' (kauemmas)');
     return free;
   }
   if(G.settings.showCallouts)toast('🏥 Sairaalat täynnä — potilas viedään silti lähimpään (ylikuormitus)');
@@ -6203,11 +6245,17 @@ function completeTask(tk){tk.status='valmis';
   let xtxt='';
   if(tk.toimi==='ensihoito'&&tk.patients>0){
     const o=tk.outcome||{};let x;
-    if(o.dead>0&&o.dead>=tk.patients)x='X-1'; // kaikki menehtyivät
-    else if(transporter&&hosp)x='X-8';        // kuljetettu
-    else if(tk.sev==='low'||o.saved>0)x='X-5'; // hoidettu kohteessa
-    else x='X-5';
-    tk.xcode=x;xtxt=' · '+x;
+    // X-koodit ovat EI-KULJETUS/paattymiskoodeja. Kuljetettu potilas EI saa X-koodia (-> "kuljetettu").
+    if(o.dead>0&&o.dead>=tk.patients)x='X-1';   // kaikki menehtyivat (vainaja jaa paikalle)
+    else if(transporter&&hosp)x=null;           // kuljetettu sairaalaan
+    else if(tk.sev==='low')x='X-5';             // ei hoidon tarvetta
+    else x='X-8';                               // hoidettu kohteessa, ei kuljetustarvetta
+    if(x){tk.xcode=x;xtxt=' · '+x;}else xtxt=' · kuljetettu';
+    const disp=(x===null)?('kuljetus → '+hospitalShortName(hosp)):(x==='X-1'?'X-1 menehtyi':x==='X-5'?'X-5 ei hoidon tarvetta':'X-8 hoidettu kohteessa');
+    try{emsLogAdd(tk,disp,x===null?'kuljetus':'xkoodi');}catch(e){}
+    // ENNAKKOILMOITUS: kriittisesta/kiireellisesta kuljetettavasta potilaasta tehdaan ennakkoilmoitus
+    // vastaanottavaan sairaalaan (tiimi valmistautuu). Ei radioon -> Ensihoito-valilehdelle.
+    if(x===null&&hosp&&(tk.sev==='critical'||tk.sev==='high')){try{emsLogAdd(tk,'ENNAKKOILMOITUS → '+hospitalShortName(hosp)+' · '+(tk.sev==='critical'?'kriittinen':'kiireellinen')+' potilas tulossa','ennakko');}catch(e){}}
   }
   // Ei valmistumisviestiä radioon — kaikki raportointi tapahtuu MDT:llä.
   if(tk.marker)map.removeLayer(tk.marker);G.tasks=G.tasks.filter(t=>t.id!==tk.id);toast('✅ '+tk.c+' suoritettu'+xtxt+(triage?' · '+triage.t:'')+(vasteMet!==null?(vasteMet?' · ⏱️ tavoitteessa':' · ⏱️ yli tavoiteajan'):'')+'  +'+payout+'€');renderList();updateBadge();G.missDone++;
@@ -6221,7 +6269,7 @@ function spawnFollowUp(parent){
 }
 
 /* ===== RENDER LISTAT ===== */
-function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${t.c} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${t.n}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
+function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${codeConfirmed(t)?t.c:'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${t.n}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
 function updateBadge(){
   const n=G.tasks.filter(t=>t.status==='avoin').length,b=document.getElementById('navbadge');
   if(n>0){b.style.display='block';b.textContent=n;}else b.style.display='none';
@@ -6230,6 +6278,9 @@ function updateBadge(){
   // Radio-FAB-painike: näytä vain kun on uutta liikennettä JA ollaan kartalla
   const rbtn=document.getElementById('radiobtn');
   if(rbtn){rbtn.style.display=(ru>0&&currentNav==='map')?'block':'none';}
+  // Alapalkin Radio-huomio: VAIN tärkeistä (INFO/VPK) lukemattomista — korotus, lisävastepyyntö yms.
+  const rbadge=document.getElementById('radiobadge');
+  if(rbadge){const ir=importantRadioUnread();if(ir>0){rbadge.style.display='block';rbadge.textContent=ir>9?'9+':String(ir);}else rbadge.style.display='none';}
   // Tavoiteilmoitus
   try{updateGoalNotif();}catch(e){}
 }
@@ -6824,10 +6875,13 @@ function renderEnsh(){
     {x:'X-5',name:'Terveydentila määritelty, ei tarvetta ensihoidolle',desc:'Potilas hoidettavissa kotona ilman sairaalakäyntiä.'},
     {x:'X-6',name:'Potilas kieltäytyy',desc:'Potilas kieltäytyy kuljetuksesta tai hoidosta.'},
     {x:'X-7',name:'Potilasta ei löydy',desc:'Kohteesta ei löytynyt potilasta.'},
-    {x:'X-8',name:'Potilas hoidettu / kuljetettu kohteessa',desc:'Hoidettu kohteessa tai kuljetettu sairaalaan.'},
+    {x:'X-8',name:'Potilas hoidettu kohteessa',desc:'Hoidettu kohteessa, ei kuljetustarvetta.'},
     {x:'X-9',name:'Tehtävän peruutus',desc:'Tehtävä peruutettu kesken (esim. aiheeton).'},
   ];
+  const _log=(G.emsLog||[]).slice(-25).reverse();
+  const _logHtml=_log.length?_log.map(e=>{const ic=e.kind==='ennakko'?'📣':e.kind==='xkoodi'?'📋':'🚑';const cs=e.kind==='ennakko'?'color:var(--C);font-weight:700':'';return `<div style="padding:5px 0;border-bottom:1px solid #1c242c;font-size:13px;${cs}"><span class="mono" style="color:var(--dim)">${fmtClock(e.t)}</span> ${ic} <b>${e.c}</b>${e.addr?' · '+e.addr:''} — ${e.disp}</div>`;}).join(''):'<div style="color:var(--dim);font-size:13px">Ei vielä kuljetuksia tai ennakkoilmoituksia.</div>';
   let h=`<div class="help">Suomen ensihoidon viralliset koodit ja tietopankki — hyödyllinen Häkellä lähettäessä.</div>
+  <div class="card"><h3>🚑 Kuljetukset & ennakkoilmoitukset</h3><div style="margin-top:4px">${_logHtml}</div></div>
   <div class="card"><h3>📊 Tilastoja</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:13px">
       <div><div class="smallnote" style="text-transform:uppercase;letter-spacing:1px;font-size:10px">Pelastetut</div><div style="font-size:18px;font-weight:800;color:var(--acc2)">${stats.saved||0}</div></div>
@@ -6890,7 +6944,7 @@ window.exportCode=exportCode;window.importCode=importCode;
 window.savePackage=()=>{const name=(document.getElementById('pkg_name').value||'').trim();if(!name){toast('Anna paketille nimi');return;}const items=[];Object.keys(VTYPES).filter(k=>!k.endsWith('perv')).forEach(c=>{const el=document.getElementById('pkg_'+c);if(!el)return;const n=parseInt(el.value)||0;if(n>0)items.push({cls:c,n});});if(!items.length){toast('Valitse vähintään yksi yksikkö');return;}G.packages=G.packages||[];G.packages.push({name,items});toast('Paketti tallennettu: '+name);renderPkg();saveGame(false);};
 window.delPackage=(i)=>{G.packages.splice(i,1);renderPkg();saveGame(false);};
 function serializeGame(){
-  return {v:12,money:G.money,clock:G.clock,dayCount:G.dayCount||0,startDateISO:G.startDateISO||'2026-01-01',upkeepT:G._upkeepT||0,spawnRate:G.spawnRate,realisticSpawn:!!G.realisticSpawn,spawnRadius:G.spawnRadius,spawnCenter:G.spawnCenter,spawnAreas:G.spawnAreas||[],pois:G.pois||[],season:G.season,settings:G.settings,missDone:G.missDone,missClaimed:G.missClaimed,randomGoals:G.randomGoals||[],taskStats:G.taskStats,timeMult:TIME_MULT,turnoutMult:TURNOUT_MULT,radio:G.radio,tidc:G.tidc,uidc:G.uidc,lastSpawn:lastSpawn,customSairaalat:G.customSairaalat||[],removedSairaalat:G.removedSairaalat||[],openPops:G.openPops||null,vpkValmius:G.vpkValmius||{},patrolAreas:G.patrolAreas||{},disabledStations:G.disabledStations||{},hakeAreaSettings:G.hakeAreaSettings||{},hakeStats:G.hakeStats||{},boatNodes:G.boatNodes||[],boatLanes:G.boatLanes||[],hospAdmits:(G.hospAdmits||[]).filter(a=>a.until>G.clock),
+  return {v:12,money:G.money,clock:G.clock,dayCount:G.dayCount||0,startDateISO:G.startDateISO||'2026-01-01',upkeepT:G._upkeepT||0,spawnRate:G.spawnRate,realisticSpawn:!!G.realisticSpawn,spawnRadius:G.spawnRadius,spawnCenter:G.spawnCenter,spawnAreas:G.spawnAreas||[],pois:G.pois||[],season:G.season,settings:G.settings,missDone:G.missDone,missClaimed:G.missClaimed,randomGoals:G.randomGoals||[],taskStats:G.taskStats,timeMult:TIME_MULT,turnoutMult:TURNOUT_MULT,radio:G.radio,tidc:G.tidc,uidc:G.uidc,lastSpawn:lastSpawn,customSairaalat:G.customSairaalat||[],removedSairaalat:G.removedSairaalat||[],openPops:G.openPops||null,vpkValmius:G.vpkValmius||{},patrolAreas:G.patrolAreas||{},disabledStations:G.disabledStations||{},hakeAreaSettings:G.hakeAreaSettings||{},hakeStats:G.hakeStats||{},boatNodes:G.boatNodes||[],boatLanes:G.boatLanes||[],hospAdmits:(G.hospAdmits||[]).filter(a=>a.until>G.clock),emsLog:(G.emsLog||[]).slice(-40),
   stations:G.stations.map(s=>({id:s.id,n:s.n,t:s.t,reg:s.reg,num:s.num,hake:s.hake,muoto:s.muoto,turnout:s.turnout,turnoutNight:s.turnoutNight,nightStart:s.nightStart,nightEnd:s.nightEnd,paallikkoKotona:s.paallikkoKotona,availableLoads:s.availableLoads||null,linkedFireStations:s.linkedFireStations||null,spawnRadius:s.spawnRadius??null,spawnDensity:s.spawnDensity??null,spawnOff:s.spawnOff||false,korjaamo:s.korjaamo||false,lat:s.lat,lng:s.lng})),
   units:G.units.map(u=>({id:u.id,vt:u.vt,stationId:u.stationId,homeStationId:u.homeStationId||null,dutyAt:u.dutyAt||null,dutyAtPartial:u.dutyAtPartial||false,dutyAtDays:u.dutyAtDays||null,dutyAtHourStart:u.dutyAtHourStart??null,dutyAtHourEnd:u.dutyAtHourEnd??null,atReadyStation:u.atReadyStation||false,_atReadyUntil:u._atReadyUntil||null,currentLoad:u.currentLoad||null,canDriveBoat:u.canDriveBoat||false,name:u.name,crew:u.crew,turnout:u.turnout,muoto:u.muoto||null,schedule:u.schedule||null,
     // Tallenna KAIKKI relevantit tilat mukaan lukien kohde/matka/paluu
@@ -7244,6 +7298,8 @@ function applyLoaded(d){
   G.customSairaalat=d.customSairaalat||[];
   G.removedSairaalat=d.removedSairaalat||[];
   G.hospAdmits=d.hospAdmits||[];
+  G.emsLog=d.emsLog||[];
+  if(G.radio&&G.radio['EH-LOKI'])delete G.radio['EH-LOKI']; // poista vanha pseudokanava (siirretty Ensihoito-välilehdelle)
   if(typeof d.lastSpawn==='number')lastSpawn=d.lastSpawn;
   G.openPops=d.openPops||null;
   if(d.taskStats)G.taskStats=d.taskStats;
