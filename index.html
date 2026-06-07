@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HÄTÄKESKUS - dispatch sim v141 (VALITTU KOODI = VAIN LUOKITTELU, EI VAIKUTA TAPAHTUMAAN: setTaskCode ei enaa kutsu applyTaskDefia eika kirjoita tehtavan ominaisuuksia uusiksi. Se tallentaa VAIN pelaajan luokittelun: pickedCode, pickedToimi, _codeConfirmed. Vakavuus (sev), tarvittavat yksikot (need), toimiala (toimi), oikea koodi (c/realCode), palkkio, aikakriittisyys ja lopputulos tulevat OIKEASTA TAPAHTUMASTA joka lukitaan tehtavan syntyessa. Nakymissa (otsikko, lista, kartta, popup) naytetaan pelaajan valitsema koodi (pickedCode||c). Hälytysnäkymän yksikkolista kayttaa edelleen tehtavan OIKEAA toimialaa -> oikeat yksikot tarjolla vaikka pelaaja luokittelisi vaarin. pickedCode/pickedToimi/_codeConfirmed tallennetaan. applyTaskDef jaa kayttoon (ei enaa kutsuta tasta).) -->
+<!-- HÄTÄKESKUS - dispatch sim v143 (VPK-YKSIKKO = TAYDET VPK-OMINAISUUDET VAKITUISELLA ASEMALLA: kaikki VPK-aseman jutut toimivat nyt yksikkokohtaisesti (u.muoto=vpk) vaikka asema on tyypiltaan vakituinen ja siella on myos ei-VPK-autoja. 1) Satunnaiset VPK-tapahtumat (lupapyynnot/huoltoajot seka miehistopula/harjoitus) laukeavat nyt unitMuoto(u)===vpk -perusteella, ei aseman muodon -> VPK-kanavalle. 2) H351-asemavalmiusosio (valmiussiirto) nakyy aseman paneelissa jos asemalla on VPK-yksikoita. 3) Bulk-valmiusnappi (VPK valmiuteen / Poista valmius) nakyy jos asemalla on VPK-yksikoita; setAllReady koskee vakituisella asemalla VAIN VPK-autoja (ei pakota pysyvia autoja valmiustilaan), ilmoitus VPK-kanavalle. VPK-kanava (v142), valmius-nappi, maxReadySec 4h, yokerroin ja yksikkokohtainen lahtoaika min jo ennestaan unitMuoto-tietoisia.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v141'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v143'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -1636,7 +1636,7 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
     <button class="${smTab==='settings'?'buy':'btn-x'}" style="flex:1" onclick="smTab='settings';renderStation('${s.id}')">⚙️ Aseman asetukset</button>
   </div>`;
   if(smTab==='settings'){
-    const isVpk=s.muoto==='vpk';
+    const isVpk=s.muoto==='vpk'||G.units.some(u=>u.stationId===s.id&&u.muoto==='vpk');
     const reg=s.reg||'LU';
     const h351=G.vpkValmius&&G.vpkValmius[s.id];
     let h351html='';
@@ -1779,7 +1779,7 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
        <div style="display:flex;align-items:center;gap:8px"><span class="sq ${u.off?'off':''}" style="background:${unitColor(u)}33;border-color:${unitColor(u)}"></span><b style="flex:1">${VTYPES[u.vt]?.label||u.vt}</b><span style="color:${unitColor(u)};font-size:11px;font-weight:700">${statusLabel(u)}</span></div>
        <div style="margin-top:8px"><span class="smallnote">Tunnus</span><input class="inp mono" value="${u.name}" onchange="setName('${u.id}',this.value)"></div>
        <div style="display:flex;gap:6px;align-items:center"><span class="smallnote">Miehitys</span><input class="inp" style="width:70px;margin:0;text-align:center" value="${u.crew}" onchange="setCrew('${u.id}',this.value)">
-         <span class="smallnote">Lähtö(s)</span><input class="inp" style="width:64px;margin:0;text-align:center" value="${u.turnout!=null?u.turnout:''}" placeholder="asema" onchange="setUnitTurnout('${u.id}',this.value)"></div>
+         <span class="smallnote">Lähtö(min)</span><input class="inp" type="number" min="0" step="1" style="width:64px;margin:0;text-align:center" value="${u.turnout!=null?Math.round(u.turnout/60):''}" placeholder="asema" onchange="setUnitTurnout('${u.id}',this.value)"></div>
        <div style="display:flex;gap:6px;align-items:center;margin-top:6px"><span class="smallnote">Muoto</span>
          <select class="inp" style="flex:1;margin:0;font-size:12px" onchange="setUnitMuoto('${u.id}',this.value)">
            <option value="">— peri asemalta (${MUOTO_LABEL[s.muoto]||s.muoto||'?'}) —</option>
@@ -1942,13 +1942,13 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
        <button class="btn-x" style="width:100%;margin-top:8px" onclick="smUnit=null;renderStation('${s.id}')">‹ Takaisin listaan</button>
      </div>`;}
   } else {
-    body+=`<div class="sec"><h4>Yksiköt (${us.length})</h4>${s.muoto==='vpk'?`<div style="display:flex;gap:6px;margin-bottom:8px"><button class="buy" style="flex:1;font-size:12px;padding:6px 0" onclick="setAllReady('${s.id}',true)">⚡ Kaikki valmiuteen</button><button class="btn-x" style="flex:1;font-size:12px;padding:6px 0" onclick="setAllReady('${s.id}',false)">Poista kaikilta</button></div>`:''}${us.map(u=>{const tagStr=VTYPES[u.vt]?.tag?'<span style="font-size:9px;background:var(--bg);color:var(--pol);border:1px solid var(--pol);padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:700;font-family:var(--fmono)">'+VTYPES[u.vt].tag+'</span>':'';const coverStr=u._origName?'<span style="font-size:10.5px;color:var(--dim);margin-left:6px;font-family:var(--fmono)">(oma: '+u._origName+')</span>':'';
+    body+=`<div class="sec"><h4>Yksiköt (${us.length})</h4>${(s.muoto==='vpk'||us.some(u=>u.muoto==='vpk'))?`<div style="display:flex;gap:6px;margin-bottom:8px"><button class="buy" style="flex:1;font-size:12px;padding:6px 0" onclick="setAllReady('${s.id}',true)">⚡ VPK valmiuteen</button><button class="btn-x" style="flex:1;font-size:12px;padding:6px 0" onclick="setAllReady('${s.id}',false)">Poista valmius</button></div>`:''}${us.map(u=>{const tagStr=VTYPES[u.vt]?.tag?'<span style="font-size:9px;background:var(--bg);color:var(--pol);border:1px solid var(--pol);padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:700;font-family:var(--fmono)">'+VTYPES[u.vt].tag+'</span>':'';const coverStr=u._origName?'<span style="font-size:10.5px;color:var(--dim);margin-left:6px;font-family:var(--fmono)">(oma: '+u._origName+')</span>':'';
       // Merkintä jos yksikkö on TÄÄLLÄ vain päivystämässä (kotiasema muualla)
       const _dutyHere=(u.stationId!==s.id&&effectiveStationId(u)===s.id);
       const _dutyWord=(u.status==='paluu'||u.status==='matka')?'saapumassa':'päivystää'; // rehellinen: vielä matkalla ≠ paikalla
       const visitStr=_dutyHere?'<span style="font-size:10px;color:var(--acc2);margin-left:6px">⇄ '+_dutyWord+' (koti: '+((G.stations.find(x=>x.id===u.stationId)||{}).n||'?').split(' ')[0]+')</span>':'';
       // VPK-asemalla per-yksikkö valmiusnappi näkyy AINA (valitse mitkä yksiköt asemavalmiuteen) — ei enää vain H351-ikkunan aikana
-      const readyBtn=(s.muoto==='vpk')?`<button class="${u.atReadyStation?'buy':'btn-x'}" style="font-size:11px;padding:3px 8px;margin-left:6px" onclick="event.stopPropagation();toggleAtReady('${u.id}');renderStation('${s.id}')">${u.atReadyStation?'⚡ valmius':'⚡ aseta'}</button>`:'';
+      const readyBtn=(s.muoto==='vpk'||u.muoto==='vpk')?`<button class="${u.atReadyStation?'buy':'btn-x'}" style="font-size:11px;padding:3px 8px;margin-left:6px" onclick="event.stopPropagation();toggleAtReady('${u.id}');renderStation('${s.id}')">${u.atReadyStation?'⚡ valmius':'⚡ aseta'}</button>`:'';
       return `<div class="urow" onclick="smUnit='${u.id}';renderStation('${s.id}')"><span class="sq ${u.off?'off':''}" style="background:${unitColor(u)}33;border-color:${unitColor(u)}"></span><div style="flex:1"><div class="uname mono">${u.name}${tagStr}${coverStr}${visitStr}</div><div class="umeta">${VTYPES[u.vt].label}</div></div><span style="color:${unitColor(u)};font-size:11px">${statusLabel(u)} ›</span>${readyBtn}</div>`;}).join('')||'<div class="smallnote">Ei yksiköitä. Osta alta.</div>'}</div>`;
     if(allow.length)body+=`<div class="sec"><h4>Osta yksikkö</h4><select class="inp" id="smsel">${vehOptions(allow)}</select><input class="inp" id="smname" placeholder="Oma tunnus (valinnainen)"><button class="buy" onclick="buyVeh('${s.id}','smsel','smname')">+ Osta yksikkö</button></div>`;
   }
@@ -1983,8 +1983,8 @@ function statusLabel(u){
   return STATUS_TXT[u.status]||u.status;
 }
 window.setCrew=(id,val)=>{const u=G.units.find(x=>x.id===id);if(!u)return;u.crew=(val||'').trim()||u.crew;toast(u.name+' miehitys: '+u.crew);};
-window.setUnitTurnout=(id,val)=>{const u=G.units.find(x=>x.id===id);if(!u)return;const n=parseInt(val);u.turnout=(val===''||isNaN(n))?null:n;toast(u.name+' lähtöaika: '+(u.turnout!=null?u.turnout+'s':'aseman mukaan'));};
-window.setUnitMuoto=(id,val)=>{const u=G.units.find(x=>x.id===id);if(!u)return;u.muoto=val||null;toast(u.name+' muoto: '+(u.muoto?(MUOTO_LABEL[u.muoto]||u.muoto):'aseman mukaan'));};
+window.setUnitTurnout=(id,val)=>{const u=G.units.find(x=>x.id===id);if(!u)return;const n=parseFloat((val||'').toString().replace(',','.'));u.turnout=(val===''||isNaN(n))?null:Math.max(0,Math.round(n*60));toast(u.name+' lähtöaika: '+(u.turnout!=null?(u.turnout/60)+' min':'aseman mukaan'));try{renderStation(u.stationId);}catch(e){}};
+window.setUnitMuoto=(id,val)=>{const u=G.units.find(x=>x.id===id);if(!u)return;u.muoto=val||null;ensureChannels();const st=G.stations.find(s=>s.id===u.stationId);if(u.muoto==='vpk'&&st&&st.reg)toast(u.name+' on nyt VPK — kanava "'+st.reg+' VPK" käytössä');else toast(u.name+' muoto: '+(u.muoto?(MUOTO_LABEL[u.muoto]||u.muoto):'aseman mukaan'));try{renderStation(u.stationId);}catch(e){}saveGame(false);};
 window.toggleSpareDispatch=(id)=>{const u=G.units.find(x=>x.id===id);if(!u)return;u.spareCanDispatch=!u.spareCanDispatch;toast(u.name+(u.spareCanDispatch?' saa nyt lähteä keikalle':' ei enää lähde keikalle (vain varakorvaus)'));};
 window.setUnitLoad=(id,load)=>{const u=G.units.find(x=>x.id===id);if(!u)return;
   if(u.taskId){toast(u.name+' tehtävällä — lavaa ei voi vaihtaa nyt');return;}
@@ -2080,14 +2080,15 @@ window.forceUnitFree=(id,sid)=>{
 };
 // per-yksikkö ⚡-napilla, tai kaikki näillä). Vara-autoja ei kosketa.
 window.setAllReady=(sid,on)=>{
-  const units=G.units.filter(u=>u.stationId===sid&&!u.spare);
+  const st0=G.stations.find(s=>s.id===sid);const onlyVpk=st0&&st0.muoto!=='vpk'; // vakituisella asemalla vain VPK-autot
+  const units=G.units.filter(u=>u.stationId===sid&&!u.spare&&(!onlyVpk||unitMuoto(u)==='vpk'));
   let n=0;
   units.forEach(u=>{
     if(on&&!u.atReadyStation&&!u.taskId){u.atReadyStation=true;u._atReadyUntil=G.clock+maxReadySec(u);if(u.status==='asema'||u.status==='paluu')u.status='vapaa_valmius';refreshUnitMarker(u);n++;}
     else if(!on&&u.atReadyStation){u.atReadyStation=false;u._atReadyUntil=null;if(u.status==='vapaa_valmius'&&!u.taskId)u.status='asema';refreshUnitMarker(u);n++;}
   });
   const st=G.stations.find(s=>s.id===sid);const reg=(st&&st.reg)||'LU';
-  if(n){const ch=(st&&st.muoto==='vpk')?reg+' VPK':pfx('pelastus')+' '+reg+' INFO';radio(ch,'HÄKE',(st?st.n:'asema')+' — '+(on?n+' yksikköä asemavalmiuteen':'asemavalmius purettu '+n+' yksiköltä'));}
+  if(n){const ch=(st&&(st.muoto==='vpk'||units.some(u=>unitMuoto(u)==='vpk')))?reg+' VPK':pfx('pelastus')+' '+reg+' INFO';radio(ch,'HÄKE',(st?st.n:'asema')+' — '+(on?n+' yksikköä asemavalmiuteen':'asemavalmius purettu '+n+' yksiköltä'));}
   toast(on?(n?n+' yksikköä asemavalmiuteen':'Kaikki jo valmiudessa / tehtävällä'):'Asemavalmius purettu '+n+' yksiköltä');
   try{if(document.getElementById('smod').classList.contains('open'))renderStation(sid);}catch(e){}
   saveGame(false);
@@ -3334,8 +3335,9 @@ function unitMuoto(u){
 function unitBaseTurnoutSec(u){
   const st=G.stations.find(s=>s.id===u.stationId);
   let base;
-  // Yksikön oma muoto voittaa ASEMAN muodon (vakituinen auto VPK-asemalla → 60s, ei 300s)
-  if(u.muoto&&MUOTO_TURNOUT[u.muoto])base=MUOTO_TURNOUT[u.muoto];
+  // Pelaajan asettama yksikkökohtainen lähtöaika voittaa kaiken; muuten yksikön muoto voittaa aseman muodon.
+  if(u.turnout!=null)base=u.turnout;
+  else if(u.muoto&&MUOTO_TURNOUT[u.muoto])base=MUOTO_TURNOUT[u.muoto];
   else base=st?stationTurnout(st):60;
   if(st&&isNight(st)){
     const muoto=u.muoto||(st&&st.muoto);
@@ -4142,8 +4144,9 @@ function ensureChannels(){
   // Luo INFO-kanavat VAIN niille alueille joilla on asemia (ei oletus-LU:ta)
   const regs=[...new Set(G.stations.filter(s=>s.reg&&s.t!=='hems').map(s=>s.reg))];
   regs.forEach(r=>{['PE '+r+' INFO','EN '+r+' INFO','PO '+r+' INFO'].forEach(c=>{if(!G.radio[c])G.radio[c]=[];});});
-  // VPK-kanavat vain VPK-asemille
-  const vpkRegs=[...new Set(G.stations.filter(s=>s.muoto==='vpk'&&s.reg).map(s=>s.reg))];
+  // VPK-kanavat: VPK-asemille JA alueille joilla on VPK-yksiköitä (esim. VPK-auto paloasemalla)
+  const vpkUnitRegs=G.units.filter(u=>u.muoto==='vpk').map(u=>{const st=G.stations.find(s=>s.id===u.stationId);return st&&st.reg;}).filter(Boolean);
+  const vpkRegs=[...new Set([...G.stations.filter(s=>s.muoto==='vpk'&&s.reg).map(s=>s.reg),...vpkUnitRegs])];
   vpkRegs.forEach(r=>{if(!G.radio[r+' VPK'])G.radio[r+' VPK']=[];});
 }
 function ensureVpkChannels(){ensureChannels();}
@@ -4363,7 +4366,7 @@ function tick(dt){G.clock+=dt;
     if(effGap>0&&_backlogOk&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;spawnTask();b.nextAt=G.clock+_expInterval(baseInterval);}
   }
   // VPK-liikenne — vähennetty rajusti (oli liian usein). Vain ~5% entisestä.
-  if(Math.random()<0.00002*dt){const vpkUnits=G.units.filter(u=>{const s=G.stations.find(x=>x.id===u.stationId);return s&&s.muoto==='vpk'&&u.toimi==='pelastus'&&u.status==='asema'&&!u.taskId;});if(vpkUnits.length){const u=vpkUnits[Math.floor(Math.random()*vpkUnits.length)];const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';const lines=['pyydämme lupaa kalustoharjoitukseen','pyydämme lupaa lähteä huoltoajolle'];const line=lines[Math.floor(Math.random()*lines.length)];radio(reg+' VPK',u.name,line);pendingVpkEvent(u,st,line);}}
+  if(Math.random()<0.00002*dt){const vpkUnits=G.units.filter(u=>{const s=G.stations.find(x=>x.id===u.stationId);return s&&unitMuoto(u)==='vpk'&&u.toimi==='pelastus'&&u.status==='asema'&&!u.taskId;});if(vpkUnits.length){const u=vpkUnits[Math.floor(Math.random()*vpkUnits.length)];const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';const lines=['pyydämme lupaa kalustoharjoitukseen','pyydämme lupaa lähteä huoltoajolle'];const line=lines[Math.floor(Math.random()*lines.length)];radio(reg+' VPK',u.name,line);pendingVpkEvent(u,st,line);}}
   document.getElementById('clock').textContent=fmtClock(G.clock);
   // Päivitä päivämäärä-laatikko vain kun päivä vaihtuu
   if(G._lastShownDay!==G.dayCount){G._lastShownDay=G.dayCount;
@@ -4631,7 +4634,7 @@ function tickOmamieli(dt){
     }
   }
   // VPK: miehistöpula — joskus auto lähtee vajaalla tai ei lainkaan
-  if(roll>0.97&&st&&st.muoto==='vpk'&&u.toimi==='pelastus'){
+  if(roll>0.97&&st&&unitMuoto(u)==='vpk'&&u.toimi==='pelastus'){
     const vpkCh=reg+' VPK';
     const crews=['miehistö vajaa, lähtisimme 1+1','miehistö ei saatu kasaan, auto ei käytettävissä tällä hetkellä','ajoneuvon miehistö vajaa — saammeko ottaa vara-auto käyttöön?'];
     radio(vpkCh,u.name,crews[Math.floor(Math.random()*crews.length)]);
