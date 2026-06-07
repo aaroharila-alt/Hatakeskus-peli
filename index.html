@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HÄTÄKESKUS - dispatch sim v143 (VPK-YKSIKKO = TAYDET VPK-OMINAISUUDET VAKITUISELLA ASEMALLA: kaikki VPK-aseman jutut toimivat nyt yksikkokohtaisesti (u.muoto=vpk) vaikka asema on tyypiltaan vakituinen ja siella on myos ei-VPK-autoja. 1) Satunnaiset VPK-tapahtumat (lupapyynnot/huoltoajot seka miehistopula/harjoitus) laukeavat nyt unitMuoto(u)===vpk -perusteella, ei aseman muodon -> VPK-kanavalle. 2) H351-asemavalmiusosio (valmiussiirto) nakyy aseman paneelissa jos asemalla on VPK-yksikoita. 3) Bulk-valmiusnappi (VPK valmiuteen / Poista valmius) nakyy jos asemalla on VPK-yksikoita; setAllReady koskee vakituisella asemalla VAIN VPK-autoja (ei pakota pysyvia autoja valmiustilaan), ilmoitus VPK-kanavalle. VPK-kanava (v142), valmius-nappi, maxReadySec 4h, yokerroin ja yksikkokohtainen lahtoaika min jo ennestaan unitMuoto-tietoisia.) -->
+<!-- HATAKESKUS - dispatch sim v148 (STATUS-MALLI TARKENNETTU: lisatty seitsemas status "Kuljetus" (kuljetus->Kuljetus, ei enaa Matkalla). Asemavalmius (vapaa_valmius) nayttaa nyt "Vapaa" koska se = 1 min lahtovalmius. Selvennys: Vapaa = 1 min valmius (asemavalmius) TAI liikkeella vapaana ja valmis heti; Asemalla = asemalla normaalivalmiudessa (vakinaisilla tama on jo 1 min, VPK:lla normaali lahtoaika -> siksi vakinaiset pysyvat Asemalla eivatka tarvitse Vapaata). Sallitut 7: Vapaa, Ei halytettavissa, Asemalla, Tehtava vastaanotettu, Kohteessa, Matkalla, Kuljetus.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v143'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v148'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -649,13 +649,15 @@ const VTYPES={
  // Vahingontorjunta-auto: vesivahingot, tulvat, putkirikot, oksat tielle.
  vahinko:{label:'Vahingontorjunta-auto',cls:'vahinko',crew:'1+1',off:false,water:0,speed:62,price:13000,toimi:'pelastus',
    desc:'Imupumput, kuivurit, presut ja raivaussahat. Vesivahingot, putkirikot, myrskytuhot, oksat tiellä.'},
+ jvt:{label:'Jälkivahingontorjunta-auto (JVT)',cls:'vahinko',crew:'1+1',off:false,water:0,speed:62,price:13000,toimi:'pelastus',
+   desc:'Jälkivahinkojen torjunta: kuivaus, kosteudenhallinta, raivaus ja siivous palon/vesivahingon jälkeen. Korvaa vahingontorjunta-auton (sama luokka).'},
  vahinkoperv:{label:'Vahingontorjunta-perävaunu',cls:'vahinko',crew:'0+0',off:false,water:0,speed:50,price:5500,toimi:'pelastus',trailer:true,
    desc:'Vahingontorjuntakalusto perävaunussa: pumput, sandbags, presut. Vedetään sammutusauton perässä.'},
 };
 const VEH_BY_TOIMI={
   // Paloasemille voi ostaa myös ensihoidon yksiköitä (yleinen Suomen käytäntö —
   // moni paloasema on samalla ensihoitoasema, esim. Etelä-Karjala, Kymenlaakso, Pohjanmaa).
-  pelastus:['sammutus','kevytsamm','raivaus','sailio','tankki','vaahto','nostolava','vaihtolava','letku','sukellus','koura','huolto','joke','vak','oty','miehisto','johto','paallikko','ensivaste','vene','vene_pieni','vene_iso','maasto','elainp','vahinko','suro','suroperv','vakperv','otyperv','letkperv','metsperv','monkperv','vahinkoperv','ambH','ambP','kj','laakari','siirto'],
+  pelastus:['sammutus','kevytsamm','raivaus','sailio','tankki','vaahto','nostolava','vaihtolava','letku','sukellus','koura','huolto','joke','vak','oty','miehisto','johto','paallikko','ensivaste','vene','vene_pieni','vene_iso','maasto','elainp','vahinko','jvt','suro','suroperv','vakperv','otyperv','letkperv','metsperv','monkperv','vahinkoperv','ambH','ambP','kj','laakari','siirto'],
   ensihoito:['ambH','ambP','kj','laakari','siirto','hems','suro','suroperv'],
   poliisi:['poliisi','poliisi_k9','poliisi_kj','poliisi_vtu'],
   hems:['hems','laakari'],
@@ -1913,7 +1915,7 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
        </div>
        <button class="btn-x" style="width:100%;margin-top:6px;color:var(--acc2);border-color:var(--acc2)" onclick="forceUnitFree('${u.id}','${s.id}')">🔧 Pakota vapaaksi (korjaa jumittunut yksikkö)</button>
        <details class="sm" ${u.spare?'open':''}><summary>🔄 Vara-auto <span class="tag tag-N" style="background:${u.spare?'var(--acc)':'var(--bg)'};color:${u.spare?'var(--acc-ink)':'var(--dim)'}">${u.spare?(u.spareScope==='alue'?'alue':'asema'):'ei'}</span></summary><div class="smbox">
-         ${u.spare?`<div style="color:var(--acc);font-size:12px;margin-bottom:6px">⭐ Astuu peliin saman tyypin auton hajotessa.</div>
+         ${u.spare?`<div style="color:var(--acc);font-size:12px;margin-bottom:6px">⭐ Astuu peliin kun saman alan auto hajoaa. Sama tyyppi etusijalla, mutta käy myös eri tyypin korvaajaksi (esim. 105↔101). Ottaa hajonneen tunnuksen kunnes se on korjattu.</div>
             <div style="display:flex;gap:6px;margin-bottom:6px">
               <button class="${u.spareScope!=='alue'?'buy':'btn-x'}" style="flex:1;font-size:11.5px;padding:6px 0" onclick="setSpareScope('${u.id}','asema');renderStation('${s.id}')">Aseman vara</button>
               <button class="${u.spareScope==='alue'?'buy':'btn-x'}" style="flex:1;font-size:11.5px;padding:6px 0" onclick="setSpareScope('${u.id}','alue');renderStation('${s.id}')">Alueellinen ${s.reg}</button>
@@ -1974,13 +1976,15 @@ function clearAlertIfResolved(tk){
 function alertTask(tk,msg){tk.alert=true;refreshTaskAlert(tk);if(G.settings.showCallouts)toast('📻 '+msg);renderList();}
 function unitColor(u){return {asema:'#5b8dff',otettu:'#ff8a1e',matka:'#ff3b3b',kohde:'#1c3fd6',paluu:'#39c06a',kuljetus:'#c79a16',muu:'#a7f',huolto:'#888',vapaa_valmius:'#39c06a'}[u.status]||'#888';}
 function statusLabel(u){
-  if(u.status==='muu'&&u.omamieli==='partio')return u.toimi==='poliisi'?'Partioalueella':'Alueella';
-  if(u.status==='muu'&&u.omamieli==='vpkajo')return u._vpkFree?'Liikkeellä (vapaa)':'Harjoituksessa';
-  // Asemalla oleva yksikkö joka on asemavalmiudessa → näytä se (1 min lähtö)
-  if((u.status==='asema'||u.status==='vapaa_valmius')&&!u.taskId){
-    try{if(unitOnReady(u).ready)return 'Asemavalmius (1 min)';}catch(e){}
-  }
-  return STATUS_TXT[u.status]||u.status;
+  // HUOM (muille kehittäjille): status-kentässä saa lukea VAIN jokin näistä seitsemästä:
+  //   "Vapaa" · "Ei hälytettävissä" · "Asemalla" · "Tehtävä vastaanotettu" · "Kohteessa" · "Matkalla" · "Kuljetus".
+  // ÄLÄ palauta mitään muuta (ei "Liikkeellä", "Harjoituksessa", "Partioalueella", "Asemavalmius" tms).
+  // Vapaa    = 1 min lähtövalmius (asemavalmius) TAI liikkeellä vapaana ja valmis ottamaan heti tehtävän.
+  // Asemalla = asemalla normaalivalmiudessa (vakinaisilla tämä on jo 1 min, VPK:lla normaali lähtöaika).
+  if(u.status==='muu')return ['partio','kauppa','harjoitus','vpkajo'].includes(u.omamieli)?'Vapaa':'Ei hälytettävissä';
+  if(u._drill&&!u.taskId)return 'Vapaa';                 // ajelu/harjoitus mutta liikkeellä ja valmis heti → Vapaa
+  const M={asema:'Asemalla',vapaa_valmius:'Vapaa',paluu:'Vapaa',otettu:'Tehtävä vastaanotettu',matka:'Matkalla',kuljetus:'Kuljetus',kohde:'Kohteessa',huolto:'Ei hälytettävissä'};
+  return M[u.status]||'Vapaa';
 }
 window.setCrew=(id,val)=>{const u=G.units.find(x=>x.id===id);if(!u)return;u.crew=(val||'').trim()||u.crew;toast(u.name+' miehitys: '+u.crew);};
 window.setUnitTurnout=(id,val)=>{const u=G.units.find(x=>x.id===id);if(!u)return;const n=parseFloat((val||'').toString().replace(',','.'));u.turnout=(val===''||isNaN(n))?null:Math.max(0,Math.round(n*60));toast(u.name+' lähtöaika: '+(u.turnout!=null?(u.turnout/60)+' min':'aseman mukaan'));try{renderStation(u.stationId);}catch(e){}};
@@ -2767,26 +2771,31 @@ function trySpareSwap(broken){
   const brokenSt=G.stations.find(s=>s.id===broken.stationId);
   const brokenReg=brokenSt&&brokenSt.reg;
   const brokenMuoto=brokenSt&&brokenSt.muoto;
-  function avail(u){return u.spare&&u.vt===broken.vt&&u.status==='asema'&&!u.taskId&&u.id!==broken.id;}
-  let cand=G.units.find(u=>avail(u)&&u.spareScope!=='alue'&&u.stationId===broken.stationId);
-  if(!cand){
-    // 2) Alueellinen vara samalla alueella ja samaa muotoa
-    cand=G.units.find(u=>{
-      if(!avail(u)||u.spareScope!=='alue')return false;
-      const us=G.stations.find(s=>s.id===u.stationId);
-      if(!us||us.reg!==brokenReg)return false;
-      return us.muoto===brokenMuoto;
-    });
+  const brokenToimi=broken.toimi;
+  function base(u){return u.spare&&u.status==='asema'&&!u.taskId&&u.id!==broken.id;}
+  function sameType(u){return base(u)&&u.vt===broken.vt;}               // paras vastaavuus: sama tyyppi
+  function sameField(u){return base(u)&&VTYPES[u.vt]&&VTYPES[broken.vt]&&VTYPES[u.vt].cls===VTYPES[broken.vt].cls;} // korvaaja sama LUOKKA (sammutus↔sammutus, vahinko↔vahinko); säiliö EI korvaa tikasta
+  function findBy(ok){
+    let c=G.units.find(u=>ok(u)&&u.spareScope!=='alue'&&u.stationId===broken.stationId);                                                            // 1) oma vara samalla asemalla
+    if(!c)c=G.units.find(u=>{if(!ok(u)||u.spareScope!=='alue')return false;const us=G.stations.find(s=>s.id===u.stationId);return us&&us.reg===brokenReg&&us.muoto===brokenMuoto;}); // 2) alueellinen vara, sama alue + muoto
+    if(!c)c=G.units.find(u=>{if(!ok(u)||u.spareScope!=='alue')return false;const us=G.stations.find(s=>s.id===u.stationId);return us&&us.reg===brokenReg;});                          // 3) mikä tahansa alueellinen vara samalta alueelta (esim. 5211↔5311)
+    return c;
   }
+  let cand=findBy(sameType)||findBy(sameField); // sama tyyppi ensin, sitten eri tyyppi samalta toimialalta
   if(!cand){
-    // 3) Mikä tahansa alueellinen vara samalta alueelta
-    cand=G.units.find(u=>{
-      if(!avail(u)||u.spareScope!=='alue')return false;
-      const us=G.stations.find(s=>s.id===u.stationId);
-      return us&&us.reg===brokenReg;
-    });
+    // 4) Ei vara-autoa vapaana → VAPAA aktiiviyksikkö korvaa ja ottaa tunnuksen (kuten oikeasti: 105↔101, 5211↔5311).
+    const act=u=>!u.spare&&u.status==='asema'&&!u.taskId&&!u._coverFor&&u.id!==broken.id;
+    const aType=u=>act(u)&&u.vt===broken.vt, aField=u=>act(u)&&VTYPES[u.vt]&&VTYPES[broken.vt]&&VTYPES[u.vt].cls===VTYPES[broken.vt].cls;
+    const findAct=ok=>{
+      let c=G.units.find(u=>ok(u)&&u.stationId===broken.stationId);                                   // sama asema (esim. 105↔101)
+      if(!c)c=G.units.find(u=>{if(!ok(u))return false;const us=G.stations.find(s=>s.id===u.stationId);return us&&us.reg===brokenReg;}); // sama alue (esim. 5211↔5311)
+      return c;
+    };
+    cand=findAct(aType)||findAct(aField);
   }
   if(!cand)return false;
+  const _diffType=cand.vt!==broken.vt;
+  const _isSpare=!!cand.spare;
   // Vaihtolava: jos vaihtolava-auto otetaan vara-autoksi muulle yksikölle,
   // se ei välttämättä voi täydellisesti korvata mutta sopiva lava vaihdetaan.
   cand._origName=cand.name;
@@ -2796,8 +2805,8 @@ function trySpareSwap(broken){
   // Siirrä kotipiste rikkimenneen asemalle, jotta toiminta jatkuu sieltä
   if(brokenSt){cand.hx=brokenSt.lat;cand.hy=brokenSt.lng;cand.lat=brokenSt.lat;cand.lng=brokenSt.lng;}
   refreshUnitMarker(cand);
-  const sk=cand.spareScope==='alue'?'alueellinen vara':'oma vara';
-  toast('🔄 '+cand._origName+' ('+sk+') ottaa tunnuksen '+broken.name+' käyttöön');
+  const sk=_isSpare?(cand.spareScope==='alue'?'alueellinen vara':'oma vara'):'korvaava yksikkö';
+  toast('🔄 '+cand._origName+' ('+sk+(_diffType?', eri tyyppi':'')+') ottaa tunnuksen '+broken.name+' käyttöön');
   return true;
 }
 function checkSpareReturn(repaired){
@@ -3289,7 +3298,7 @@ async function spawnTask(){
   }
   G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
   try{maybeSpawnDuplicate(tk);}catch(e){}
-  if(G.settings.showCallouts)toast('Uusi tehtävä: '+tk.c+' '+tk.n);
+  if(G.settings.showCallouts)toast('Uusi tehtävä: '+tk.n);
   // Äänimerkki UUDESTA tehtävästä (asetuksista). Throttle estää piippusarjan jos monta syntyy kerralla.
   try{ if(!G._offlineSim && (!window.__taskBeepT || Date.now()-window.__taskBeepT>1200)){ window.__taskBeepT=Date.now(); playDispatchSound(); } }catch(e){}
 }
@@ -3632,6 +3641,10 @@ function dSelSummary(tk){
   return `<div class="sec" style="padding-top:2px"><div class="dsum"><div class="dsum-h">📋 Lähtee kohteeseen (${dSel.size})</div>${rows}<span class="chip" onclick="clearDsel()" style="margin-top:8px;display:inline-block">✕ Tyhjennä valinta</span></div></div>`;
 }
 function codeConfirmed(tk){return !!(tk&&(tk._codeConfirmed||tk.hTask||tk.onScene||tk.initialAnnounced));}
+// shownCode = koodi joka NÄYTETÄÄN ulospäin (radio, ilmoitukset). Tämä on PELAAJAN antama koodi
+// (pickedCode). Pelin oma "todellinen" koodi (tk.c) on vain pelin sisäinen totuus eikä saa näkyä
+// matkalla — kohteessa P3 tietää todellisen tilanteen, mutta sitä ei kirjoiteta koodina ulos.
+function shownCode(tk){return (tk&&tk.pickedCode)||(tk&&tk.c)||'';}
 function renderDispatch(){
   const tk=dCur;
   document.getElementById('dcode').innerHTML=`${codeConfirmed(tk)?(tk.pickedCode||tk.c):'?'} <span class="tag tag-${tk.urg||'none'}">${tk.urg||'?'}</span>`;
@@ -3757,7 +3770,7 @@ window.pullToHere=(uid,tid)=>{
     }
   });
   // Lyhyt radioilmoitus tämän tehtävän infolle
-  try{radio(chFor(u.toimi,'INFO',tk),u.name,'siirretty tehtävälle '+tk.c+' '+tk.addr);}catch(e){}
+  try{radio(chFor(u.toimi,'INFO',tk),u.name,'siirretty tehtävälle '+shownCode(tk)+' '+tk.addr);}catch(e){}
   // EI lisätä dSeliin — yksikkö on jo täysin siirretty. SEND-painike koskee vain uusia valintoja.
   // Yksikkö näkyy nyt "Tilanne kohteessa" -listalla (dStatusInner).
   renderDispatch();renderList();updateBadge();
@@ -3884,11 +3897,11 @@ function announceDispatch(tk,newUnits){
     else listText=fmtByRegion(tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean));
   }
   const toimet=[...new Set(newUnits.filter(u=>u.vt!=='hems').map(u=>u.toimi))];
-  const msg=`${tk.c}; ${tk.urg}; ${tk.addr}; ${listText}`;
+  const msg=`${shownCode(tk)}; ${tk.urg}; ${tk.addr}; ${listText}`;
   toimet.forEach(toimi=>radio(chFor(toimi,'ANTO',tk),'HÄKE',msg));
   if(newUnits.some(u=>u.vt==='hems')){
     const reg=regionOf(tk);
-    radio('EN '+reg+' ANTO','HÄKE',`${tk.c}; ${tk.urg}; ${tk.addr}; ${newUnits.filter(u=>u.vt==='hems').map(u=>u.name).join(', ')} (FinnHEMS)`);
+    radio('EN '+reg+' ANTO','HÄKE',`${shownCode(tk)}; ${tk.urg}; ${tk.addr}; ${newUnits.filter(u=>u.vt==='hems').map(u=>u.name).join(', ')} (FinnHEMS)`);
   }
   tk.initialAnnounced=true;
 }
@@ -5223,7 +5236,24 @@ function effectiveSpeed(u,urg){
   const effectiveTraffic=(['A','B'].includes(urg))?(1-(1-trafficFactor)*0.3):trafficFactor;
   const h=Math.floor(G.clock/3600)%24;
   const nightBonus=(h>=23||h<5)&&['A','B'].includes(urg)?1.06:1.0;
-  return base*urgMult*effectiveTraffic*nightBonus;
+  let v=base*urgMult*effectiveTraffic*nightBonus;
+  return Math.min(v, topKmh(u));
+}
+// Yksikön TOP-nopeus (km/h). Raskaat paloautot (rekat) ja perävaunut rajataan 80:een (Suomen raja
+// raskaalle kalustolle). Vetoauto+perävaunu = hitaampi voittaa: molemmat 80 → yhdistelmä 80.
+function topKmh(u){
+  const vt=VTYPES[u.vt]||{};
+  if(vt.heli&&u._hemsMode!=='car')return 99999;        // kopteri lentää, ei tien rajaa
+  if(vt.trailer)return 80;                              // perävaunu max 80
+  const cls=vt.cls;
+  if(cls==='sammutus'||cls==='nostolava'||cls==='vahinko')return 80; // raskaat paloautot 80
+  if(cls==='maasto')return 45;                          // mönkijä
+  if(cls==='vene')return 99999;                         // veneellä oma vesinopeus
+  if(cls==='ambulanssi')return 110;                     // ambulanssi
+  if(cls==='poliisi')return 130;                        // poliisipartio
+  if(cls==='johto')return 120;                          // johtoauto (henkilöauto)
+  if(cls==='muu')return 90;                             // miehistöauto ym.
+  return 100;
 }
 // #7 ETA: todellinen ajo hidastuu risteyksissä/valoissa/liikenteessä — moveUnit kertoo nopeuden
 // satunnaisella _spdFactorilla, jonka pitkän ajan keskiarvo on ~0.85. ARVIO käytti ennen TÄYTTÄ
@@ -5762,18 +5792,18 @@ function formationOrder(word){
 }
 function maybeEscalate(tk,arriving){
   if(tk.escDone||!G.settings.autoEsc)return;
+  // TIETOMALLI (huomio muille): P3/johtaja tietää PELIN todellisen koodin (mitä kohteessa oikeasti
+  // tapahtuu) VASTA kun joku oman alan yksikkö on KOHTEESSA (incidentCommander vaatii status 'kohde').
+  // Sitä ennen (matkalla) tiedossa on VAIN pelaajan antama koodi + pelaajan lisätiedot. Siksi escalaatio
+  // (todelliseen tilanteeseen perustuva suositus) tehdään vasta kohteessa, eikä se koskaan kirjoita pelin
+  // omaa koodinumeroa ulos — johtaja suosittaa vain vastetta/muodostelmaa.
   // VAIN oman toimialan johtaja kohteessa arvioi (palossa pelastusyksikkö — EI ambulanssi).
   const cmd=incidentCommander(tk);
   if(!cmd)return;
   const ch=chFor(tk.toimi,'INFO',tk);
   // REALISMI: johtaja ei vaihda tehtäväkoodia pelaajan puolesta — hän SUOSITTELEE radiolla, pelaaja
   // päättää (vaihtaa koodin lähetysnäkymässä). Yksi yhdistetty viesti (ei erikseen koodi + joukkue).
-  // 1) VÄÄRÄ KOODI kohteessa → suositus oikeasta koodista
-  if(tk.mislabeled&&tk.realCode&&tk.realCode!==tk.c){
-    tk.escDone=true;tk.escSuggest=tk.realCode;
-    const msg=`${tk.addr} — kohteessa pikemminkin ${tk.realCode}, suositan nostoa koodille ${tk.realCode} — ${_escWhy(tk.c)}`;
-    radio(ch,cmd.name,msg);alertTask(tk,`${cmd.name}: ${msg}`);renderList();return;
-  }
+  // (Poistettu: johtaja EI ehdota "oikeaa koodia" — pelaaja määrittää koodin itse, peli ei tyrkytä omaa.)
   // 2) TILANNE LAAJENEE: jos koodille on JÄRKEVÄ nosto (escTo) → johtaja suosittelee sitä (yksi viesti,
   //    EI koodin vaihtoa). Nostotaajuus on per-koodi tk.esc (esim. 203→204 harvinaista, koska 204 vaatii
   //    epärealistisen paljon kalustoa). Jos koodi EI voi realistisesti nousta (esim. 483) → ei koodi-
@@ -5787,14 +5817,10 @@ function maybeEscalate(tk,arriving){
     const _escCovered=_escDef&&_needMet(_escDef.need,_hv.have,_hv.crew,_escDef.minCrew);
     if(!_escCovered&&Math.random()<tk.esc){
       tk.escDone=true;tk.escSuggest=tk.escTo;
-      const word=(tk.toimi==='pelastus')?`${formationOrder(formationWord(_escDef))} (koodille ${tk.escTo})`:`suositan nostoa koodille ${tk.escTo}`;
+      const word=(tk.toimi==='pelastus')?`${formationOrder(formationWord(_escDef))}`:`suositan lisävastetta (lisää yksiköitä)`;
       const msg=`${tk.addr} — ${word} — ${_escWhy(tk.c)}`;
       radio(ch,cmd.name,msg);alertTask(tk,`${cmd.name}: ${msg}`);renderList();
     }
-  } else if((tk.sev==='critical'||tk.sev==='high'||(tk.minCrew||0)>=6)&&Math.random()<0.06){
-    tk.escDone=true;
-    const rep=['tilanne vaativa, työskentelemme kohteessa','tilanne hallinnassa, työ jatkuu','tilanne haastava mutta hallinnassa','jatkamme työskentelyä kohteessa'];
-    radio(ch,cmd.name,`${tk.addr} — ${rep[Math.floor(Math.random()*rep.length)]}`);
   }
 }
 // Tilannepaikan johtaja vapauttaa AIDOSTI tarpeettomat, vielä MATKALLA olevat yksiköt
