@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HÄTÄKESKUS - dispatch sim v128 (LISAVASTE REALISTISEMMAKSI: johtaja kohteessa suosittelee vasteen korotusta MUODOSTELMANA oikean vahvuusportaan mukaan: formationWord laskee vasteen koosta (yksikkomaara + minCrew) tason ryhma/joukkue/komppania/yhtyma. Pelastuksen eskalaatioviesti kayttaa nyt oikeaa kaskya: 401->402 nostakaa joukkuelahtoon, 402->403 nostakaa komppanialahtoon jne. (ennen aina joukkuelahto). Iso alimitoitus pyydetaan myos muodostelmana: tarvitaan vahvennusta - komppaniavahvuus kohteeseen (ei autolistana). Pieni vajaus (1-2 yks) yha tarkasti esim yksi sailioauto. EI vaihda koodia puolestasi (pelaaja paattaa), EI laheta P2/P3 suoraan, ~30% pyynnoista epavarmasti muotoiltu. Vasteen purku (maybeReleaseExtras) ja canResource-portti olivat jo. Ei uutta tallennettavaa.) -->
+<!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
 <!-- HÄTÄKESKUS - dispatch sim v88 (Kohdepisteet eivät enää poistu vahingossa: poisto vain muokkaustilassa JA kysyy varmistuksen. Normaalipelissä kohdepisteen klikkaus ei tee mitään. Muuten kuten v87) -->
@@ -43,9 +45,9 @@
 <style>
 :root{
   /* Hätäkeskus-konsolin paletti: syvä öljynmusta, lämmin meripihka, signaalivihreä */
-  --bg:#0a0c0f; --bg2:#12161c; --bg3:#1a2129; --bg4:#222c36;
-  --line:#2b3947; --line2:#3a4b5c;
-  --txt:#eef3f7; --dim:#8696a6; --dim2:#5d6b79;
+  --bg:#202428; --bg2:#2a2f35; --bg3:#343a41; --bg4:#414850;
+  --line:#3f474f; --line2:#4d5760;
+  --txt:#eef3f7; --dim:#9fa9b4; --dim2:#6e7984;
   --acc:#ffb01f;            /* meripihka — pääkorostus (hätäkeskus/varoitus) */
   --acc2:#26d07c;           /* signaalivihreä — OK/lähetä */
   --acc-ink:#1a1200;        /* tumma teksti meripihkan päällä */
@@ -64,10 +66,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 /* Zoom-napit aina yläpalkin ALLE ja paneelien ALLE (z-index) — ei vuoda dispatch/asetukset päälle */
 .leaflet-top.leaflet-left{margin-top:calc(var(--top-h) + 6px);z-index:450}
 
-#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;background:linear-gradient(180deg,#0d1116 0%,#0a0d11 100%);border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;padding:0 12px;box-shadow:0 2px 12px #0008}
-#top:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--acc);box-shadow:0 0 12px var(--acc)}
-#top .logo{font-family:var(--fdisp);font-weight:700;letter-spacing:3px;font-size:18px;color:var(--txt);text-transform:uppercase;display:flex;align-items:center;gap:7px}
-#top .logo:before{content:"";width:9px;height:9px;border-radius:50%;background:var(--acc2);box-shadow:0 0 9px var(--acc2);animation:beat 2s infinite}
+#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;background:#14171b;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;padding:0 12px}
+#top:before{content:"";position:absolute;left:0;top:0;bottom:0;width:0}
+#top .logo{font-family:var(--fdisp);font-weight:800;letter-spacing:.5px;font-size:20px;color:var(--txt);text-transform:none;display:flex;align-items:center;gap:8px}
+#top .logo:before{content:none}
+#hambtn{flex:none;background:var(--bg3);border:1px solid var(--line2);color:var(--txt);border-radius:7px;width:40px;height:34px;font-size:18px;line-height:1;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center}
+#hambtn:active{background:var(--bg4)}
+#hambtn .badge{position:absolute;top:-6px;right:-6px;background:var(--acc2);color:#06210f;border-radius:9px;font-size:9px;padding:1px 5px;font-weight:700;font-family:var(--fmono)}
+#menupop{position:absolute;top:calc(var(--top-h) + 6px);right:8px;z-index:660;background:var(--bg2);border:1px solid var(--line2);border-radius:12px;box-shadow:0 10px 28px #000b;display:none;flex-direction:column;min-width:220px;overflow:hidden}
+#menupop.open{display:flex}
+#menupop button{background:none;border:none;border-bottom:1px solid var(--line);color:var(--txt);text-align:left;padding:15px 16px;font-size:15.5px;font-family:var(--fui);font-weight:600;cursor:pointer;display:flex;align-items:center;gap:11px}
+#menupop button:last-child{border-bottom:none}
+#menupop button:active{background:var(--bg3)}
+#menupop .ic{font-size:18px}
+.pkgbar{display:flex;flex-wrap:wrap;gap:6px}
+.pkgbtn{background:var(--bg3);border:1px solid var(--line2);color:var(--txt);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fui)}
+.pkgbtn:active{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.pkgbtn.star{border-color:var(--acc2)}
+.dsum{background:var(--bg3);border:1px solid var(--acc);border-radius:10px;padding:10px 12px}
+.dsum-h{font-weight:700;font-size:12.5px;color:var(--acc);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.dsum-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.dsum-row:last-of-type{border-bottom:none}
+.dsum-t{flex:1;color:var(--dim)}
+.dsum-eta{color:var(--acc2);font-family:var(--fmono);font-size:12px}
 @keyframes beat{0%,100%{opacity:1}50%{opacity:.35}}
 .pill{background:#0c1014;border:1px solid var(--line);border-radius:5px;padding:5px 10px;font-size:13px;white-space:nowrap;font-family:var(--fmono);font-weight:500;color:var(--dim);display:inline-flex;align-items:center;gap:5px}
 .pill b{color:var(--txt);font-weight:700}
@@ -76,11 +97,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 #nav{position:absolute;bottom:0;left:0;right:0;height:var(--nav-h);z-index:600;background:linear-gradient(180deg,#0d1217 0%,#080a0d 100%);border-top:1px solid var(--line2);display:flex;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 14px #0009}
 #nav button{flex:1;background:none;border:none;color:var(--dim2);font-size:10px;font-family:var(--fui);font-weight:600;letter-spacing:.4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;position:relative;min-height:44px;padding:6px 2px;text-transform:uppercase;transition:color .12s}
 #nav button .ic{font-size:20px;line-height:1;filter:grayscale(.4) opacity(.7);transition:filter .12s}
-#nav button:before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:3px;background:var(--acc);border-radius:0 0 3px 3px;transition:width .15s;box-shadow:0 0 8px var(--acc)}
+#nav button:before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:3px;background:var(--acc);border-radius:0 0 3px 3px;transition:width .15s}
 #nav button.on{color:var(--acc)}
 #nav button.on .ic{filter:none}
 #nav button.on:before{width:60%}
-#nav button .badge{position:absolute;top:5px;left:50%;margin-left:8px;background:var(--A);color:#fff;border-radius:9px;font-size:9px;padding:1px 5px;font-weight:700;font-family:var(--fmono);box-shadow:0 0 8px #ff3b3b88}
+#nav button .badge{position:absolute;top:5px;left:50%;margin-left:8px;background:var(--A);color:#fff;border-radius:9px;font-size:9px;padding:1px 5px;font-weight:700;font-family:var(--fmono)}
 
 .panel{position:absolute;left:0;right:0;bottom:var(--nav-h);top:var(--top-h);z-index:550;background:var(--bg);display:none;flex-direction:column}
 .panel.open{display:flex;animation:slideup .18s ease}
@@ -211,6 +232,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 .toggle{display:flex;justify-content:space-between;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);min-height:50px;font-size:14.5px}
 .sw{width:50px;height:28px;background:#2a3138;border-radius:4px;position:relative;cursor:pointer;flex:none;border:1px solid var(--line2)}
 .sw.on{background:var(--acc2)} .sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:3px;background:#fff;transition:.15s}.sw.on i{left:27px}
+details.setgrp{border:1px solid var(--line2);border-radius:8px;margin-top:10px;background:var(--bg2);overflow:hidden}
+details.setgrp>summary{cursor:pointer;padding:14px;font-weight:700;font-size:14.5px;list-style:none;display:flex;align-items:center;gap:8px}
+details.setgrp>summary::-webkit-details-marker{display:none}
+details.setgrp>summary::after{content:"▾";margin-left:auto;color:var(--dim);font-size:13px}
+details.setgrp[open]>summary::after{content:"▴"}
+details.setgrp[open]>summary{border-bottom:1px solid var(--line)}
+details.setgrp>summary:active{background:var(--bg3)}
+.sgbody{padding:2px 12px 12px}
 
 #toast{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:800;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
 .tmsg{background:#0a0d10ee;border:1px solid var(--line2);border-left:3px solid var(--acc);border-radius:5px;padding:8px 14px;font-size:13.5px;animation:pop .3s;box-shadow:0 4px 16px #0009}
@@ -294,25 +323,21 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 
 <div id="map"></div>
 <div id="top">
-  <span class="logo">HÄTÄKESKUS</span>
+  <span class="logo">Hätäkeskuspeli</span>
   <span class="pill">🕒 <b id="clock">--:--</b></span>
   <span class="pill" style="cursor:pointer" onclick="openCalendar()" title="Avaa kalenteri">📅 <b id="gamedate">–</b></span>
   <span class="pill">💶 <b id="money">0</b></span>
   <span class="pill" id="rushhour" style="display:none;background:#2a1800;border-color:#ff8a1e;color:#ff8a1e">🚦 Ruuhka</span>
   <span class="pill" id="eventpill" style="display:none;background:#1a1200;border-color:var(--acc);color:var(--acc);cursor:pointer" onclick="openCalendar()" title="Tämän päivän tapahtuma"></span>
   <span class="spacer"></span>
-  <select class="pill" id="spawnsel" style="cursor:pointer" title="Tehtävien syntymisnopeus">
-    <option value="0">⏸ ei uusia</option>
-    <option value="0.33">0,33×</option>
-    <option value="0.5">0,5×</option>
-    <option value="0.75">0,75×</option>
-    <option value="1" selected>1×</option>
-    <option value="2">2×</option>
-    <option value="3">3×</option>
-    <option value="4">4×</option>
-    <option value="5">5×</option>
-    <option value="real">🎲 realistinen (vaihteleva)</option>
-  </select>
+  <button id="hambtn" onclick="toggleMenu(event)" title="Valikko" aria-label="Valikko">☰<span class="badge" id="missbadge" style="display:none">0</span></button>
+</div>
+<div id="menupop">
+  <button onclick="openPanel('miss');closeMenu()"><span class="ic">🎯</span> Tavoitteet</button>
+  <button onclick="openPanel('pkg');closeMenu()"><span class="ic">📦</span> Vastepaketit</button>
+  <button onclick="openPanel('ensh');closeMenu()"><span class="ic">🩺</span> Ensihoito-tietopankki</button>
+  <button onclick="openPanel('prof');closeMenu()"><span class="ic">👤</span> Profiili</button>
+  <button onclick="openPanel('set');closeMenu()"><span class="ic">⚙️</span> Asetukset</button>
 </div>
 
 <div class="placebar" id="placebar">📍 Klikkaa karttaa asettaaksesi aseman (ESC peruu)</div>
@@ -340,7 +365,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
   <div id="spawnPolyBtns" style="display:none;gap:6px">
     <button id="spawnSnapBtn" style="background:#2ee6a0;color:#06210f;border:none;border-radius:8px;padding:6px 10px;font-weight:800;cursor:pointer" onclick="toggleSpawnSnap()" title="Napsauta uudet pisteet kiinni viereisen alueen kulmiin — ei rakoja väliin">🧲 Tartunta: ON</button>
     <button style="background:#3a2a00;color:#ffd11a;border:1px solid #ffd11a;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer" onclick="undoPolyPoint()">↶ Peru piste</button>
-    <button style="background:#2ee6a0;color:#06210f;border:none;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer" onclick="finishPolyArea()">✓ Sulje alue</button>
+    <button id="spawnFinishBtn" style="background:#2ee6a0;color:#06210f;border:none;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer" onclick="finishPolyArea()">✓ Sulje alue</button>
   </div>
   <button style="background:#3a2a00;color:#ffd11a;border:1px solid #ffd11a;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer" onclick="clearAllSpawnAreas()">🗑️ Tyhjennä</button>
   <button style="background:#ffd11a;color:#1a1200;border:none;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer" onclick="stopEditSpawnArea()">✓ Valmis</button>
@@ -381,12 +406,14 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 <button class="fab" id="fab"></button>
 <div id="toast"></div>
 
-<div class="panel" id="p-list"><div class="head">📋 Tehtävät <span class="spacer"></span><span class="smallnote mono" id="listcount"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="listbody"></div></div>
+<div class="panel" id="p-list"><div class="head">📋 Tehtävät <span class="spacer"></span><span class="smallnote mono" id="listcount"></span><select class="pill" id="spawnsel" style="cursor:pointer;margin-left:6px" title="Tehtävien syntymisnopeus"><option value="0">⏸ ei uusia</option><option value="0.33">0,33×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="5">5×</option><option value="real">🎲 realistinen</option></select><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="listbody"></div></div>
 <div class="panel" id="p-radio"><div class="head">📻 Radio <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body"><div class="rtab" id="rtabs"></div><div id="rfeed"></div></div></div>
 <div class="panel" id="p-build"><div class="head">🏢 Asemat & yksiköt <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="buildbody"></div></div>
 <div class="panel" id="p-miss"><div class="head">🎯 Tavoitteet <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="missbody"></div></div>
 <div class="panel" id="p-ensh"><div class="head">🩺 Ensihoito-tietopankki <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="enshbody"></div></div>
 <div class="panel" id="p-set"><div class="head">⚙️ Asetukset <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="setbody"></div></div>
+<div class="panel" id="p-pkg"><div class="head">📦 Vastepaketit <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="pkgbody"></div></div>
+<div class="panel" id="p-prof"><div class="head">👤 Profiili <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="profbody"></div></div>
 
 <!-- DISPATCH -->
 <button class="radiobtn" id="radiobtn" onclick="toggleChanPick()" style="display:none">📻 Radio</button>
@@ -400,6 +427,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
     <div><span class="mono" id="dcode" style="font-weight:800;font-size:15px"></span>
       <span style="color:var(--dim);font-size:12px" id="dname"></span><br>
       <span class="smallnote" id="daddr"></span></div>
+    <button class="btn-x" id="dadvice" title="Hoida neuvontana — ei yksikköä (H-tehtävä, portinvartija)" onclick="dismissCurrentAsAdvice()" style="margin-right:4px">📞</button>
     <button class="btn-x" id="ddelete" title="Hylkää tehtävä (SAKKO — vain jumittuneeseen)" onclick="removeCurrentTask()" style="margin-right:4px">🗑️</button>
     <button class="btn-x x" id="dclose">✕</button>
   </div>
@@ -417,14 +445,11 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
   <button data-p="list"><span class="ic">📋</span>Tehtävät<span class="badge" id="navbadge" style="display:none">0</span></button>
   <button data-p="radio"><span class="ic">📻</span>Radio</button>
   <button data-p="build"><span class="ic">🏢</span>Asemat</button>
-  <button data-p="ensh"><span class="ic">🩺</span>Ensihoito</button>
-  <button data-p="miss"><span class="ic">🎯</span>Tavoit.<span class="badge" id="missbadge" style="display:none;background:var(--acc2);color:#06210f;box-shadow:0 0 8px #26d07c88">0</span></button>
-  <button data-p="set"><span class="ic">⚙️</span>Aset.</button>
 </nav>
 
 <script>
 /* ===== TILA ===== */
-const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:3,jsonbinKey:'',maxTaskGap:300}};
+const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:3,jsonbinKey:'',maxTaskGap:300,upkeep:true}};
 
 /* ===== KALENTERI / AIKAJÄRJESTELMÄ =====
    G.clock = sekunnit vuorokauden alusta (0-86400)
@@ -477,7 +502,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v90'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v128'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -525,7 +550,7 @@ const VTYPES={
  raivaus:{label:'Raivausyksikkö (ei vettä)',cls:'sammutus',crew:'1+3',off:true,water:0,speed:60,price:14000,toimi:'pelastus',
    desc:'Hydrauliikkakalusto irrotukseen. Toimii myös sammutusautona (ei vettä).',
    custom:{crewN:{min:2,max:6,label:'Henkilömäärä (1+X)'}}},
- nostolava:{label:'Nostolavayksikkö',cls:'nostolava',crew:'0+1',off:false,water:0,speed:55,price:22000,toimi:'pelastus',desc:'Tarvitaan korkealla tai alhaalla oleviin kohteisiin. Painava rekka.'},
+ nostolava:{label:'Nostolavayksikkö',cls:'nostolava',crew:'0+1',off:false,water:0,speed:55,price:22000,toimi:'pelastus',desc:'Yltää KORKEALLE: rakennuspalot, korkealta pelastaminen, puiden nosto. Alas (syvänne) ei yllä — siihen köysipelastus. Painava rekka.'},
  miehisto:{label:'Miehistöauto',cls:'muu',crew:'1+5',off:true,water:0,speed:68,price:9000,toimi:'pelastus',desc:'Lisää miehistöä isoihin tehtäviin.'},
  vene:{label:'Pelastusvene (keskikokoinen)',cls:'vene',crew:'1+2',off:false,water:0,speed:42,price:18000,toimi:'pelastus',desc:'Vakiokokoinen pelastusvene. Vesipelastus, sukellus, kuljetus.'},
  vene_pieni:{label:'Pelastusvene (pieni)',cls:'vene',crew:'1+1',off:false,water:0,speed:46,price:11000,toimi:'pelastus',desc:'Kevyt nopea vene sisävesille (järvet, joet). Pintapelastus, pieni miehistö.'},
@@ -533,7 +558,7 @@ const VTYPES={
  ambH:{label:'Hoitotason ambulanssi',cls:'ambulanssi',crew:'1+1',off:false,water:0,speed:75,price:12000,toimi:'ensihoito',desc:'Hoitotaso. Lääkkeet ja toimenpiteet.'},
  ambP:{label:'Perustason ambulanssi',cls:'ambulanssi',crew:'1+1',off:false,water:0,speed:73,price:10000,toimi:'ensihoito',desc:'Perustaso. Kiireettömiin ja tukitehtäviin.'},
  kj:{label:'Kenttäjohtaja (L4)',cls:'johto',crew:'1+0',off:true,water:0,speed:88,price:13000,toimi:'ensihoito',desc:'Johtaa ensihoidon resursseja, lähettää potilaat sairaaloihin.'},
- hems:{label:'FinnHEMS (lääkärihelikopteri)',cls:'ambulanssi',crew:'1+2',off:true,heli:true,water:0,speed:220,price:120000,toimi:'ensihoito',desc:'Lentää suoraan. Lääkäri kohteessa tai kuljettaa sairaalaan nopeasti.'},
+ hems:{label:'FinnHEMS (lääkäriyksikkö: kopteri + auto)',cls:'ambulanssi',crew:'1+2',off:true,heli:true,water:0,speed:259,carSpeed:95,price:120000,toimi:'ensihoito',desc:'Lääkäri liikkuu kopterilla (lentää suoraan ~140 solmua) tai maayksiköllä (auto). Lyhyellä matkalla tai myrskyssä auto, pitkällä kopteri. Lääkäri hoitaa kohteessa; varsinaisen kuljetuksen tekee ambulanssi.'},
  maasto:{label:'Maastoyksikkö (mönkijä)',cls:'maasto',crew:'1+1',off:false,water:0,speed:38,price:9000,toimi:'pelastus',desc:'Metsä- ja suotehtävät. Ei tarvita jos on sammutusauto.'},
  poliisi:{label:'Poliisipartio',cls:'poliisi',crew:'1+1',off:false,water:0,speed:82,price:8000,toimi:'poliisi',desc:'Järjestyksen ylläpito, rikokset, liikennevalvonta.'},
  johto:{label:'Palomestari (johtoauto)',cls:'johto',crew:'1+0',off:true,water:0,speed:82,price:20000,toimi:'pelastus',desc:'Johtaa pelastusjoukkueen tehtäviä. Henkilöauto.'},
@@ -582,6 +607,8 @@ const VTYPES={
  // Laskee tehtävässä kuin USEAMPI ambulanssi (kenttäsairaala hoitaa monta yhtä aikaa).
  suro:{label:'Suuronnettomuusyksikkö (kenttäsairaala)',cls:'suro',crew:'1+7',off:true,water:0,speed:54,price:65000,toimi:'ensihoito',fieldHospital:3,
    desc:'Liikkuva kenttäsairaala: teltta, hoitopaikat, hapet, tarvikkeet. Monipotilastilanteet (SURO), suuronnettomuudet. Vastaa kohteessa usean ambulanssin hoitokykyä.'},
+ suroperv:{label:'Kenttäsairaala-perävaunu (SURO)',cls:'suro',crew:'0+0',off:false,water:0,speed:50,price:30000,toimi:'ensihoito',trailer:true,fieldHospital:3,
+   desc:'Kenttäsairaala perävaunussa: teltta, hoitopaikat, tarvikkeet. Tarvitsee vetoauton ja miehityksen muualta. Halvempi kuin oma auto.'},
 
  // ===== VAK ja ÖTY: omat autot (vakavammat tehtävät) =====
  vak:{label:'Vaarallisten aineiden yksikkö (VAK)',cls:'sammutus',crew:'1+3',off:true,water:0,speed:58,price:24000,toimi:'pelastus',
@@ -627,8 +654,8 @@ const VTYPES={
 const VEH_BY_TOIMI={
   // Paloasemille voi ostaa myös ensihoidon yksiköitä (yleinen Suomen käytäntö —
   // moni paloasema on samalla ensihoitoasema, esim. Etelä-Karjala, Kymenlaakso, Pohjanmaa).
-  pelastus:['sammutus','kevytsamm','raivaus','sailio','tankki','vaahto','nostolava','vaihtolava','letku','sukellus','koura','huolto','joke','vak','oty','miehisto','johto','paallikko','ensivaste','vene','vene_pieni','vene_iso','maasto','elainp','vahinko','suro','vakperv','otyperv','letkperv','metsperv','monkperv','vahinkoperv','ambH','ambP','kj','laakari','siirto'],
-  ensihoito:['ambH','ambP','kj','laakari','siirto','hems','suro'],
+  pelastus:['sammutus','kevytsamm','raivaus','sailio','tankki','vaahto','nostolava','vaihtolava','letku','sukellus','koura','huolto','joke','vak','oty','miehisto','johto','paallikko','ensivaste','vene','vene_pieni','vene_iso','maasto','elainp','vahinko','suro','suroperv','vakperv','otyperv','letkperv','metsperv','monkperv','vahinkoperv','ambH','ambP','kj','laakari','siirto'],
+  ensihoito:['ambH','ambP','kj','laakari','siirto','hems','suro','suroperv'],
   poliisi:['poliisi','poliisi_k9','poliisi_kj','poliisi_vtu'],
   hems:['hems','laakari'],
   // Pelastusvenelaituri: kaikki venetyypit ja sukellusauto
@@ -898,7 +925,7 @@ const TASKS=[
    'Joukkomyrkytys ravintolassa, kymmeniä asiakkaita oireilee.',
    'Sortuma yleisötapahtumassa, useita raunioissa, tarkkaa määrää ei tiedossa.',
    'Kaasuvuoto tehtaalla, työntekijöitä oireilee.']},
- {c:'797',n:'Suuronnettomuus (laaja)',toimi:'ensihoito',w:0.06,need:{ambulanssi:6,suro:1,johto:2,sammutus:2},altNeed:[{suro:2,ambulanssi:2,johto:2}],minCrew:0,rew:7500,where:'any',patients:14,sev:'critical',timeCrit:1200,esc:0,dur:[150,360],info:'Laaja suuronnettomuus — kenttäsairaala välttämätön.',variants:[
+ {c:'797',n:'Suuronnettomuus (laaja)',toimi:'ensihoito',w:0.06,need:{ambulanssi:9,johto:2,sammutus:2},altNeed:[{suro:1,ambulanssi:4,johto:2,sammutus:2},{suro:2,ambulanssi:2,johto:2}],minCrew:0,rew:7500,where:'any',patients:14,sev:'critical',timeCrit:1200,esc:0,dur:[150,360],info:'Laaja suuronnettomuus. Kenttäsairaala (SURO) auttaa paljon mutta ei pakollinen — vaihtoehtona useampi ambulanssi.',variants:[
    'Junaonnettomuus, kymmeniä loukkaantuneita, kenttäsairaala pystytettävä.',
    'Lentokoneen pakkolasku, useita kymmeniä potilaita eri vakavuuksilla.',
    'Suuren yleisötapahtuman katsomo sortunut, massa loukkaantuneita.',
@@ -1086,7 +1113,7 @@ const TASKS=[
    'Työntekijä jäänyt koneen väliin tehtaalla, irrotus tarvitaan.',
    'Henkilö hississä puristuksissa ovien välissä.',
    'Maa-aines romahti kaivannossa työntekijän päälle, soittaja: työpari.']},
- {c:'487',n:'Pelastaminen ylhäältä/alhaalta',toimi:'pelastus',w:1,need:{sammutus:1,nostolava:1,ambulanssi:1},minCrew:7,rew:900,where:'urban',patients:1,sev:'high',timeCrit:600,esc:.1,dur:[30,70],info:'Henkilö korkealla tai syvänteessä.',variants:[
+ {c:'487',n:'Pelastaminen ylhäältä/alhaalta',toimi:'pelastus',w:1,need:{sammutus:1,nostolava:1,ambulanssi:1},altNeed:[{sammutus:1,koysi:2,ambulanssi:1}],minCrew:7,rew:900,where:'urban',patients:1,sev:'high',timeCrit:600,esc:.1,dur:[30,70],info:'Henkilö korkealla (nostolava ylös) tai syvänteessä (köysipelastus alas).',variants:[
    'Työntekijä loukkaantunut katolla, ei pääse alas omin voimin.',
    'Henkilö pudonnut työmaan kaivantoon (n. 4m).',
    'Putkimies juuttunut hormiin, työpari soittaa.',
@@ -1503,7 +1530,7 @@ function addUnit(st,vt,customName){
     marker:null,route:null,ri:0,target:null};
   G.units.push(u);return u;
 }
-const STATION_ICON={pelastus:'🚒',ensihoito:'🚑',poliisi:'🚓',hems:'🚁',sairaala:'🏥',hatakeskus:'📞',venelaituri:'⚓'};
+const STATION_ICON={pelastus:'🚒',ensihoito:'🚑',poliisi:'🚓',hems:'🚁',sairaala:'🏥',hatakeskus:'📞',venelaituri:'⚓',korjaamo:'🔧'};
 function vehOptions(allow){
   const groups={'🚒 Paloautot':[],'🪜 Nostolavat':[],'💧 Vesi & säiliö':[],'🚑 Ensihoito':[],'⭐ Johto':[],'🔧 Muut':[]};
   allow.forEach(v=>{const T=VTYPES[v];let g='🔧 Muut';
@@ -1642,6 +1669,13 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
        <div class="smallnote" style="margin-top:4px;font-size:11px">«Partioi kaikki» lähettää yksiköt joilla 🚦 liikennevalvonta on päällä (yksikön asetukset).</div>
      </div>`:''}
      <div class="smallnote">${s.t}${s.muoto?' · '+s.muoto:''} · tunnus ${s.reg}${s.num}</div>
+     ${(['pelastus','ensihoito','poliisi','venelaituri'].includes(s.t))?`<div style="background:var(--bg3);border-radius:8px;padding:10px;margin-top:10px">
+       <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-bottom:4px">🔧 Huoltohalli</div>
+       ${s.korjaamo
+         ? `<div class="smallnote" style="color:var(--acc2)">✓ Korjaamo rakennettu — rikkoutuneet autot huolletaan tällä asemalla.</div>`
+         : `<div class="smallnote" style="margin-bottom:6px">Lisää asemalle korjaamo isoja huoltoja varten. Rikkoutuneet autot ajavat lähimmälle korjaamolle (oma tai erillinen).</div>
+            <button class="buy" style="width:100%" onclick="addKorjaamoExpansion('${s.id}')">🔧 Rakenna huoltohalli — 20 000 €</button>`}
+     </div>`:''}
      ${['pelastus','ensihoito','poliisi'].includes(s.t)?`<div style="background:var(--bg3);border-radius:8px;padding:10px;margin-top:10px">
        <div style="display:flex;justify-content:space-between;align-items:center">
          <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim)">📍 Tehtäväalue</span>
@@ -1804,6 +1838,7 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
          <button class="btn-x" style="width:100%;font-size:12px" onclick="startPatrolRouteDraw('${u.id}')">🧭 Piirrä partioreitti${u.patrolRoute?' ✓ ('+u.patrolRoute.length+' pist.)':''}</button>
          ${u.patrolRoute?`<button class="btn-x" style="width:100%;margin-top:4px;font-size:11px;color:#f88" onclick="clearUnitPatrolRoute('${u.id}')">Poista reitti</button>`:`<button class="btn-x" style="width:100%;margin-top:4px;font-size:12px" onclick="pickUnitPatrolArea('${u.id}')">📍 Oma partioalue (piste)${u.patrolArea?' ✓':''}</button>${u.patrolArea?`<button class="btn-x" style="width:100%;margin-top:4px;font-size:11px;color:#f88" onclick="clearUnitPatrolArea('${u.id}')">Poista oma alue</button>`:''}`}
        </div>`:''}
+       ${u.vt==='hems'?`<button class="btn-x" style="width:100%;margin-top:8px;${u._heliBroken?'color:#f88;border-color:#f88':''}" onclick="toggleHeliBroken('${u.id}');renderStation('${s.id}')">🚁 ${u._heliBroken?'Kopteri RIKKI/huollossa — ota lentoon':'Merkitse kopteri rikki/huoltoon (vain auto vastaa)'}</button>`:''}
        <div style="display:flex;gap:6px;margin-top:8px">
          <button class="btn-x" style="flex:1" onclick="toggleHuolto('${u.id}');renderStation('${s.id}')">${u.status==='huolto'?'Ota käyttöön':'Pois käytöstä (huolto)'}</button>
          <button class="btn-x" style="color:#f88" onclick="sellUnit('${u.id}');smUnit=null;renderStation('${s.id}')">Myy</button>
@@ -2157,6 +2192,7 @@ window.toggleDockLink=(dockId,fireId)=>{const dock=G.stations.find(s=>s.id===doc
   toast(dock.linkedFireStations.length+' paloasemaa linkattu');saveGame(false);
 };
 window.toggleBoatDriver=(id)=>{const u=G.units.find(x=>x.id===id);if(!u)return;u.canDriveBoat=!u.canDriveBoat;toast(u.name+(u.canDriveBoat?' on nyt veneenkuljettaja':' ei enää ole veneenkuljettaja'));};
+window.toggleHeliBroken=(id)=>{const u=G.units.find(x=>x.id===id);if(!u||u.vt!=='hems')return;u._heliBroken=!u._heliBroken;toast(u.name+(u._heliBroken?': kopteri rikki/huollossa — vain auto vastaa':': kopteri taas lentokunnossa'));try{saveGame(false);}catch(e){}};
 window.toggleStationLoad=(sid,load)=>{
   const s=G.stations.find(x=>x.id===sid);if(!s)return;
   if(!s.availableLoads)s.availableLoads=Object.keys(LOAD_NAMES).slice(); // alkuun kaikki sallittu
@@ -2169,6 +2205,7 @@ window.toggleStationLoad=(sid,load)=>{
 // Aseman lavavalinta-helpper: jos ei määritetty, kaikki sallittu
 function stationLoads(s){return (s&&s.availableLoads&&Array.isArray(s.availableLoads))?s.availableLoads:Object.keys(LOAD_NAMES);}
 window.toggleStationSpawn=(sid)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;s.spawnOff=!s.spawnOff;toast(s.n+': tehtäväalue '+(s.spawnOff?'pois päältä':'käytössä'));saveGame(false);};
+window.addKorjaamoExpansion=(sid)=>{const s=G.stations.find(x=>x.id===sid);if(!s||s.korjaamo)return;const cost=20000;if(G.money<cost){toast('Tarvitset '+cost.toLocaleString('fi-FI')+'€');return;}G.money-=cost;updateMoney();s.korjaamo=true;toast('🔧 Huoltohalli rakennettu: '+s.n);try{renderStation(sid);}catch(e){}saveGame(false);};
 window.setStationSpawnRadius=(sid,val)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;s.spawnRadius=Math.max(1,parseFloat(val)||3);};
 window.setStationSpawnDensity=(sid,val)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;s.spawnDensity=parseFloat(val)||1;toast(s.n+' tehtävätiheys: '+s.spawnDensity+'×');saveGame(false);};
 window.showStationSpawnOnMap=(sid)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;
@@ -2249,16 +2286,13 @@ function projectToSeg(lat,lng,A,B){
 }
 function snapSpawnPoint(lat,lng){
   if(!spawnSnap)return [lat,lng];
-  const thr=0.6;let best=null,bd=thr;
-  // 1) Lähimmät kulmat
-  const verts=[];
-  (G.spawnAreas||[]).forEach(a=>{if(a.type==='poly'&&a.points)a.points.forEach(p=>verts.push(p));});
-  polyDraft.forEach(p=>verts.push(p));
+  // KORJAUS: tartunta vain MUIHIN jo tallennettuihin alueisiin — EI omaan piirrettävään muotoon.
+  // Ennen se nappasi pisteen myös omiin aiempiin pisteisiin → et saanut pistettä mihin halusit.
+  // Pieni kynnys (0.2 km), jotta tartunta auttaa vain kun selvästi liität pisteen viereisen alueen reunaan.
+  const thr=0.2;let best=null,bd=thr;
+  const verts=[],segs=[];
+  (G.spawnAreas||[]).forEach(a=>{if(a.type==='poly'&&a.points&&a.points.length>=2){a.points.forEach(p=>verts.push(p));for(let i=0;i<a.points.length;i++)segs.push([a.points[i],a.points[(i+1)%a.points.length]]);}});
   verts.forEach(p=>{const d=km(lat,lng,p[0],p[1]);if(d<bd){bd=d;best=[p[0],p[1]];}});
-  // 2) Lähin piste olemassa olevan polygonin REUNALLA (segmentit) — täyttää raot kulmien välissä
-  const segs=[];
-  (G.spawnAreas||[]).forEach(a=>{if(a.type==='poly'&&a.points&&a.points.length>=2){for(let i=0;i<a.points.length;i++)segs.push([a.points[i],a.points[(i+1)%a.points.length]]);}});
-  for(let i=0;i+1<polyDraft.length;i++)segs.push([polyDraft[i],polyDraft[i+1]]);
   segs.forEach(([A,B])=>{const pr=projectToSeg(lat,lng,A,B);const d=km(lat,lng,pr[0],pr[1]);if(d<bd){bd=d;best=pr;}});
   return best||[lat,lng];
 }
@@ -2286,10 +2320,23 @@ window.undoPolyPoint=()=>{if(polyDraft.length){polyDraft.pop();renderPolyDraft()
 function renderPolyDraft(){
   polyDraftLayers.forEach(l=>map.removeLayer(l));polyDraftLayers=[];
   if(!polyDraft.length)return;
-  // viiva pisteiden välille
+  // Avoin viiva pisteiden välille
   if(polyDraft.length>=2){const pl=L.polyline(polyDraft,{color:'#2ee6a0',weight:2.5,dashArray:'6,6'}).addTo(map);polyDraftLayers.push(pl);}
-  // pisteet
-  polyDraft.forEach((p,i)=>{const m=L.circleMarker(p,{radius:5,color:'#2ee6a0',fillColor:'#2ee6a0',fillOpacity:1,weight:2}).addTo(map);polyDraftLayers.push(m);});
+  // Sulkeva ESIKATSELUVIIVA (viimeisestä takaisin ensimmäiseen) kun ≥3 pistettä → näet valmiin muodon
+  if(polyDraft.length>=3){const cl=L.polyline([polyDraft[polyDraft.length-1],polyDraft[0]],{color:'#2ee6a0',weight:1.5,dashArray:'2,7',opacity:0.55}).addTo(map);polyDraftLayers.push(cl);}
+  // Numeroidut pisteet. interactive:false → klikkaus menee aina kartalle (lisää uuden pisteen),
+  // eivätkä omat pistemerkit "syö" klikkausta (korjaa haamupiste-ongelman).
+  polyDraft.forEach((p,i)=>{
+    const m=L.marker(p,{interactive:false,keyboard:false,icon:L.divIcon({html:`<div style="background:#2ee6a0;color:#06210f;font-weight:800;font-size:10px;border-radius:50%;width:17px;height:17px;line-height:17px;text-align:center;border:2px solid #06210f">${i+1}</div>`,className:'',iconSize:[17,17],iconAnchor:[9,9]})}).addTo(map);
+    polyDraftLayers.push(m);
+  });
+  // Elävä pistelaskuri + ohje, ja Sulje alue -napin tila (vaatii väh. 3 pistettä)
+  try{
+    const hintEl=document.getElementById('spawnEditHint');
+    if(hintEl&&spawnEditMode==='poly')hintEl.textContent='✏️ Klikkaa karttaa lisätäksesi kulmia · '+polyDraft.length+' pistettä'+(polyDraft.length>=3?' · valmista «✓ Sulje alue»':' (väh. 3)');
+    const fb=document.getElementById('spawnFinishBtn');
+    if(fb){fb.textContent='✓ Sulje alue'+(polyDraft.length?' ('+polyDraft.length+')':'');fb.style.opacity=polyDraft.length>=3?'1':'0.5';}
+  }catch(e){}
 }
 window.finishPolyArea=()=>{
   if(polyDraft.length<3){toast('Tarvitaan vähintään 3 pistettä');return;}
@@ -2492,8 +2539,9 @@ function clearHospitalMarkers(){hospitalMarkers.forEach(m=>map.removeLayer(m));h
 function renderHospitals(){
   clearHospitalMarkers();
   allHospitals().forEach(h=>{
-    const m=L.marker([h.lat,h.lng],{icon:L.divIcon({html:`<div class="smk" style="font-size:17px">🏥</div>`,className:'',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
-    const label=h.n+' ('+(TASO_TXT[h.taso]||h.taso)+')'+(editingHospitals?' — klikkaa poistaaksesi':'');
+    const load=hospLoad(h.id), cap=hospCapacity(h), full=load>=cap;
+    const m=L.marker([h.lat,h.lng],{icon:L.divIcon({html:`<div class="smk" style="font-size:17px;${full?'filter:drop-shadow(0 0 4px #ff3b3b) drop-shadow(0 0 4px #ff3b3b)':''}">🏥</div>`,className:'',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+    const label=h.n+' ('+(TASO_TXT[h.taso]||h.taso)+') — '+load+'/'+cap+' paikkaa'+(full?' · TÄYNNÄ':'')+(editingHospitals?' — klikkaa poistaaksesi':'');
     m.bindTooltip(label);
     if(editingHospitals){
       m.on('click',(ev)=>{L.DomEvent.stopPropagation&&L.DomEvent.stopPropagation(ev);removeHospital(h);});
@@ -2592,7 +2640,7 @@ map.on('click',e=>{
 window.toggleHuolto=(id)=>{
   const u=G.units.find(x=>x.id===id);if(!u)return;
   if(u.status==='huolto'){
-    u.status='asema';u.lat=u.hx;u.lng=u.hy;u.huoltoUntil=null;
+    u.status='asema';u.lat=u.hx;u.lng=u.hy;u.huoltoUntil=null;u.material=100;
     refreshUnitMarker(u);toast(u.name+' otettu käyttöön');
   } else {
     // Jos on aktiivisesti tehtävällä (matka/kohde/otettu/kuljetus), ei voi pakottaa huoltoon
@@ -2638,6 +2686,13 @@ window.toggleSukellus=(id)=>{
 // 1) Asema-skoopin vara samalta asemalta (etusija — nopein)
 // 2) Aluetason vara samalta alueelta (LU/HE jne) ja samaa muotoa (VPK->VPK, vakituinen->vakituinen tai sekoitettu jos ei muuta)
 // 3) Aluetason vara samalta alueelta, mistä tahansa muotoasta (varakorvaus)
+function nearestKorjaamo(u){
+  const ks=G.stations.filter(s=>(s.t==='korjaamo'||s.korjaamo)&&!(G.disabledStations&&G.disabledStations[s.id]));
+  if(!ks.length)return null;
+  let best=null,bd=1e9;
+  ks.forEach(s=>{const d=km(u.lat,u.lng,s.lat,s.lng);if(d<bd){bd=d;best=s;}});
+  return best;
+}
 function trySpareSwap(broken){
   if(!broken)return false;
   const brokenSt=G.stations.find(s=>s.id===broken.stationId);
@@ -2709,7 +2764,7 @@ window.resetStuckUnits=()=>{
     // 3) Liikkuva tila ilman tehtävää → asemalle
     else if(['matka','kohde','otettu'].includes(u.status)&&!u.taskId){u.status='asema';u.lat=u.hx;u.lng=u.hy;u.route=null;u.ri=0;n++;}
     // 4) Huolto jumissa (aika ohi TAI ei loppuaikaa) → palauta valmiuteen
-    if(u.status==='huolto'&&(!u.huoltoUntil||G.clock>u.huoltoUntil)){u.status=u.atReadyStation?'vapaa_valmius':'asema';u.huoltoUntil=null;u.lat=u.hx;u.lng=u.hy;n++;}
+    if(u.status==='huolto'&&(!u.huoltoUntil||G.clock>u.huoltoUntil)){u.status=u.atReadyStation?'vapaa_valmius':'asema';u.huoltoUntil=null;u.lat=u.hx;u.lng=u.hy;u.material=100;n++;}
     // 5) Nollaa jumittuneet partion välitilat
     if(u._goingPit||u._pitUntil){u._goingPit=false;u._pitUntil=0;}
     // 6) DUTY-asema (valmiussiirto): olematon kohde → nollaa; muuten synkkaa fyysinen sijainti
@@ -2778,6 +2833,11 @@ const POI_TYPES={
 };
 function poiCodeCounts(){const m={};(G.pois||[]).forEach(p=>{(POI_TYPES[p.type]?.codes||[]).forEach(c=>{m[c]=(m[c]||0)+1;});});return m;}
 const FIGHT_CODES=new Set(['031','032','022','012','011','072','041','051']);
+// Ensivaste: henkeä uhkaavat ensihoitokoodit joissa ensiksi paikalle ehtivä (mikä tahansa yksikkö) voi aloittaa hengenpelastavat toimet
+const EV_ARREST=new Set(['700','701','711','713','714','790']); // elottomuus / tukehtuminen / hirttäytyminen / hukkuminen / tajunnan menetys -> peruselvytys (PPE)
+const EV_BLEED=new Set(['744','741','746']);                    // iso verenvuoto / putoaminen / isku -> verenvuodon tyrehdytys
+// PÄÄLLEKKÄISET PUHELUT: näkyvät, julkiset tapahtumat joista moni soittaa 112:een (sama tapahtuma -> monta ilmoitusta)
+const MULTI_CALL_CODES=new Set(['402','403','433','431','411','421','203','204','205','441','442','443','444','451','452','453','796','797']);
 function pickTask(){
   let pool=TASKS.filter(t=>!t.skip).map(seasonAdjust).filter(canResource);
   if(!pool.length)return null;
@@ -2790,10 +2850,22 @@ function pickTask(){
   const open=G.tasks.filter(t=>t.status!=='valmis');
   const cntToimi={pelastus:0,ensihoito:0,poliisi:0};let fights=0;
   open.forEach(t=>{cntToimi[t.toimi]=(cntToimi[t.toimi]||0)+1;if(FIGHT_CODES.has(t.base))fights++;});
+  // VUOROKAUSIRYTMI: kellonaika/viikonpäivä vaikuttaa keikkojen TYYPPIIN.
+  // Ruuhka-aikaan enemmän liikenneonnettomuuksia; iltaisin/öisin/viikonloppuisin enemmän häiriö- ja päihdekeikkoja.
+  const _hr=Math.floor(G.clock/3600)%24, _dow=gameDate().getDay(), _wd=(_dow>=1&&_dow<=5);
+  const _rush=_wd&&((_hr>=7&&_hr<9)||(_hr>=15&&_hr<18));
+  const _night=(_hr>=23||_hr<6), _eve=(_hr>=18&&_hr<23);
+  const _wknd=(_dow===5&&_hr>=18)||_dow===6||(_dow===0&&_hr<6);
+  const todW=(t)=>{const c=t.c||'';let m=1;
+    if(/^20/.test(c)){ if(_rush)m*=1.9; else if(_night)m*=(c==='201'||c==='202')?0.4:0.9; } // ruuhka: paljon kolareita; syvä yö: vähemmän autoja, pienet harvinaisia mutta vakavat (203/204/205) suht. yleisempiä
+    if(FIGHT_CODES.has(t.base)||c==='786'||c==='785'){ m*= (_night||_eve||_wknd)?1.7:0.7; } // häiriö/päihde/mt
+    return m;
+  };
   pool=pool.map(t=>{let w=t.w;
     if(poiC[t.c])w*=1+0.9*poiC[t.c];                       // POI-ympäristö nostaa relevantteja
     w*=1/(1+0.30*(cntToimi[t.toimi]||0));                  // saman toimialan ylitulvan vaimennus
     if(FIGHT_CODES.has(t.base))w*=1/(1+0.9*fights);        // tappeluiden tulvasuoja
+    w*=todW(t);                                            // vuorokausirytmi
     return {...t,w};
   });
   let tot=pool.reduce((a,t)=>a+t.w,0),r=Math.random()*tot;
@@ -2801,28 +2873,30 @@ function pickTask(){
   return pool[0];
 }
 function canResource(t){
-  // Tarkista pää-tarve
+  // Vain kalusto jota voi oikeasti hälyttää: ei lopetettuja eikä pois käytöstä olevien asemien yksiköitä.
+  const avail=G.units.filter(u=>u.status!=='lopetettu'&&!(G.disabledStations&&G.disabledStations[u.stationId]));
+  const cnt=k=>{
+    if(k==='koysi')return avail.filter(canKoysi).length;
+    if(k==='johto')return avail.filter(u=>u.off).length;
+    if(k==='hems')return avail.filter(u=>u.vt==='hems').length;
+    return avail.filter(u=>u.cls===k||u.vt===k).length;
+  };
   const mainOk=(function(){
     for(const k in t.need){
-      if(k==='johto'){if(!G.units.some(u=>u.off))return false;continue;}
       if(k==='maasto'){continue;} // ei pakollinen
-      // KORJAUS: tarkista cls TAI vt (kuten needMetBy/_computeHave + altNeed). Aiemmin vain cls →
-      // need.sailio (säiliön cls on 'sammutus', vt 'sailio') ei täyttynyt KOSKAAN → 402/403/203/204/
-      // 421/422/451-453 ym. eivät syntyneet lainkaan. Nyt säiliö/erikoisyksiköt lasketaan oikein.
-      if(G.units.filter(u=>(u.cls===k||u.vt===k)&&u.status!=='lopetettu').length<t.need[k])return false;
+      if(cnt(k)<t.need[k])return false;
     }
-    if(t.minCrew){const totalCrew=G.units.filter(u=>u.toimi==='pelastus').reduce((a,u)=>a+crewCount(u),0);if(totalCrew<t.minCrew)return false;}
+    if(t.minCrew){const totalCrew=avail.filter(u=>u.toimi==='pelastus').reduce((a,u)=>a+crewCount(u),0);if(totalCrew<t.minCrew)return false;}
     return true;
   })();
   if(mainOk)return true;
-  // Tarkista altNeed (esim. HEMS yksin)
+  // Tarkista altNeed (esim. HEMS yksin, tai köysi nostolavan sijaan)
   if(t.altNeed&&t.altNeed.length){
     for(const alt of t.altNeed){
       let ok=true;
       for(const k in alt){
-        if(k==='hems'){if(G.units.filter(u=>u.vt==='hems').length<alt[k]){ok=false;break;}continue;}
-        // Tarkista sekä cls että vt — tukee oty/vak/vahinko/elainp/koura/letku jne.
-        if(G.units.filter(u=>u.cls===k||u.vt===k).length<alt[k]){ok=false;break;}
+        if(k==='maasto')continue;
+        if(cnt(k)<alt[k]){ok=false;break;}
       }
       if(ok)return true;
     }
@@ -2962,12 +3036,96 @@ function randAddrFor(where){
   const pool=pools[where]||pools.any;
   return pool[Math.floor(Math.random()*pool.length)]+' '+(1+Math.floor(Math.random()*120));
 }
+// PÄÄLLEKKÄISET PUHELUT: luo 1-2 lisäilmoitusta samasta tapahtumasta (sama osoite).
+function maybeSpawnDuplicate(parent){
+  if(!parent||parent._dupOf||G._offlineSim)return;
+  if(parent.pilapuhelu)return;                 // pilapuheluun ei tule montaa soittajaa -> monta ilmoitusta = AINA aito tapaus
+  if(!MULTI_CALL_CODES.has(parent.base))return;
+  // Iso/vakava tapaus -> yleensä MONTA ilmoitusta. Muu näkyvä tapaus -> joskus 1-2.
+  const big=['797','796','403','204','442','443','453','433'].includes(parent.base)||parent.sev==='critical'||(parent.patients||0)>=4;
+  let n;
+  if(big){ n=(Math.random()<0.12)?1:(2+(Math.random()<0.6?1:0)+(Math.random()<0.35?1:0)); } // 1-4, useimmiten 2-3
+  else { n=0; if(Math.random()<0.5)n=1; if(n&&Math.random()<0.25)n=2; }                       // 0-2
+  if(n<=0)return;
+  const notes=['Useita soittajia samasta tapahtumasta.','Toinen ilmoitus samasta paikasta.','Ohikulkija ilmoittaa samasta tilanteesta.','Lisäilmoitus: sama tapahtuma.'];
+  for(let i=0;i<n;i++){
+    const d={id:'T'+(G.tidc++),c:parent.c,base:parent.base,realCode:parent.realCode,n:parent.n,toimi:parent.toimi,
+      need:JSON.parse(JSON.stringify(parent.need)),minCrew:parent.minCrew,rew:parent.rew,info:notes[Math.floor(Math.random()*notes.length)],
+      patients:parent.patients,sev:parent.sev,timeCrit:parent.timeCrit,esc:0,escTo:null,where:parent.where||'any',
+      lat:parent.lat+(Math.random()-0.5)*0.0006,lng:parent.lng+(Math.random()-0.5)*0.0006,
+      urg:null,status:'avoin',assigned:[],created:G.clock,addr:parent.addr,addrBlurred:false,
+      onScene:false,escDone:false,lead:null,workNeeded:parent.workNeeded,work:0,mislabeled:false,pilapuhelu:false,outcome:null,_dupOf:parent.id};
+    G.tasks.push(d);d.marker=makeTaskMarker(d);
+  }
+  if(n){renderList();updateBadge();}
+}
+// Päällekkäinen ilmoitus kuittautuu kun varsinainen tapahtuma on hoidossa (tai kun siihen itse ehditään).
+function resolveDuplicates(){
+  let changed=false;
+  G.tasks.slice().forEach(d=>{
+    if(!d._dupOf)return;
+    const parent=G.tasks.find(t=>t.id===d._dupOf);
+    if(!(!parent||parent.onScene||parent.status==='valmis'||d.onScene))return;
+    const wasted=(d.assigned||[]).length>0;
+    (d.assigned||[]).forEach(id=>{const u=G.units.find(x=>x.id===id);if(u){u.taskId=null;u.route=null;u.ri=0;u.status='paluu';u.target={lat:u.hx,lng:u.hy};try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'){u.route=r;u.ri=0;}});}catch(e){}try{refreshUnitMarker(u);}catch(e){}}});
+    if(d.marker)map.removeLayer(d.marker);
+    G.tasks=G.tasks.filter(t=>t.id!==d.id);
+    changed=true;
+    if(G.settings.showCallouts)toast('🔁 '+d.c+' '+d.addr+' — sama tapahtuma, ilmoitus kuitattu'+(wasted?' (yksiköt vapautettu)':''));
+  });
+  if(changed){renderList();updateBadge();}
+}
+// H-TEHTÄVÄT: ilmoituksia jotka eivät kuulu hätänumeroon / eivät vaadi yksikköä (neuvonta, ohjaus eteenpäin).
+// Päivystäjän "portinvartija"-rooli: tunnista nämä äläkä hälytä turhaan. Vähemmistö tehtävistä.
+const H_TASKS=[
+  {n:'Hinausapu',toimi:'pelastus',where:'road',info:'Henkilöauto ojassa, ei henkilövahinkoja eikä liikenne-estettä. Soittaja kysyy apua auton nostoon.'},
+  {n:'Ampiaispesä',toimi:'pelastus',where:'urban',info:'Ampiaispesä parvekkeen räystäässä, ei välitöntä vaaraa. Kysyy tuleeko pelastuslaitos.'},
+  {n:'Terveysneuvonta',toimi:'ensihoito',where:'any',info:'Aikuisella flunssan oireita pari päivää, ei hengenahdistusta. Kysyy pitäisikö mennä lääkäriin.'},
+  {n:'Kissa puussa',toimi:'pelastus',where:'urban',info:'Kissa kiivennyt puuhun pihalla, ei muuta hätää. Pyytää pelastuslaitosta paikalle.'},
+  {n:'Sähkökatko',toimi:'pelastus',where:'urban',info:'Sähköt poikki taloyhtiössä, ei savua eikä vaaraa. Kysyy mistä saa apua.'},
+  {n:'Meluhaitta',toimi:'poliisi',where:'urban',info:'Naapurista kovaa musiikkia illalla, ei uhkaa eikä riitaa. Toivoo että asialle tehdään jotain.'},
+  {n:'Vesivuoto',toimi:'pelastus',where:'urban',info:'Astianpesukone vuotaa lattialle kerrostalossa, ei sähkö- eikä henkilövaaraa.'},
+  {n:'Tiedustelu',toimi:'poliisi',where:'road',info:'Soittaja kysyy onko tie poikki työmaan takia ja miten kiertää.'},
+  {n:'Pieni haava',toimi:'ensihoito',where:'any',info:'Viilsi sormeensa pienen haavan, vuoto tyrehtynyt painamalla. Kysyy tarvitseeko ompeleita.'}
+];
+async function spawnHTask(){
+  if(!G.stations.length)return;
+  const tpl=H_TASKS[Math.floor(Math.random()*H_TASKS.length)];
+  let loc;try{loc=await pickLocationForTask({where:tpl.where||'any',toimi:tpl.toimi});}catch(e){loc=null;}
+  if(!loc){const st=G.stations[Math.floor(Math.random()*G.stations.length)];loc={lat:st.lat,lng:st.lng};}
+  const tk={id:'T'+(G.tidc++),c:'H',base:'H',realCode:'H',n:tpl.n,toimi:tpl.toimi,need:{},minCrew:0,rew:0,
+    info:tpl.info,patients:0,sev:'none',timeCrit:null,esc:0,escTo:null,where:tpl.where||'any',
+    lat:loc.lat,lng:loc.lng,urg:null,status:'avoin',assigned:[],created:G.clock,addr:randAddrFor(tpl.where||'any'),addrBlurred:false,
+    onScene:false,escDone:false,lead:null,workNeeded:60,work:0,mislabeled:false,pilapuhelu:false,outcome:null,
+    hTask:true,_expireAt:G.clock+rnd(8,18)*60};
+  G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
+  if(G.settings.showCallouts)toast('Uusi ilmoitus: '+tk.n);
+}
+// H-tehtävien ratkaisu: jos pelaaja hälytti yksikön -> turha (vapauta); jos jätettiin -> soittaja ohjautuu eteenpäin (vanhenee).
+function resolveHTasks(){
+  let changed=false;
+  G.tasks.slice().forEach(t=>{
+    if(!t.hTask)return;
+    if(t.onScene){
+      (t.assigned||[]).forEach(id=>{const u=G.units.find(x=>x.id===id);if(u){u.taskId=null;u.route=null;u.ri=0;u.status='paluu';u.target={lat:u.hx,lng:u.hy};try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'){u.route=r;u.ri=0;}});}catch(e){}try{refreshUnitMarker(u);}catch(e){}}});
+      if(t.marker)map.removeLayer(t.marker);G.tasks=G.tasks.filter(x=>x.id!==t.id);changed=true;
+      G.taskStats.hWasted=(G.taskStats.hWasted||0)+1;
+      if(G.settings.showCallouts)toast('📞 '+t.n+': ei hätäkeskustehtävää — turha hälytys, yksiköt vapautettu');
+    } else if(t._expireAt&&G.clock>=t._expireAt&&!(t.assigned&&t.assigned.length)){
+      G.money-=150;try{updateMoney();}catch(e){}G.taskStats.hMissed=(G.taskStats.hMissed||0)+1;
+      if(t.marker)map.removeLayer(t.marker);G.tasks=G.tasks.filter(x=>x.id!==t.id);changed=true;
+      if(G.settings.showCallouts)toast('📞 '+t.n+': neuvontapyyntö jäi hoitamatta (−150€)');
+    }
+  });
+  if(changed){renderList();updateBadge();}
+}
 async function spawnTask(){
   if(activeStations().length===0)return;
   // #12: avointen/käynnissä olevien tehtävien KATTO skaalautuu kaluston kokoon — pieni laitos ei
   // huku (ennen kiinteä 22 → ruutu täyttyi tehtävistä). Iso verkosto saa silti enemmän töitä.
   const _openCeil=Math.max(6,Math.min(20,Math.round(fleetCapacity()*1.3)));
   if(G.tasks.filter(t=>t.status!=='valmis').length>=_openCeil)return;
+  if(Math.random()<0.07&&!G._offlineSim){await spawnHTask();return;} // osa ilmoituksista on neuvontaa (ei yksikköä) — selvä vähemmistö
   let t=pickTask();if(!t)return;
   const loc=await pickLocationForTask(t);
   let workMin=rnd(t.dur[0],t.dur[1]);if(Math.random()<0.08)workMin*=1.8;
@@ -3040,7 +3198,7 @@ async function spawnTask(){
   }
   // Liitä oikea kunta osoitteeseen, jotta osoite vastaa kartalla näkyvää sijaintia (KORJAUS)
   taskAddr+=', '+municipalityFor(loc.lat,loc.lng);
-  const tk={id:'T'+(G.tidc++),c:shownC,base:shownC,realCode:realT.c,n:t.n,toimi:t.toimi,need:JSON.parse(JSON.stringify(realT.need)),minCrew:realT.minCrew,rew:realT.rew,info:desc,patients:realT.patients,sev:realT.sev||'none',timeCrit:realT.timeCrit||null,esc:t.esc||0,escTo:t.escTo||null,where:t.where||'any',lat:loc.lat,lng:loc.lng,urg:t.forceUrg||null,status:'avoin',assigned:[],created:G.clock,addr:taskAddr,addrBlurred:addrIsBlurred,onScene:false,escDone:false,lead:null,workNeeded:workMin*60,work:0,mislabeled:realT.c!==shownC,pilapuhelu:pilapuhelu,outcome:null};
+  const tk={id:'T'+(G.tidc++),c:shownC,base:shownC,realCode:realT.c,n:t.n,toimi:t.toimi,need:JSON.parse(JSON.stringify(realT.need)),minCrew:realT.minCrew,rew:realT.rew,info:desc,patients:realT.patients,sev:realT.sev||'none',timeCrit:(realT.toimi==='ensihoito'&&!['high','critical'].includes(realT.sev||'none'))?null:(realT.timeCrit||null),esc:t.esc||0,escTo:t.escTo||null,where:t.where||'any',lat:loc.lat,lng:loc.lng,urg:t.forceUrg||null,status:'avoin',assigned:[],created:G.clock,addr:taskAddr,addrBlurred:addrIsBlurred,onScene:false,escDone:false,lead:null,workNeeded:workMin*60,work:0,mislabeled:realT.c!==shownC,pilapuhelu:pilapuhelu,outcome:null};
   // Palotehtävän potilaalla voi olla esim. hengitystiepalovamma → lääkäri/L4 parantaa ennustetta.
   // EI pakollinen vaste (ei lukita tehtävää!) — vain ~35% potilaspaloista; vihje näkyy call-tekstissä.
   // Hengitystiepalovamman riski VAIN savua tuottavissa paloissa (rakennus-/ajoneuvo-/maastopalo, koodit
@@ -3048,6 +3206,7 @@ async function spawnTask(){
   // savuvammaa. EI myöskään suositusta tekstissä (pelaaja päättää vasteen itse); L4/lääkäri parantaa
   // ennustetta silti taustalla (tk.airwayRisk).
   if(tk.toimi==='pelastus'&&tk.patients>0&&/^4[012]/.test(String(tk.base||tk.c))&&Math.random()<0.35){tk.airwayRisk=true;tk.info+=' Potilas hengittänyt savua, hengitysvaikeutta.';}
+  try{assignFireWater(tk);}catch(e){tk.waterNeed=0;} // vedentarve palon koon mukaan (joskus 0 = ei pala)
   // Vesitehtävälle: laske RANTAPISTE (lähin tie) HETI, jonne maayksiköt ajavat (eivät veteen).
   if((t.where||'any')==='water'){
     try{const sh=await snapToRoad(loc.lat,loc.lng);tk.shore={lat:sh.lat,lng:sh.lng};}catch(e){}
@@ -3060,6 +3219,7 @@ async function spawnTask(){
     tk.fastRoad=Math.random()<pFast;
   }
   G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
+  try{maybeSpawnDuplicate(tk);}catch(e){}
   if(G.settings.showCallouts)toast('Uusi tehtävä: '+tk.c+' '+tk.n);
   // Äänimerkki UUDESTA tehtävästä (asetuksista). Throttle estää piippusarjan jos monta syntyy kerralla.
   try{ if(!G._offlineSim && (!window.__taskBeepT || Date.now()-window.__taskBeepT>1200)){ window.__taskBeepT=Date.now(); playDispatchSound(); } }catch(e){}
@@ -3079,7 +3239,7 @@ function classFilter(u,f){if(f==='kaikki')return true;const vt=u.vt;
   // Ambulanssi = vain ensihoidon yksiköt (ambulanssit + L4/lääkäri + ensivaste-jos-EH + kenttäsairaala)
   if(f==='ambulanssi'){
     if(u.cls==='ambulanssi')return true;
-    if(vt==='suro')return true;
+    if(vt==='suro'||vt==='suroperv')return true;
     if(u.toimi==='ensihoito'&&(vt==='laakari'||vt==='kj'||u.cls==='johto'))return true;
     if(isPelastusEnsivaste&&isPelastusEnsivaste(u))return true;
     return false;
@@ -3088,7 +3248,7 @@ function classFilter(u,f){if(f==='kaikki')return true;const vt=u.vt;
   if(f==='poliisi')return u.cls==='poliisi';
   return true;
 }
-function packagesFor(tk){const P=[];if(['401','402','403','103','431','411'].includes(tk.base))P.push({label:'Rakennuspalo perusvaste',pick:['sammutus','sailio','nostolava','ambulanssi']});if(['202','203','204'].includes(tk.base))P.push({label:'Liikenneonnettomuus',pick:['sammutus','ambulanssi','poliisi']});if(tk.toimi==='ensihoito')P.push({label:'Lähin ambulanssi',pick:['ambulanssi']});if(['421','422'].includes(tk.base))P.push({label:'Maastopalo',pick:['sammutus','sailio','sammutus']});P.push({label:'Vain lähin yksikkö',pick:['ANY']});(G.packages||[]).forEach(cp=>{const pick=[];cp.items.forEach(it=>{for(let i=0;i<it.n;i++)pick.push(it.cls);});P.push({label:'★ '+cp.name,pick});});return P;}
+function packagesFor(tk){const P=[];(G.packages||[]).forEach(cp=>{const pick=[];cp.items.forEach(it=>{for(let i=0;i<it.n;i++)pick.push(it.cls);});P.push({label:'★ '+cp.name,pick});});return P;}
 // Muoto-pohjaiset oletuslähtöajat (sekunneissa). Yksikkö voi olla eri muoto kuin asemansa.
 // Lähtöajat sekunneissa — perustuvat Suomen pelastuslaitosten käytäntöön:
 // vakituinen 24/7 miehitetty asema ~1 min · puolivakituinen päivisin ~2 min, öisin VPK-tyylinen ~5 min
@@ -3122,7 +3282,11 @@ function unitBaseTurnoutSec(u){
   const ready=unitOnReady(u);
   if(ready.ready)base=Math.min(base,60);
   // Käyttäjän käsin asettama lähtöaika (u.turnout) voittaa kaiken
-  return u.turnout!=null?u.turnout:base;
+  let out=u.turnout!=null?u.turnout:base;
+  // Helikopteri: NOUSU ilmaan vie aikaa (~5 min). Vain kopteritilassa — autotilassa lähtee kuin auto.
+  // (Lasku lisätään erikseen perillä, ja se on lyhyempi kuin nousu.)
+  if(VTYPES[u.vt]&&VTYPES[u.vt].heli&&u._hemsMode!=='car')out+=300;
+  return out;
 }
 function unitTurnoutMin(u){
   const st=G.stations.find(s=>s.id===u.stationId);
@@ -3257,6 +3421,17 @@ function removeTask(tid){
   try{saveGame(false);}catch(e){}
   return true;
 }
+// PORTINVARTIJA: hoida ilmoitus neuvontana ilman yksikköä. Oikein jos H-tehtävä; sakko jos aito tehtävä.
+window.dismissCurrentAsAdvice=()=>{
+  const tk=dCur; if(!tk){toast('Ei tehtävää valittuna');return;}
+  if(tk.assigned&&tk.assigned.length){toast('Vapauta ensin hälytetyt yksiköt');return;}
+  if(!confirm('Hoidetaanko '+tk.c+(tk.n?' '+tk.n:'')+' neuvontana ilman yksikköä?\nJos tämä oli oikea hätätilanne, siitä tulee sakko.'))return;
+  G.taskStats=G.taskStats||{};
+  if(tk.hTask){const rew=120;G.money+=rew;try{updateMoney();}catch(e){}G.taskStats.hOk=(G.taskStats.hOk||0)+1;toast('📞 '+tk.n+': neuvonta annettu, ohjattu eteenpäin — oikein (+'+rew+'€)');}
+  else{const pen=2000+({medium:500,high:2000,critical:4000}[tk.sev]||0);G.money-=pen;try{updateMoney();}catch(e){}G.taskStats.hWrong=(G.taskStats.hWrong||0)+1;try{radio(chFor(tk.toimi,'INFO',tk),'HÄKE','tehtävä '+tk.c+' '+tk.addr+' jäi hälyttämättä — osoittautui aidoksi');}catch(e){}toast('⚠ '+tk.c+' oli AITO tehtävä — olisi pitänyt hälyttää (−'+pen.toLocaleString('fi-FI')+'€)');}
+  document.getElementById('disp').classList.remove('open');dCur=null;
+  removeTask(tk.id);renderList();updateBadge();try{saveGame(false);}catch(e){}
+};
 window.removeCurrentTask=()=>{
   const tk=dCur; if(!tk){toast('Ei tehtävää valittuna');return;}
   // KÄYTTÄJÄ: hylkäys EI saa olla ilmainen tehtävien ohitus → tulee SAKKO (sama kuin hoitamatta jäänyt).
@@ -3380,6 +3555,12 @@ function openDispatch(id){
   // Kiireellisyyttä EI valita automaattisesti — käyttäjä valitsee itse.
   // Poikkeus: pakotettu kiireellisyys (esim. H351 = N)
 }
+function dSelSummary(tk){
+  if(!dSel.size)return '';
+  const etaMap={};try{nearestUnits(tk).forEach(x=>{etaMap[x.u.id]=x.t;});}catch(e){}
+  const rows=[...dSel].map(id=>{const u=G.units.find(x=>x.id===id);if(!u)return'';const lab=(VTYPES[u.vt]&&VTYPES[u.vt].label)||u.cls||'';const eta=etaMap[id]!=null?Math.round(etaMap[id])+' min':'';return `<div class="dsum-row"><b class="mono">${u.name}</b><span class="dsum-t">${lab}</span><span class="dsum-eta">${eta}</span></div>`;}).join('');
+  return `<div class="sec" style="padding-top:2px"><div class="dsum"><div class="dsum-h">📋 Lähtee kohteeseen (${dSel.size})</div>${rows}<span class="chip" onclick="clearDsel()" style="margin-top:8px;display:inline-block">✕ Tyhjennä valinta</span></div></div>`;
+}
 function renderDispatch(){
   const tk=dCur;
   document.getElementById('dcode').innerHTML=`${tk.c} <span class="tag tag-${tk.urg||'none'}">${tk.urg||'?'}</span>`;
@@ -3391,7 +3572,8 @@ function renderDispatch(){
    <div id="dstat">${dStatusInner(tk)}</div>
    <div class="sec"><h4>Kiireellisyys <span style="font-weight:400;color:var(--dim);font-size:11px">— päättele kuvauksesta</span></h4><div class="urg">${['A','B','C','D'].map(u=>`<div class="urgb ${tk.urg===u?'sel':''}" data-u="${u}" onclick="setUrg('${u}')">${u}</div>`).join('')}</div></div>
    <div class="sec"><h4>Koodi</h4><select class="codesel" onchange="setTaskCode(this.value)">${TASKS.filter(t=>t.toimi===tk.toimi).sort((a,b)=>((parseInt(a.c,10)||0)-(parseInt(b.c,10)||0))||String(a.c).localeCompare(String(b.c))).map(t=>`<option value="${t.c}" ${t.c===tk.c?'selected':''}>${t.c} ${t.n}</option>`).join('')}</select></div>
-   ${dSel.size?`<div class="sec" style="padding-top:2px"><span class="chip" onclick="clearDsel()">✕ Tyhjennä valinta (${dSel.size})</span></div>`:''}
+   <div class="sec"><h4>Vastepaketit</h4>${packagesFor(tk).length?`<div class="pkgbar">${packagesFor(tk).map((p,i)=>`<button class="pkgbtn star" onclick="applyPkg(${i})">${p.label}</button>`).join('')}</div>`:`<div class="smallnote">Ei omia vastepaketteja. Tee niitä ☰-valikon <b>📦 Vastepaketit</b> -kohdasta.</div>`}</div>
+   ${dSelSummary(tk)}
    <div class="sec"><h4>Lähimmät yksiköt${dSel.size?` — valittu ${dSel.size}`:''}</h4>
      <div class="filterbar">${([['kaikki','Kaikki'],['paloautot','Paloautot'],['sailio','Säiliö'],['muupel','Muu pelastus'],tk.toimi==='ensihoito'?['ambulanssi','Ambulanssi+EV']:['ambulanssi','Ambulanssi'],['poliisi','Poliisi']]).map(f=>`<div class="fb ${dFilter===f[0]?'on':''}" onclick="dFilter='${f[0]}';renderDispatch()">${f[1]}</div>`).join('')}</div>
      <div style="margin:4px 0 8px"><label style="font-size:12px;color:var(--dim);cursor:pointer"><input type="checkbox" ${dShowBusy?'checked':''} onchange="dShowBusy=this.checked;renderDispatch()"> Näytä myös toisilla tehtävillä olevat yksiköt</label></div>
@@ -3494,7 +3676,7 @@ window.pullToHere=(uid,tid)=>{
   if(tk.status!=='valmis')tk.status='ajossa';
   try{setLead(tk);}catch(e){}
   // Hae uusi reitti uudelle kohteelle
-  if(!VTYPES[u.vt]?.heli)fetchRoute(u.lat,u.lng,tk.lat,tk.lng).then(res=>{
+  if(!goesStraight(u))fetchRoute(u.lat,u.lng,tk.lat,tk.lng).then(res=>{
     if(u.taskId===tk.id&&(u.status==='matka'||u.status==='otettu')&&res){
       u.route=res.coords;u.ri=0;
       const spd=etaSpeed(u,tk.urg||'B');
@@ -3543,7 +3725,31 @@ window.toggleSel=id=>{
   const goBtn=document.getElementById('dsend');if(goBtn)goBtn.disabled=dSel.size===0||!dCur.urg;
   renderList();
 };
-window.applyPkg=i=>{const p=packagesFor(dCur)[i],near=nearestUnits(dCur);p.pick.forEach(cl=>{let c;if(cl==='ANY')c=near.find(x=>!dSel.has(x.u.id));else if(cl==='johto')c=near.find(x=>x.u.off&&!dSel.has(x.u.id));else c=near.find(x=>(x.u.cls===cl||x.u.vt===cl)&&!dSel.has(x.u.id));if(c)dSel.add(c.u.id);});renderDispatch();};
+window.applyPkg=i=>{
+  const p=packagesFor(dCur)[i],near=nearestUnits(dCur);let added=0;const missing={};
+  p.pick.forEach(cl=>{let c;if(cl==='ANY')c=near.find(x=>!dSel.has(x.u.id));else if(cl==='johto')c=near.find(x=>x.u.off&&!dSel.has(x.u.id));else c=near.find(x=>(x.u.cls===cl||x.u.vt===cl)&&!dSel.has(x.u.id));if(c){dSel.add(c.u.id);added++;}else{const lab=cl==='ANY'?'yksikkö':((VTYPES[cl]&&VTYPES[cl].label)||cl);missing[lab]=(missing[lab]||0)+1;}});
+  // PERÄVAUNU / MAA-ASEMAN VENE -> vetoauto (suosi SAMAN ASEMAN autoa). VENELAITURIN VENE -> veneenkuljettaja (suosi LINKATTUA asemaa).
+  const _isTowU=u=>u&&u.toimi==='pelastus'&&!(VTYPES[u.vt]&&VTYPES[u.vt].trailer)&&!['vene','vene_pieni','vene_iso','hems'].includes(u.vt);
+  const _landBoatU=u=>{if(!isBoatUnit(u))return false;const st=G.stations.find(s=>s.id===u.stationId);return !!(st&&st.t!=='venelaituri');};
+  const _pierBoatU=u=>{if(!isBoatUnit(u))return false;const st=G.stations.find(s=>s.id===u.stationId);return !!(st&&st.t==='venelaituri');};
+  const sel=[...dSel].map(id=>G.units.find(u=>u.id===id)).filter(Boolean);
+  const towNeeder=sel.find(u=>(VTYPES[u.vt]&&VTYPES[u.vt].trailer)||_landBoatU(u));
+  if(towNeeder && !sel.some(_isTowU)){
+    const stId=towNeeder.stationId;
+    const tow=near.find(x=>!dSel.has(x.u.id)&&_isTowU(x.u)&&x.u.stationId===stId) || near.find(x=>!dSel.has(x.u.id)&&_isTowU(x.u));
+    if(tow){dSel.add(tow.u.id);added++;} else missing['vetoauto']=(missing['vetoauto']||0)+1;
+  }
+  const pierBoat=sel.find(_pierBoatU);
+  if(pierBoat && !sel.some(u=>u.id!==pierBoat.id&&u.canDriveBoat)){
+    const dock=G.stations.find(s=>s.id===pierBoat.stationId);const linked=(dock&&dock.linkedFireStations)||[];
+    const drv=near.find(x=>!dSel.has(x.u.id)&&x.u.canDriveBoat&&linked.includes(x.u.stationId)) || near.find(x=>!dSel.has(x.u.id)&&x.u.canDriveBoat);
+    if(drv){dSel.add(drv.u.id);added++;} else missing['veneenkuljettaja']=(missing['veneenkuljettaja']||0)+1;
+  }
+  renderDispatch();
+  const miss=Object.keys(missing);
+  if(miss.length)toast('⚠️ Ei vapaana: '+miss.map(m=>missing[m]+'× '+m).join(', '));
+  else if(added)toast('✓ '+added+' yksikköä valittu — tarkista ja paina LÄHETÄ');
+};
 window.clearDsel=()=>{dSel=new Set();renderDispatch();};
 document.getElementById('dclose').onclick=()=>document.getElementById('disp').classList.remove('open');
 document.getElementById('dsend').onclick=()=>sendDispatch(false);
@@ -3647,16 +3853,48 @@ async function sendDispatch(next){
   // PERÄVAUNU (0+0-miehitys) ei lähde ilman vetoautoa: tarkista että samalla tehtävällä on jo tai
   // tähän hälytykseen tulee vetokykyinen pelastusauto (ei toinen perävaunu, ei vene/helikopteri).
   const _isTow=x=>x&&x.toimi==='pelastus'&&!(VTYPES[x.vt]&&VTYPES[x.vt].trailer)&&!['vene','vene_pieni','vene_iso','hems'].includes(x.vt);
+  const _landBoatTow=x=>{if(!x||!isBoatUnit(x))return false;const st=G.stations.find(s=>s.id===x.stationId);return !!(st&&st.t!=='venelaituri');}; // vene paloasemalla = trailerilla -> tarvitsee vetoauton
+  const _pierBoat=x=>{if(!x||!isBoatUnit(x))return false;const st=G.stations.find(s=>s.id===x.stationId);return !!(st&&st.t==='venelaituri');}; // venelaiturin (miehittämätön) vene -> tarvitsee veneenkuljettajan
   const _onTaskTow=(tk.assigned||[]).map(i=>G.units.find(u=>u.id===i)).filter(Boolean);
   const finalIds=validIds.filter(id=>{const u=G.units.find(x=>x.id===id);if(!u)return false;
-    if(VTYPES[u.vt]&&VTYPES[u.vt].trailer){
-      const pool=validIds.map(i=>G.units.find(x=>x.id===i)).filter(Boolean).concat(_onTaskTow);
-      if(!pool.some(x=>x.id!==u.id&&_isTow(x))){toast(u.name+' on perävaunu — valitse mukaan vetoauto');return false;}
+    const _isTrailer=VTYPES[u.vt]&&VTYPES[u.vt].trailer;
+    const pool=validIds.map(i=>G.units.find(x=>x.id===i)).filter(Boolean).concat(_onTaskTow);
+    if(_isTrailer||_landBoatTow(u)){
+      if(!pool.some(x=>x.id!==u.id&&_isTow(x))){toast(u.name+(_isTrailer?' on perävaunu':' on trailerilla')+' — valitse mukaan vetoauto');return false;}
+    }
+    if(_pierBoat(u)){
+      if(!pool.some(x=>x.id!==u.id&&x.canDriveBoat)){toast(u.name+' on venelaiturilla — valitse mukaan veneenkuljettaja (paloasemalta)');return false;}
     }
     return true;});
   if(!finalIds.length){return;}
   finalIds.forEach(id=>{
     const u=G.units.find(x=>x.id===id);if(!u)return;
+    // FinnHEMS: sama lääkäri valitsee KOPTERIN tai MAAYKSIKÖN (auto).
+    // - Saari/vesi: vain kopteri pääsee perille.
+    // - Myrsky: ei lentokeliä -> auto.
+    // - Muuten: kumpi on nopeampi (lyhyt matka -> auto, koska kopterin nousu/lasku vie aikaa; pitkä -> kopteri).
+    if(VTYPES[u.vt]&&VTYPES[u.vt].heli){
+      const dk=km(u.lat,u.lng,tk.lat,tk.lng);
+      const heliMin=(300+120)/60 + dk/(VTYPES[u.vt].speed||259)*60;     // nousu+lasku + lento (linnuntie)
+      const carMin=dk*1.4/(VTYPES[u.vt].carSpeed||95)*60;               // maantie ~1.4x, auton nopeus
+      // Ei lentoa jos: myrsky (ei lentokeliä) TAI kopteri rikki/huollossa. Muuten saari/vesi -> kopteri, maalla nopeampi.
+      const noFly = (G.season==='myrsky') || u._heliBroken;
+      u._hemsMode = noFly ? 'car' : (tk.where==='water' ? 'heli' : (carMin<heliMin?'car':'heli'));
+      u._landingUntil=null;
+      // Kopteri ei voi lentää -> lääkäri ilmoittaa radiossa tulevansa maayksiköllä.
+      if(u._hemsMode==='car' && noFly){
+        const msg = u._heliBroken ? 'kopteri huollossa — FinnHEMS vasteella maayksiköllä (lääkäriauto)' : 'ei lentokeliä — FinnHEMS vasteella maayksiköllä (lääkäriauto)';
+        try{const reg=regionForUnit(u); radio('EN '+reg+' INFO', u.name, msg); }catch(e){}
+      }
+    }
+    // VENE: paloasemalla vene on TRAILERILLA -> ajaa ensin tietä rantaan, sitten lasketaan vesille.
+    // Venelaiturilla (⚓) vene lähtee suoraan vedestä.
+    if(isBoatUnit(u)){
+      const stb=G.stations.find(s=>s.id===u.stationId);
+      u._isLandBoat = !!(stb && stb.t!=='venelaituri'); // ei laituri -> maa-asema (trailer)
+      u._boatLaunched = u._isLandBoat ? false : true;    // laituri = jo vedessä; maa-asema = trailerilla (tie ensin)
+      u._launchShore = null;
+    }
     const wasPatrol=u.status==='muu'&&u.omamieli==='partio';
     const wasValmius=u.status==='vapaa_valmius';
     const wasBreak=u.status==='muu'&&u.omamieli==='kauppa';      // ruokatauko/tankkaus, EI asemalla
@@ -3783,12 +4021,13 @@ window.setTaskCode=(code)=>{
 // oli ikuisesti suojassa epäonnistumiselta, ja vanhan tehtävän triagaaminen epäonnistutti sen
 // VÄLITTÖMÄSTI (sakko + haamutehtävä). Nyt käytetään tehtävän SISÄISTÄ kiireellisyyttä.
 function neglectEligible(tk){
-  if(tk.timeCrit) return true;                          // aikakriittinen koodi (sek)
-  if(['critical','high'].includes(tk.sev)) return true; // vakava → vastaa A/B-kiireellisyyttä
-  if(['A','B'].includes(tk.forceUrg)) return true;      // pakotettu kiireellisyys
+  if(['critical','high'].includes(tk.sev)) return true; // vakava → henkeä uhkaava
+  if(tk.timeCrit && tk.toimi!=='ensihoito') return true; // ei-ensihoidon aikakriittisyys (esim. palon leviäminen)
+  if(['A','B'].includes(tk.forceUrg)) return true;       // pakotettu kiireellisyys
   return false;
 }
 function checkNeglect(tk){
+  if(tk._dupOf||tk.hTask)return; // päällekkäinen ilmoitus tai H-tehtävä (neuvonta) — ei oma tehtävänsä, ei sakkoa
   // JUUTTUNEEN TEHTÄVÄN SIIVOUS: jos yksiköt ovat olleet matkalla todella kauan eivätkä
   // koskaan saavu (esim. vanha tallennus, mahdoton reitti), vapauta ne ja avaa tehtävä uudelleen.
   if(tk.status==='ajossa'&&!tk.onScene&&tk.assigned.length){
@@ -3954,7 +4193,14 @@ let lastSpawn=0;
 function tick(dt){G.clock+=dt;
   // Päivän vaihtuminen — etenee dayCount, laukaisee päiväkohtaisen logiikan
   if(G.clock>=86400){
-    while(G.clock>=86400){G.clock-=86400;G.dayCount=(G.dayCount||0)+1;}
+    let _daysPassed=0;
+    while(G.clock>=86400){G.clock-=86400;G.dayCount=(G.dayCount||0)+1;_daysPassed++;}
+    // PÄIVITTÄISET YLLÄPITOKULUT (palkat, polttoaine, huolto). Maltilliset; voi kytkeä pois Asetuksista.
+    if(G.settings.upkeep!==false && G.units.length){
+      const perDay=G.units.reduce((s,u)=>s+30+crewCount(u)*30,0); // €/vrk: 30 perus + 30 per henkilö (alle tukimaksun -> eteneminen varmasti mahdollista isoissakin peleissä)
+      const cost=Math.round(perDay*Math.min(_daysPassed,7));       // katto 7 vrk (offline-paluu ei kaada kassaa)
+      if(cost>0){G.money-=cost;try{updateMoney();}catch(e){} if(G.settings.showCallouts)toast('🧾 Ylläpito −'+cost.toLocaleString('fi-FI')+'€');}
+    }
     // Päivitä vuodenaika kuukauden mukaan (ellei pelaaja asettanut käsin tai myrsky päällä)
     if(!G._seasonManual&&G.season!=='myrsky')G.season=seasonForDate();
     const ev=todayEvent();
@@ -3968,7 +4214,7 @@ function tick(dt){G.clock+=dt;
   }
   G.units.forEach(u=>{
     if(u.status==='huolto'&&u.huoltoUntil&&G.clock>u.huoltoUntil){
-      u.huoltoUntil=null;
+      u.huoltoUntil=null;u.material=100;
       // Jos auto on kotiasemalla huollossa ja päivystysasema on eri → ajetaan takaisin
       if(u.homeStationId&&u.homeStationId!==u.stationId){
         const duty=G.stations.find(s=>s.id===u.stationId);
@@ -3986,6 +4232,9 @@ function tick(dt){G.clock+=dt;
     moveUnit(u,dt);
   });
   G.tasks.forEach(t=>{progressTask(t,dt);checkNeglect(t);});
+  try{resolveDuplicates();}catch(e){}
+  try{resolveHTasks();}catch(e){}
+  if(G.hospAdmits&&G.hospAdmits.length){const _b=G.hospAdmits.length;G.hospAdmits=G.hospAdmits.filter(a=>a.until>G.clock);if(G.hospAdmits.length!==_b){try{renderHospitals();}catch(e){}}}
   tickVpkReadiness(dt);
   tickDeployments(dt);
   tickDutyTransfers(dt);
@@ -4254,13 +4503,24 @@ function tickOmamieli(dt){
   const ch=(st&&st.muoto==='vpk')?reg+' VPK':pfx(u.toimi)+' '+reg+' INFO';
 
   if(roll<0.012){
-    u.status='huolto';u.omamieli=false;
+    u.omamieli=false;
     // Huoltoaika 30-180 peli-minuuttia (realistinen korjausaika)
-    const huoltoSec=rnd(30,180)*60;u.huoltoUntil=G.clock+huoltoSec;
+    const huoltoSec=rnd(30,180)*60;
     const huoltoMins=Math.round(huoltoSec/60);
     const huoltoTxt=huoltoMins>=60?Math.floor(huoltoMins/60)+'h '+(huoltoMins%60?(huoltoMins%60)+'min':''):huoltoMins+' min';
-    const syy=['moottoriongelma, viedään korjaamolle','valolaite hajonnut','hydrauliikka pettänyt','varoitusvalo palaa, teknikko tutkii'];
-    radio(ch,u.name,'HÄKE, pois käytöstä — '+syy[Math.floor(Math.random()*syy.length)]+' n. '+huoltoTxt);
+    const syy=['moottoriongelma','valolaite hajonnut','hydrauliikka pettänyt','varoitusvalo palaa'];
+    const reason=syy[Math.floor(Math.random()*syy.length)];
+    // Iso huolto tehdään korjaamolla. Jos alueella on korjaamo, auto AJAA sinne; muuten paikan päällä.
+    const korjaamo=(crewCount(u)>0)?nearestKorjaamo(u):null;
+    if(korjaamo){
+      u._huoltoTarget=korjaamo.id;u._huoltoUntilDur=huoltoSec;u.huoltoUntil=null;
+      u.status='paluu';u.target={lat:korjaamo.lat,lng:korjaamo.lng};u.route=null;u.ri=0;u._routeTries=0;
+      radio(ch,u.name,'HÄKE, pois käytöstä — '+reason+', ajetaan korjaamolle ('+korjaamo.n+') · huolto n. '+huoltoTxt);
+    } else {
+      u.status='huolto';u.huoltoUntil=G.clock+huoltoSec;
+      radio(ch,u.name,'HÄKE, pois käytöstä — '+reason+' n. '+huoltoTxt);
+      if(!G._korjaamoHint){G._korjaamoHint=true;toast('💡 Vinkki: rakenna Korjaamo (Asemat-välilehti) isoja huoltoja varten');}
+    }
     toast('🔧 '+u.name+' hajonnut!');
     // VARA-AUTO: jos samalla asemalla on saman tyypin vara-auto vapaana,
     // ota se käyttöön RIKKIMENNEEN TUNNUKSELLA
@@ -4356,9 +4616,10 @@ let patrolDrawLayers=[];
 let patrolSnap=true;       // tartunta: napsauta piste viereisen partioalueen kulmaan
 function snapPatrolPoint(lat,lng){
   if(!patrolSnap)return [lat,lng];
-  const thr=0.45;let best=null,bd=thr;const verts=[];
+  // KORJAUS: tartunta vain MUIDEN asemien valmiisiin partioalueisiin — EI omaan piirrettävään muotoon
+  // (ennen nappasi pisteen omiin pisteisiin → et saanut pistettä mihin halusit). Pieni kynnys 0.2 km.
+  const thr=0.2;let best=null,bd=thr;const verts=[];
   Object.keys(G.patrolAreas||{}).forEach(sid=>{const pa=G.patrolAreas[sid];(pa.polys||[]).forEach(poly=>poly.forEach(p=>verts.push(p)));if(pa.poly)pa.poly.forEach(p=>verts.push(p));});
-  if(patrolDraw)patrolDraw.points.forEach(p=>verts.push(p));
   verts.forEach(p=>{const d=km(lat,lng,p[0],p[1]);if(d<bd){bd=d;best=p;}});
   return best?[best[0],best[1]]:[lat,lng];
 }
@@ -4383,7 +4644,11 @@ function renderPatrolDraw(){
   } else if(pts.length>=2){
     patrolDrawLayers.push(L.polyline(pts,{color:col,weight:3,dashArray:'6,6'}).addTo(map));
   }
-  pts.forEach((p,i)=>{const mk=L.circleMarker(p,{radius:6,color:col,fillColor:col,fillOpacity:1,weight:2}).addTo(map);if(patrolDraw.kind==='route')mk.bindTooltip(''+(i+1),{permanent:true,direction:'top'});patrolDrawLayers.push(mk);});
+  // Sulkeva esikatseluviiva monikulmiolle (viimeisestä takaisin ensimmäiseen) → näet valmiin muodon
+  if(patrolDraw.kind==='poly'&&pts.length>=3){patrolDrawLayers.push(L.polyline([pts[pts.length-1],pts[0]],{color:col,weight:1.5,dashArray:'2,7',opacity:0.55}).addTo(map));}
+  // Numeroidut pisteet, EI-klikattavat → klikkaus menee aina kartalle (lisää uuden pisteen, ei haamua)
+  pts.forEach((p,i)=>{const mk=L.marker(p,{interactive:false,keyboard:false,icon:L.divIcon({html:`<div style="background:${col};color:#04122a;font-weight:800;font-size:10px;border-radius:50%;width:17px;height:17px;line-height:17px;text-align:center;border:2px solid #04122a">${i+1}</div>`,className:'',iconSize:[17,17],iconAnchor:[9,9]})}).addTo(map);patrolDrawLayers.push(mk);});
+  try{const h=document.getElementById('patrolDrawHint');if(h&&patrolDraw.kind==='poly')h.textContent='🚔 Klikkaa kulmat järjestyksessä · '+pts.length+' pistettä'+(pts.length>=3?' · paina ✓ Valmis':' (väh. 3)');}catch(e){}
 }
 function _startPatrolDraw(kind,targetType,targetId,hint){
   patrolDraw={kind,targetType,targetId,points:[]};
@@ -4790,7 +5055,7 @@ function rushHourFactor(){
 }
 // Kulkeeko yksikkö suoraan ilman teitä? HEMS lentää, veneet kulkevat vettä pitkin
 // (ei OSRM-tie/lauttareittejä, jotka näyttäisivät hassuilta saaritehtävillä).
-function goesStraight(u){return u.vt==='hems'||u.vt==='vene'||u.vt==='vene_pieni'||u.vt==='vene_iso';}
+function goesStraight(u){return (u.vt==='hems'&&u._hemsMode!=='car')||(isBoatUnit(u)&&(!u._isLandBoat||u._boatLaunched));}
 function isBoatUnit(u){return u.vt==='vene'||u.vt==='vene_pieni'||u.vt==='vene_iso';}
 
 /* ===== VENEVÄYLÄT — manuaaliset väyläpisteet joita pitkin veneet kulkevat =====
@@ -4852,7 +5117,9 @@ function computeBoatRoute(s,d){
   return path;
 }
 function effectiveSpeed(u,urg){
-  const base=u.speed;
+  let base=u.speed;
+  // FinnHEMS autotilassa: ajaa teitä pitkin auton nopeudella (ei kopterin 259 km/h)
+  if(VTYPES[u.vt]&&VTYPES[u.vt].heli&&u._hemsMode==='car')base=VTYPES[u.vt].carSpeed||95;
   // Realistinen suomalainen kaupunkihälytysajo: door-to-door avg 50-60 km/h rekoilla,
   // 60-75 km/h kevyemmillä autoilla. Korkeat hetkelliset nopeudet (motari) mutta paljon
   // risteyspysähdyksiä → keskinopeus jää maltilliseksi. A ~1.22×, B ~1.12×.
@@ -4885,6 +5152,13 @@ function moveUnit(u,dt){
   if(u.status!=='matka'&&u.status!=='paluu'&&u.status!=='kuljetus')return;
   if(u.status==='matka'&&u.departAt&&G.clock<u.departAt)return;
 
+  // VENE maa-asemalta: paluulla mene ensin VEDESSÄ takaisin laskupaikalle (rantaan),
+  // älä yritä uida maa-asemalle. Rannalla vene nostetaan trailerille (arriveOrHome) ja ajaa tietä asemalle.
+  if(isBoatUnit(u)&&u._isLandBoat&&u.status==='paluu'&&u._boatLaunched&&u._launchShore){
+    const tgtHome=u.target&&Math.abs(u.target.lat-u.hx)<1e-5&&Math.abs(u.target.lng-u.hy)<1e-5;
+    if(tgtHome){u.target={lat:u._launchShore.lat,lng:u._launchShore.lng};u.route=null;u.ri=0;u._boatRoute=null;u._boatRouteFor=null;u._bri=0;}
+  }
+
   // Vain HEMS (lentää) ja VENEET (vettä pitkin) kulkevat suoraan. Maayksiköt EIVÄT KOSKAAN
   // ylitä vettä — ne ajavat teitä pitkin rantaan asti (kohde snäpätään tielle dispatchissa).
   if(goesStraight(u)){
@@ -4907,7 +5181,15 @@ function moveUnit(u,dt){
     }
     const tx=dest.lat,ty=dest.lng;
     const d=km(u.lat,u.lng,tx,ty);
-    if(d<0.10){arriveOrHome(u);return;}
+    if(d<0.10){
+      // Kopteri: LASKEUTUMINEN vie aikaa (~2 min) — lyhyempi kuin nousu (~5 min)
+      if(VTYPES[u.vt]&&VTYPES[u.vt].heli&&u._hemsMode!=='car'){
+        if(!u._landingUntil)u._landingUntil=G.clock+120;
+        if(G.clock<u._landingUntil){refreshUnitMarker(u);return;}
+        u._landingUntil=null;
+      }
+      arriveOrHome(u);return;
+    }
     const spd=u.speed;
     const step=(spd/3600)*dt,fr=Math.min(1,step/d);
     u.lat+=(tx-u.lat)*fr;u.lng+=(ty-u.lng)*fr;
@@ -4921,10 +5203,20 @@ function moveUnit(u,dt){
   const rc=getRouteCoords(u);
   let tx,ty;
   if(rc&&rc.length){
+    if(u._routeTries){u._routeTries=0;u._routeRetryAt=null;} // reitti saatu -> nollaa yrityslaskuri
     if(u.ri>=rc.length){arriveOrHome(u);return;}
     tx=rc[u.ri][0];ty=rc[u.ri][1];
   } else {
-    tx=dest.lat;ty=dest.lng;
+    // EI reittiä vielä: maayksikkö EI saa kulkea suoraan (veden yli). Yritä hakea tiereitti (throttlattu)
+    // ja ODOTA. Vain usean epäonnistuneen yrityksen jälkeen liiku suoraan (ettei jää ikuisesti jumiin).
+    const dkey=dest.lat.toFixed(4)+','+dest.lng.toFixed(4);
+    if(u._routeTriesFor!==dkey){u._routeTries=0;u._routeTriesFor=dkey;u._routeRetryAt=null;} // uusi kohde -> nollaa
+    if(!u._routePending && (u._routeRetryAt==null||G.clock>=u._routeRetryAt)){
+      u._routeRetryAt=G.clock+8; u._routeTries=(u._routeTries||0)+1; u._routePending=true;
+      fetchRoute(u.lat,u.lng,dest.lat,dest.lng).then(r=>{u._routePending=false;if(r&&r.coords&&r.coords.length&&(u.status==='matka'||u.status==='paluu'||u.status==='kuljetus')){u.route=r.coords;u.ri=0;}}).catch(()=>{u._routePending=false;});
+    }
+    if((u._routeTries||0)<4){refreshUnitMarker(u);return;}   // odota reittiä — ei suoraan veden yli
+    tx=dest.lat;ty=dest.lng;                                  // viimeinen keino (OSRM ei vastaa)
   }
 
   const tk=u.status==='matka'?G.tasks.find(t=>t.id===u.taskId):null;
@@ -4972,10 +5264,33 @@ function moveUnit(u,dt){
   refreshUnitMarker(u);
 }
 function arriveOrHome(u){
+  // VENE maa-asemalta (trailerilla): vaiheistus tie <-> vesi
+  if(isBoatUnit(u)&&u._isLandBoat){
+    // Menossa tehtävälle, saavuttu RANTAAN (tie loppui) -> lasketaan vesille
+    if(u.status==='matka'&&!u._boatLaunched){
+      const tkb=G.tasks.find(t=>t.id===u.taskId);
+      if(tkb&&tkb.assigned.includes(u.id)&&tkb.where==='water'){
+        u._boatLaunched=true;u._launchShore={lat:u.lat,lng:u.lng};
+        u.target={lat:tkb.lat,lng:tkb.lng};
+        u.route=null;u.ri=0;u._boatRoute=null;u._boatRouteFor=null;u._bri=0;
+        refreshUnitMarker(u);return;
+      }
+    }
+    // Paluulla, saavuttu takaisin RANTAAN (laskupaikalle) -> nostetaan trailerille, ajetaan tietä asemalle
+    if(u.status==='paluu'&&u._boatLaunched){
+      u._boatLaunched=false;u._launchShore=null;
+      u.target={lat:u.hx,lng:u.hy};
+      u.route=null;u.ri=0;u._boatRoute=null;u._boatRouteFor=null;u._bri=0;
+      try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});}catch(e){}
+      refreshUnitMarker(u);return;
+    }
+  }
   if(u.status==='kuljetus'){
     // Saavuttu sairaalaan: luovutus, palkkio, sitten kotiin (ei infoilmoitusta)
     const tr=u.transport||{};
     if(tr.reward)G.money+=tr.reward,updateMoney();
+    // SAIRAALAN KUORMITUS: potilas vie hoitopaikan 20-45 min ajaksi (sitten paikka vapautuu).
+    if(tr.hospId){G.hospAdmits=G.hospAdmits||[];G.hospAdmits.push({id:tr.hospId,until:G.clock+rnd(20,45)*60});try{renderHospitals();}catch(e){}}
     G.taskStats=G.taskStats||{};G.taskStats.transported=(G.taskStats.transported||0)+1;
     if(tr.hake){G.hakeStats=G.hakeStats||{};const hs=G.hakeStats[tr.hake]=G.hakeStats[tr.hake]||{total:0,saved:0,severe:0,dead:0,transported:0,respSum:0,respCount:0,byCode:{},respByUrg:{}};hs.transported++;}
     u.transport=null;u.status='paluu';u.route=null;u.ri=0;u.taskId=null;
@@ -4995,6 +5310,25 @@ function arriveOrHome(u){
     // Päivitä pelastustoimen johtaja kohteessa olevien perusteella
     const prevLead=tk.lead;
     setLead(tk);
+    // ENSIVASTE / stabilointi: ensiksi paikalle ehtivä KYKENEVÄ hoitaja "ostaa aikaa" (lukitsee vasteajan _stabilizedAt).
+    // Pelastusyksiköt osaavat ensivasteen kaikkiin henkeä uhkaaviin; poliisilla vain elottomuus (PPE + defibrillaattori)
+    // ja voimakas verenvuoto (kiristysside) — muuhun ei kalustoa. Ambulanssi tekee lopullisen hoidon/kuljetuksen.
+    if(tk.toimi==='ensihoito'&&!tk.pilapuhelu&&(tk.sev==='critical'||tk.sev==='high')&&!tk._stabilizedAt){
+      const isAmb=u.cls==='ambulanssi';
+      const isPel=u.toimi==='pelastus'&&!isAmb;
+      const isPol=u.toimi==='poliisi';
+      let canStab=false,act='';
+      if(isAmb){canStab=true;}
+      else if(isPel){canStab=true;act=EV_ARREST.has(tk.base)?'aloitti peruselvytyksen (PPE)':EV_BLEED.has(tk.base)?'tyrehdytti verenvuodon':'antoi ensivasteen, potilas vakautettu';}
+      else if(isPol){if(EV_ARREST.has(tk.base)){canStab=true;act='aloitti peruselvytyksen ja kytki defibrillaattorin';}else if(EV_BLEED.has(tk.base)){canStab=true;act='tyrehdytti verenvuodon kiristyssiteellä';}}
+      if(canStab){
+        tk._stabilizedAt=G.clock;
+        if(!isAmb){tk._firstResponder=u.name;try{radio(pfx(u.toimi)+' '+regionForUnit(u)+' INFO',u.name,'ensivaste paikalla — '+act+'; ambulanssi tulossa');}catch(e){}if(G.settings.showCallouts)toast('🚑 Ensivaste: '+u.name+' '+act);}
+      } else if(isPol&&!tk._polNote){
+        tk._polNote=true;
+        if(G.settings.showCallouts)toast('🚓 '+u.name+' paikalla — ei ensivastekalustoa tähän, ambulanssi tarvitaan');
+      }
+    }
     if(!tk.onScene){
       tk.onScene=true;
       tk.firstArrival=G.clock;
@@ -5032,6 +5366,15 @@ function arriveOrHome(u){
     refreshUnitMarker(u);
   }
   else if(u.status==='paluu'){
+    // ISO HUOLTO: auto saapunut korjaamolle -> huolto käynnistyy siellä (ei kotiasemalle)
+    if(u._huoltoTarget){
+      const kor=G.stations.find(s=>s.id===u._huoltoTarget);
+      if(kor){u.lat=kor.lat;u.lng=kor.lng;}
+      u.status='huolto';u.huoltoUntil=G.clock+(u._huoltoUntilDur||rnd(1800,10800));
+      u._huoltoTarget=null;u._huoltoUntilDur=null;u.route=null;u.ri=0;
+      try{radio(pfx(u.toimi)+' '+regionForUnit(u)+' INFO',u.name,'korjaamolla, huolto käynnissä');}catch(e){}
+      refreshUnitMarker(u);return;
+    }
     // Jos auto palaa kotiasemalle huoltoon (eri kuin päivystysasema)
     if(u._returningHome&&u.homeStationId){
       const home=G.stations.find(s=>s.id===u.homeStationId);
@@ -5060,9 +5403,10 @@ function _computeHave(units){
     if(u.off)have.johto=(have.johto||0)+1;
     if(u.canSukellus)have.sukellus=(have.sukellus||0)+1;
     if(u.canNostolava||VTYPES[u.vt]?.canNostolava)have.nostolava=(have.nostolava||0)+1;
+    if(canKoysi(u))have.koysi=(have.koysi||0)+1;
     if(['sailio','tankki','nostolava'].includes(u.vt))have.suoja=(have.suoja||0)+1;
     // SUURONNETTOMUUSYKSIKKÖ: kenttäsairaala hoitaa monta → laskee usean ambulanssin verran
-    if(u.vt==='suro'){const fh=VTYPES.suro.fieldHospital||3;have.ambulanssi=(have.ambulanssi||0)+fh;have.suro=(have.suro||0)+1;}
+    if(u.vt==='suro'||u.vt==='suroperv'){const fh=VTYPES[u.vt].fieldHospital||3;have.ambulanssi=(have.ambulanssi||0)+fh;have.suro=(have.suro||0)+1;}
     // VAIHTOLAVA/KOURA: nykyinen lava käyttäytyy kuin omanlainen yksikkö.
     // currentLoad on yksi loads-arvoista (sammutus, sailio, vahinko, raivaus, vaahto, letku, kemikaali, metsapalo)
     if((u.vt==='vaihtolava'||u.vt==='koura')&&u.currentLoad){
@@ -5077,6 +5421,9 @@ function _computeHave(units){
 }
 // Vaihtolava/koura: lavojen nimet näytettäväksi
 const LOAD_NAMES={sammutus:'sammutuslava',sailio:'säiliölava (vesi)',vahinko:'vahingontorjuntalava',raivaus:'raivauslava',vaahto:'vaahtolava',letku:'letkulava',kemikaali:'kemikaalilava',metsapalo:'metsäpalolava'};
+// KÖYSIPELASTUS: perustaito lähes joka miehitetyssä pelastusautossa. Käytetään ALAS (syvänne, kuilu,
+// luiska) — nostolava yltää vain YLÖS. Useimmat sammutus-/raivausautot osaavat köysipelastuksen.
+function canKoysi(u){return !!(u&&u.toimi==='pelastus'&&['sammutus','kevytsamm','raivaus','miehisto','nostolava','koura','sukellus','maasto','vahinko'].includes(u.vt));}
 function _needMet(need,have,crew,minCrew){for(const k in need)if((have[k]||0)<need[k])return false;if(minCrew&&crew<minCrew)return false;return true;}
 function needMetBy(tk,units){
   const {have,crew}=_computeHave(units);
@@ -5088,7 +5435,7 @@ function needMetBy(tk,units){
   }
   return false;
 }
-const CLS_NAME={sammutus:'sammutusyksikkö (tai raivaus)',sailio:'sammutusyksikkö',nostolava:'nostolava',ambulanssi:'ambulanssi',vene:'vene',maasto:'maastoyksikkö',muu:'miehistöauto',johto:'johtoyksikkö',poliisi:'poliisipartio',laakari:'lääkäriyksikkö (L4)',kj:'kenttäjohtaja (L4)',vaihtolava:'vaihtolava-auto',letku:'letkuauto',sukellus:'sukellusauto',koura:'kouraauto',huolto:'huoltoauto',elainp:'eläinpelastusyksikkö',vahinko:'vahingontorjunta-auto',vakperv:'VAK-perävaunu',otyperv:'öljyntorjunta-perävaunu',letkperv:'letkuperävaunu',metsperv:'maastopalo-perävaunu',vahinkoperv:'vahingontorjunta-perävaunu',suoja:'suojauto (säiliö tai nostolava)',suro:'suuronnettomuusyksikkö'};
+const CLS_NAME={sammutus:'sammutusyksikkö (tai raivaus)',sailio:'sammutusyksikkö',nostolava:'nostolava',ambulanssi:'ambulanssi',vene:'vene',maasto:'maastoyksikkö',muu:'miehistöauto',johto:'johtoyksikkö',poliisi:'poliisipartio',laakari:'lääkäriyksikkö (L4)',kj:'kenttäjohtaja (L4)',vaihtolava:'vaihtolava-auto',letku:'letkuauto',sukellus:'sukellusauto',koura:'kouraauto',huolto:'huoltoauto',elainp:'eläinpelastusyksikkö',vahinko:'vahingontorjunta-auto',vakperv:'VAK-perävaunu',otyperv:'öljyntorjunta-perävaunu',letkperv:'letkuperävaunu',metsperv:'maastopalo-perävaunu',vahinkoperv:'vahingontorjunta-perävaunu',suoja:'suojauto (säiliö tai nostolava)',suro:'suuronnettomuusyksikkö',koysi:'köysipelastuskykyinen yksikkö'};
 // Yksiköt joita tehtävä TARVITSEE (näitä EI saa peruuttaa automaattisesti). Laskee kaikki
 // johdannaiset tarpeet samoin kuin needMetBy: suoja (säiliö/tankki/nostolava), sukellus, nostolava.
 // Lisäksi pidetään tarpeeksi miehistöä minCrew-vaatimukseen.
@@ -5102,6 +5449,7 @@ function neededKeep(tk){
     if(need.suoja>0&&['sailio','tankki','nostolava'].includes(u.vt)){need.suoja--;used=true;}
     if(need.sukellus>0&&u.canSukellus){need.sukellus--;used=true;}
     if(need.nostolava>0&&(u.canNostolava||VTYPES[u.vt]?.canNostolava)){need.nostolava--;used=true;}
+    if(need.koysi>0&&canKoysi(u)){need.koysi--;used=true;}
     if(used)keep.add(u.id);
   });
   // minCrew: pidä tarpeeksi yksiköitä (myös ne joita ei vielä merkitty keep) kunnes miehistö riittää
@@ -5119,13 +5467,13 @@ function missingNeed(tk){
   const units=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean);
   if(needMetBy(tk,units))return [];
   const need=JSON.parse(JSON.stringify(tk.need));let crew=0;
-  units.forEach(u=>{if(need.johto>0&&u.off)need.johto--;if(need[u.cls]>0)need[u.cls]--;if(need[u.vt]>0)need[u.vt]--;if(need.sukellus>0&&u.canSukellus)need.sukellus--;if(need.nostolava>0&&(u.canNostolava||VTYPES[u.vt]?.canNostolava))need.nostolava--;crew+=crewCount(u);});
+  units.forEach(u=>{if(need.johto>0&&u.off)need.johto--;if(need[u.cls]>0)need[u.cls]--;if(need[u.vt]>0)need[u.vt]--;if(need.sukellus>0&&u.canSukellus)need.sukellus--;if(need.nostolava>0&&(u.canNostolava||VTYPES[u.vt]?.canNostolava))need.nostolava--;if(need.koysi>0&&canKoysi(u))need.koysi--;crew+=crewCount(u);});
   const miss=[];for(const k in need)if(need[k]>0)miss.push((CLS_NAME[k]||k)+(need[k]>1?' x'+need[k]:''));
   if(tk.minCrew&&crew<tk.minCrew)miss.push('lisää miehistöä ('+crew+'/'+tk.minCrew+')');
   return miss;
 }
 // Lyhyet radionimet puuttuville yksiköille (selkeät, ei kieliopillisia kömpelyyksiä)
-const REQ_NAME={sammutus:'sammutusyksikkö',sailio:'säiliöauto',nostolava:'nostolava',ambulanssi:'ambulanssi',johto:'johtoyksikkö',poliisi:'partio',vene:'vene',sukellus:'sukeltajat',suoja:'suojayksikkö',kj:'kenttäjohtaja',laakari:'lääkäriyksikkö',vahinko:'vahingontorjunta-auto',koura:'kouraauto',vaihtolava:'vaihtolava-auto',letku:'letkuauto',maasto:'maastoyksikkö',elainp:'eläinpelastusyksikkö',suro:'lääkintäryhmä',tankki:'tankkiauto'};
+const REQ_NAME={sammutus:'sammutusyksikkö',sailio:'säiliöauto',nostolava:'nostolava',ambulanssi:'ambulanssi',johto:'johtoyksikkö',poliisi:'partio',vene:'vene',sukellus:'sukeltajat',suoja:'suojayksikkö',kj:'kenttäjohtaja',laakari:'lääkäriyksikkö',vahinko:'vahingontorjunta-auto',koura:'kouraauto',vaihtolava:'vaihtolava-auto',letku:'letkuauto',maasto:'maastoyksikkö',elainp:'eläinpelastusyksikkö',suro:'lääkintäryhmä',tankki:'tankkiauto',koysi:'köysipelastusyksikkö'};
 // Luonnollinen pyyntölause puuttuvasta vasteesta. Sama teksti menee RADIOON ja näkyy myös
 // tehtäväpaneelissa → ei "kuuntele radiota" -ohjeita joita ei löydy. null jos vaste riittää.
 function missingRequestPhrase(tk){
@@ -5144,9 +5492,10 @@ function missingRequestPhrase(tk){
   const reqKey=items.map(it=>it.k+'×'+it.n).join(',')+(crewShort?('|crew'+crewShort):'');
   let phrase;
   if(totalMissing>=3||crewShort>=6){
-    // ISO vajaus: pyydetään koko vaste kohteeseen. EI ehdoteta koodin nostoa (esim. 203→204) —
-    // alimitoitus ei ole sama kuin tilanteen laajeneminen; eskalaation suosittaa johtaja erikseen.
-    phrase=(tk.toimi==='ensihoito')?'pyydän lisää ensihoitoyksiköitä kohteeseen':(tk.toimi==='poliisi')?'pyydän lisää partioita kohteeseen':'tarvitaan lisää yksiköitä kohteeseen';
+    // ISO vajaus: pyydetään koko vaste kohteeseen MUODOSTELMANA (ei autolistana). EI ehdoteta koodin
+    // nostoa (esim. 203→204) — alimitoitus ei ole sama kuin tilanteen laajeneminen; eskalaation
+    // suosittaa johtaja erikseen (maybeEscalate).
+    phrase=(tk.toimi==='ensihoito')?'pyydän lisää ensihoitoyksiköitä kohteeseen':(tk.toimi==='poliisi')?'pyydän lisää partioita kohteeseen':('tarvitaan vahvennusta — '+formationWord(tk)+'vahvuus kohteeseen');
   } else {
     const parts=items.map(it=>{const nm=REQ_NAME[it.k]||CLS_NAME[it.k]||it.k;return it.n===1?('yksi '+nm):(it.n+'× '+nm);});
     if(crewShort)parts.push('lisää miehistöä');
@@ -5302,6 +5651,20 @@ function releasableExtras(tk){
   }
   return out;
 }
+// MUODOSTELMA: pelastustoiminnan vahvuusporras tehtävän vasteen koon mukaan (yksikkömäärä + minCrewW).
+// pelastusryhmä (1 yks + vahvennus) → joukkue (2-5 yks) → komppania (useita joukkueita) → yhtymä.
+function formationWord(d){
+  if(!d)return 'ryhmä';
+  const units=Object.values(d.need||{}).reduce((s,n)=>s+(n||0),0);
+  const crew=d.minCrew||0;
+  if(units>=16||crew>=30)return 'yhtymä';
+  if(units>=10||crew>=18)return 'komppania';
+  if(units>=4||crew>=8)return 'joukkue';
+  return 'ryhmä';
+}
+function formationOrder(word){
+  return {ryhmä:'nostakaa ryhmälähtöön',joukkue:'nostakaa joukkuelähtöön',komppania:'nostakaa komppanialähtöön',yhtymä:'perustakaa pelastusyhtymä'}[word]||'nostakaa lisävasteeseen';
+}
 function maybeEscalate(tk,arriving){
   if(tk.escDone||!G.settings.autoEsc)return;
   // VAIN oman toimialan johtaja kohteessa arvioi (palossa pelastusyksikkö — EI ambulanssi).
@@ -5329,7 +5692,7 @@ function maybeEscalate(tk,arriving){
     const _escCovered=_escDef&&_needMet(_escDef.need,_hv.have,_hv.crew,_escDef.minCrew);
     if(!_escCovered&&Math.random()<tk.esc){
       tk.escDone=true;tk.escSuggest=tk.escTo;
-      const word=(tk.toimi==='pelastus')?`nostakaa joukkuelähdöksi (koodille ${tk.escTo})`:`suositan nostoa koodille ${tk.escTo}`;
+      const word=(tk.toimi==='pelastus')?`${formationOrder(formationWord(_escDef))} (koodille ${tk.escTo})`:`suositan nostoa koodille ${tk.escTo}`;
       const msg=`${tk.addr} — ${word} — ${_escWhy(tk.c)}`;
       radio(ch,cmd.name,msg);alertTask(tk,`${cmd.name}: ${msg}`);renderList();
     }
@@ -5373,6 +5736,74 @@ function leadAssessReady(tk){
   // gateataan jo incidentCommanderilla + en-route-katteella, joten turhaa chatteria ei tule.
   return tk.onScene===true;
 }
+// --- VAIHTOEHTOISET MENETELMÄT: toimivat mutta vievät enemmän aikaa ---
+function isTankerUnit(u){return ['sailio','tankki'].includes(u.vt)||((u.vt==='vaihtolava'||u.vt==='koura')&&u.currentLoad==='sailio');}
+function isLetkuUnit(u){return u.vt==='letku'||u.vt==='letkperv'||((u.vt==='vaihtolava'||u.vt==='koura')&&u.currentLoad==='letku');}
+// Imeytysainetta kantavat yksiköt. oty/otyperv kantaa paljon; tavalliset autot vähän (loppuu).
+function oilCapable(u){return !!(u&&u.toimi==='pelastus'&&['sammutus','kevytsamm','raivaus','vahinko','vahinkoperv','oty','otyperv'].includes(u.vt));}
+function isFireTask(tk){return !!(tk&&tk.toimi==='pelastus'&&/palo/i.test(tk.n||''));} // tunnistus NIMESTÄ, ei koodista
+// Vedentarve PALON KOON mukaan (per tehtävä, EI koodista). Asetetaan tehtävää luotaessa (assignFireWater).
+// Osa paloista ei pala juuri mitään (autom. paloilmoitin, kytöpalo, jo sammunut) -> ei vedentarvetta.
+function assignFireWater(tk){
+  if(!isFireTask(tk)){tk.waterNeed=0;return;}
+  const sev=tk.sev||'none';
+  const nothing={none:0.7,low:0.55,medium:0.15,high:0.05,critical:0.02}[sev]??0.3;
+  if(Math.random()<nothing){tk.waterNeed=0;return;}                       // ei pala mitään (palanut ruoka, autom. ilmoitin, jo sammunut)
+  const sevBoost={none:0.05,low:0.12,medium:0.32,high:0.5,critical:0.72}[sev]||0.1;
+  const isWildfire=tk.where==='forest';                                    // maastopalo tarvitsee yleensä paljon
+  const s=Math.min(1, Math.random()*0.55 + sevBoost + (isWildfire?0.15:0));
+  tk.waterNeed=Math.round(s*s*36000);                                      // litraa (abstrakti), palon koon mukaan
+}
+function fireWaterDemand(tk){ if(tk.waterNeed==null)assignFireWater(tk); return tk.waterNeed||0; }
+// Paikalle saatava vesi. SARJAAJO: joka 3 säiliöautoa = yksi sarjaajo, tuo paljon vettä mutta RAJALLISESTI
+// (autot ovat vielä ajamassa vettä) -> todella isoon paloon voi tarvita kaksikin sarjaajoa. LETKU(perävaunu):
+// paljon vettä lähteestä (110mm/60bar), muttei loputon; letkuperävaunu enemmän. Lisäksi autojen oma vesi.
+function fireWaterSupply(onsc,tk){
+  // Matka vedelle (palopostille/lähteelle): kaukana sarjaajon kierto on hidas -> tarvitaan ENEMMÄN autoja.
+  const w=tk.where||'any';
+  const srcFactor = (w==='urban'||w==='industrial')?1.0 : (w==='forest'?0.55 : 0.8);
+  const tankers=onsc.filter(isTankerUnit).length;
+  const relays=Math.floor(tankers/3);                                      // joka 3 säiliötä = yksi sarjaajo
+  let flow = (relays*15000 + (tankers-relays*3)*2500) * srcFactor;          // sarjaajo + yksittäiset säiliöt (matkan mukaan)
+  flow += onsc.filter(u=>['sammutus','kevytsamm'].includes(u.vt)).length*1200; // autojen oma vesi (ei riipu matkasta)
+  const letku=onsc.find(isLetkuUnit);
+  if(letku){ if(!tk._letkuReadyAt)tk._letkuReadyAt=G.clock+rnd(10,20)*60;
+    if(G.clock>=tk._letkuReadyAt) flow += onsc.some(u=>u.vt==='letkperv')?20000:12000; } // letku lähteestä (esim. järvi) - hyvä kaukanakin
+  return flow;
+}
+// Työn etenemiskerroin (1 = normaali, <1 = hitaampi). Mallintaa että saman tehtävän voi hoitaa
+// eri tavoilla, mutta osa tavoista on hitaampia.
+function workRate(tk,onsc){
+  let rate=1;
+  // 487: ilman nostolavaa (eli KÖYSIPELASTUKSELLA) korkean kohteen hoito vie enemmän aikaa.
+  if((tk.realCode||tk.c)==='487'){
+    const hasNosto=onsc.some(u=>u.canNostolava||VTYPES[u.vt]?.canNostolava);
+    if(!hasNosto) rate*=0.6; // köydet: hitaampi kuin nostolava
+  }
+  // PALO: työ etenee sitä paremmin mitä paremmin vesi riittää (vedentarve palon koon mukaan vs paikalle saatava vesi).
+  if(isFireTask(tk)){
+    const demand=fireWaterDemand(tk);
+    if(demand>0){ const supply=fireWaterSupply(onsc,tk); if(supply<demand) rate*= Math.max(0.2, supply/demand); }
+  }
+  // SAVUSUKELLUS: rakennuspalossa (jossa oikeasti palaa) sisätyö vaatii väh. 2 savusukellusparia
+  // (yksi työpari + yksi varapari turvallisuuden vuoksi). Kevyt 1+1-auto (kevytsamm) EI kelpaa
+  // savusukellukseen -> vain oikeat sammutusyksiköt (1+3) ja miehistöautot. Alle 2 paria -> vain ulkoa,
+  // hidasta. (Pieni/palanut ruoka -keikka ei vaadi tätä, koska vedentarve on pieni/0.)
+  if(/rakennuspalo/i.test(tk.n||'') && fireWaterDemand(tk)>3000){
+    const pairs=onsc.filter(u=>['sammutus','miehisto'].includes(u.vt)).length;
+    if(pairs<2) rate*=0.35;
+  }
+  if(/^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water'){
+    const hasAbsorb = onsc.some(u=>oilCapable(u)&&((u.material==null)||u.material>5));
+    if(!hasAbsorb) rate*=0.35;
+  }
+  // ELÄIMEN PELASTUS (581): eläinpelastusyksikkö on nopeampi; tavallisella yksiköllä hitaampi.
+  if((tk.realCode||tk.c)==='581'){
+    const hasElainp=onsc.some(u=>u.vt==='elainp');
+    if(!hasElainp) rate*=0.7;
+  }
+  return rate;
+}
 function progressTask(tk,dt){
   if(tk.status!=='ajossa'||!tk.onScene)return;
   const onsc=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
@@ -5382,7 +5813,23 @@ function progressTask(tk,dt){
   // Partion itse-generoima tehtävä: jos pyydetty apu (backup/ambulanssi) ei tule kohtuuajassa (~25 min),
   // paikalla oleva partio hoitaa tilanteen itse → tehtävä ei jää jumiin odottamaan.
   const _selfResolve=tk.patrolGen&&!_met&&tk.firstArrival&&(G.clock-tk.firstArrival>1500)&&onsc.length;
-  if(_met||_selfResolve){if(tk.alert){tk.alert=false;refreshTaskAlert(tk);}tk.work+=dt;midTaskRelease(tk);if(tk.work>tk.workNeeded)completeTask(tk);}
+  // Öljytehtävä MAALLA: imeytysaine kuluu työn aikana. Vesistössä EI imeytysainetta (puomitus).
+  if(/^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water'){
+    onsc.forEach(u=>{ if(!oilCapable(u))return; if(u.material==null)u.material=100;
+      const drain=(u.vt==='oty'||u.vt==='otyperv')?0.015:0.08; u.material=Math.max(0,u.material-dt*drain); });
+  }
+  const rate=workRate(tk,onsc);
+  // Letku saatu vedettyä -> yksikkö ilmoittaa radiossa (statusviesti, ei vihje).
+  if(isFireTask(tk)){
+    const letku=onsc.find(isLetkuUnit);
+    if(letku&&tk._letkuReadyAt&&G.clock>=tk._letkuReadyAt&&!tk._letkuAnnounced){tk._letkuAnnounced=true;try{radio(chFor(tk.toimi,'INFO',tk),letku.name,'letku vedetty, vesi riittää — sarjaajo voidaan purkaa');}catch(e){}}
+    // Palo "palaa kasaan" jos vettä ei saada riittävästi: rakennus palaa enemmän -> työ kasvaa (katto +80%).
+    if(_met && rate<0.85 && fireWaterDemand(tk)>0){
+      if(tk._origWorkNeeded==null)tk._origWorkNeeded=tk.workNeeded;
+      if(tk.workNeeded < tk._origWorkNeeded*1.8) tk.workNeeded += dt*(1-rate)*0.4;
+    }
+  }
+  if(_met||_selfResolve){if(tk.alert){tk.alert=false;refreshTaskAlert(tk);}tk.work+=dt*rate;midTaskRelease(tk);if(tk.work>tk.workNeeded)completeTask(tk);}
   // Johtajan ARVIOT vasta kun hän on ehtinyt sizetä tilanteen (johtaja ei tiedä heti):
   if(leadAssessReady(tk)){
     // 1) Eskalaatio / koodinkorjaus — rullataan harvakseltaan (n. 30 s välein), ei joka tikki
@@ -5441,7 +5888,7 @@ const DOCTOR_SKILL_CODES=['700','701','711','713','714','741','746','754','204',
 function needsDoctorSkill(tk){return DOCTOR_SKILL_CODES.includes(tk.base);}
 function computeOutcome(tk){
   if(tk.outcome)return tk.outcome;
-  const respSec=(tk.firstArrival||G.clock)-tk.created; // peliaikaa
+  const respSec=(tk._stabilizedAt||tk.firstArrival||G.clock)-tk.created; // peliaikaa: aika ensimmäiseen KYKENEVÄÄN hoitoon
   const np=tk.patients||0;
   // Ei-potilas-tehtävät (palot ilman uhreja, varmistus jne)
   if(np===0||tk.sev==='none'){tk.outcome={dead:0,severe:0,saved:0,report:'',score:1};return tk.outcome;}
@@ -5495,8 +5942,7 @@ function computeOutcome(tk){
     else if(ratio<1.4){severe=Math.max(1,Math.round(np*0.4));saved=np-severe;report='pysyviä vammoja viiveen takia';}
     else{dead=Math.max(1,Math.round(np*0.3));severe=np-dead;report=(dead?dead+' menehtyi, ':'')+'vakavia vammoja';}
   } else if(tk.sev==='medium'){
-    if(ratio<1.2){saved=np;report='potilas hoidettu';}
-    else{severe=Math.max(1,Math.round(np*0.3));saved=np-severe;report='tila huononi viiveen takia';}
+    saved=np;report='potilas hoidettu'; // keskivakava: ei henkeä uhkaava, ei huonone pelkästä viiveestä
   } else { // low
     saved=np;report='potilas hoidettu, ei hätää';
   }
@@ -5532,6 +5978,9 @@ function taskNeedsTransport(tk){
 }
 // Mihin sairaalaan? Vakavuus määrää VÄHIMMÄISTASON; korkeampi taso kelpaa AINA
 // (yliopistosairaala hoitaa kaiken) → ei pakoteta ajamaan ohi lähimmän sopivan sairaalan.
+function hospCapacity(h){return {yliopisto:8,alue:5,terveys:3}[h.taso]||5;}
+function hospLoad(id){return (G.hospAdmits||[]).filter(a=>a.id===id&&a.until>G.clock).length;}
+function hospFull(h){return hospLoad(h.id)>=hospCapacity(h);}
 function pickHospital(tk){
   const rank={terveys:0,alue:1,yliopisto:2};
   let minLvl;
@@ -5548,22 +5997,56 @@ function pickHospital(tk){
   // kaupungin toiselle puolelle kun lähin (vaikka yliopisto) kelpaisi.
   if(tk.sev!=='critical'&&tk.sev!=='high'&&pool.length>1){
     const nearest=pool[0], nd=km(tk.lat,tk.lng,nearest.lat,nearest.lng);
-    const lower=pool.find(h=>(rank[h.taso]??1)<(rank[nearest.taso]??1)&&km(tk.lat,tk.lng,h.lat,h.lng)<=nd*1.25);
+    const lower=pool.find(h=>(rank[h.taso]??1)<(rank[nearest.taso]??1)&&km(tk.lat,tk.lng,h.lat,h.lng)<=nd*1.25&&!hospFull(h));
     if(lower)return lower;
   }
+  // KUORMITUS: lähin EI-täysi sairaala. Jos lähin on täynnä, potilas ohjataan seuraavaksi lähimpään (kauemmas).
+  const free=pool.find(h=>!hospFull(h));
+  if(free){
+    if(free!==pool[0]&&G.settings.showCallouts)toast('🏥 '+hospitalShortName(pool[0])+' täynnä — potilas ohjataan '+hospitalShortName(free)+' (kauemmas)');
+    return free;
+  }
+  if(G.settings.showCallouts)toast('🏥 Sairaalat täynnä — potilas viedään silti lähimpään (ylikuormitus)');
   return pool[0];
 }
 function hospitalShortName(h){return h.n.replace(/\s*\(.*\)/,'');}
 // Aloita potilaskuljetus: ambulanssi ajaa sairaalaan, sitten vapautuu
 function startTransport(u,tk,hosp){
   u.status='kuljetus';u.taskId=null;u.route=null;u.ri=0;
-  u.transport={hosp:hosp.n,hlat:hosp.lat,hlng:hosp.lng,from:tk.addr,sev:tk.sev,reward:Math.round((tk.rew||200)*0.35),hake:taskHake(tk)};
+  u.transport={hosp:hosp.n,hospId:hosp.id,hlat:hosp.lat,hlng:hosp.lng,from:tk.addr,sev:tk.sev,reward:Math.round((tk.rew||200)*0.35),hake:taskHake(tk)};
   u.target={lat:hosp.lat,lng:hosp.lng};
   // EI ilmoiteta kuljetusta infolla. Kuljetus näkyy yksikön statuksesta kartalla.
   fetchRoute(u.lat,u.lng,hosp.lat,hosp.lng).then(r=>{if(u.status==='kuljetus'){u.route=r;u.ri=0;}});
   refreshUnitMarker(u);
 }
 
+// TRIAGE-ARVIO: vertaa pelaajan valitsemaa kiireellisyyttä (A/B/C/D) tapauksen TODELLISEEN vakavuuteen.
+// yli = liian kiireelliseksi arvioitu (tuhlaa yksikön), ali = liian kiireettömäksi (vaaransi potilaan).
+function triageEval(tk){
+  if(!tk.urg||!tk.sev||tk.sev==='none')return null;
+  const want={critical:3,high:2.5,medium:1,low:0.5}[tk.sev];
+  const got={A:3,B:2,C:1,D:0}[tk.urg];
+  if(want==null||got==null)return null;
+  if(got>=want+1)return {k:'yli',t:'🔺 yliarvio'};
+  if(got<=want-1)return {k:'ali',t:'🔻 aliarvio'};
+  return {k:'oikein',t:'🎯 triage osui'};
+}
+// TAVOITTAMISAIKA RISKIALUEITTAIN: kuinka nopeasti ensimmäisen yksikön TULISI ehtiä.
+// Taajamassa tiukka tavoite, maaseudulla löysempi (kuten pelastustoimen toimintavalmiusohjeessa).
+function riskArea(tk){
+  const w=tk.where||'any';
+  if(w==='urban'||w==='industrial')return 'I';      // ydintaajama
+  if(w==='forest'||w==='water')return 'III';         // maaseutu / haja-asutus
+  return 'II';                                       // muu taajama (tie, sekalainen)
+}
+function responseTargetSec(tk){
+  const a=riskArea(tk);
+  const tbl={A:{I:8,II:12,III:20},B:{I:10,II:15,III:25}}; // minuuttia
+  if(tbl[tk.urg])return tbl[tk.urg][a]*60;
+  if(tk.urg==='C')return 30*60;
+  if(tk.urg==='D')return 120*60;
+  return null;
+}
 function completeTask(tk){tk.status='valmis';
   // Krediittijärjestelmä: realistinen palkkio joka huomioi vasteajan, tuloksen ja kuljetuksen
   let multiplier=1;
@@ -5581,6 +6064,17 @@ function completeTask(tk){tk.status='valmis';
   if(out.saved)multiplier+=0.08*out.saved;
   // Menehtymissakko: erityisesti jos useita kuollutta
   if(out.dead)multiplier-=0.12*out.dead;
+  // TRIAGE: yliarvio tuhlaa resursseja (pieni vähennys), osuva triage palkitaan kevyesti.
+  // (Aliarviota ei sakoteta erikseen — sen seuraus näkyy jo huonompana hoitotuloksena.)
+  const triage=triageEval(tk);
+  if(triage){if(triage.k==='yli')multiplier-=0.1;else if(triage.k==='oikein')multiplier+=0.05;}
+  // TAVOITTAMISAIKA: ehtikö ensimmäinen yksikkö riskialueen tavoiteajassa? Tuo merkitystä asemien sijoitteluun.
+  let vasteMet=null;
+  if(tk.firstArrival&&tk.created&&tk.urg){
+    const tgt=responseTargetSec(tk);
+    if(tgt!=null){vasteMet=(tk.firstArrival-tk.created)<=tgt;
+      if(vasteMet&&(tk.urg==='A'||tk.urg==='B'))multiplier+=0.05;} // tavoitteessa A/B = pieni bonus
+  }
   multiplier=Math.max(0.2,Math.min(2.5,multiplier));
   // Palkkion kerroin tehtäväluokan mukaan
   const sc=(tk.outcome&&tk.outcome.score)||1;
@@ -5589,6 +6083,8 @@ function completeTask(tk){tk.status='valmis';
   G.money+=payout;updateMoney();
   G.taskStats=G.taskStats||{total:0,byCode:{},respSum:0,respCount:0,saved:0,severe:0,dead:0,transported:0};
   G.taskStats.total++;
+  if(triage){G.taskStats.triage=G.taskStats.triage||{oikein:0,yli:0,ali:0};G.taskStats.triage[triage.k]=(G.taskStats.triage[triage.k]||0)+1;}
+  if(vasteMet!==null){G.taskStats.vaste=G.taskStats.vaste||{met:0,missed:0};G.taskStats.vaste[vasteMet?'met':'missed']++;}
   const code=tk.base||tk.c;G.taskStats.byCode[code]=(G.taskStats.byCode[code]||0)+1;
   if(out.saved)G.taskStats.saved=(G.taskStats.saved||0)+out.saved;
   if(out.severe)G.taskStats.severe=(G.taskStats.severe||0)+out.severe;
@@ -5654,7 +6150,7 @@ function completeTask(tk){tk.status='valmis';
     tk.xcode=x;xtxt=' · '+x;
   }
   // Ei valmistumisviestiä radioon — kaikki raportointi tapahtuu MDT:llä.
-  if(tk.marker)map.removeLayer(tk.marker);G.tasks=G.tasks.filter(t=>t.id!==tk.id);toast('✅ '+tk.c+' suoritettu'+xtxt+'  +'+payout+'€');renderList();updateBadge();G.missDone++;
+  if(tk.marker)map.removeLayer(tk.marker);G.tasks=G.tasks.filter(t=>t.id!==tk.id);toast('✅ '+tk.c+' suoritettu'+xtxt+(triage?' · '+triage.t:'')+(vasteMet!==null?(vasteMet?' · ⏱️ tavoitteessa':' · ⏱️ yli tavoiteajan'):'')+'  +'+payout+'€');renderList();updateBadge();G.missDone++;
   try{checkGoalCompletions();}catch(e){}
   if(['402','403'].includes(tk.base)&&!G.settings.noFollowup&&Math.random()<0.6){spawnFollowUp(tk);}
 }
@@ -5696,6 +6192,7 @@ const BUILD_TYPES={
   poliisi:{icon:'🚓',name:'Poliisiasema',cost:35000,cat:'asemat',desc:'Partiointi, järjestys'},
   hems:{icon:'🚁',name:'Helikopteritukikohta',cost:120000,cat:'asemat',desc:'FinnHEMS-lääkärihelikopteri'},
   venelaituri:{icon:'⚓',name:'Pelastusvenelaituri',cost:25000,cat:'asemat',desc:'Veneet ja sukellusauto vesistöjen lähellä'},
+  korjaamo:{icon:'🔧',name:'Korjaamo (iso huolto)',cost:35000,cat:'asemat',desc:'Isot huollot ja korjaukset. Rikkoutuneet autot ajetaan tänne. Suositus 1-2 per alue.'},
   sairaala_yliopisto:{icon:'🏥',name:'Yliopistosairaala',cost:200000,cat:'sairaalat',desc:'Hoitaa kaikki potilaat (kriittiset, kiireell., perus)',taso:'yliopisto'},
   sairaala_alue:{icon:'🏥',name:'Aluesairaala',cost:100000,cat:'sairaalat',desc:'Hoitaa kiireelliset ja perustason potilaat',taso:'alue'},
   sairaala_terveys:{icon:'🏥',name:'Terveysasema',cost:50000,cat:'sairaalat',desc:'Hoitaa kevyet/perustason tapaukset',taso:'terveys'},
@@ -6034,6 +6531,21 @@ function renderMiss(){
       <span style="color:#ff5555">💀 Menehtyi: <b>${stats.dead||0}</b></span>
       <span style="color:#26d07c">🏥 Kuljetettu: <b>${stats.transported||0}</b></span>
     </div>
+    ${stats.triage?`<div style="display:flex;gap:10px;margin-top:6px;font-size:13px;flex-wrap:wrap">
+      <span style="color:#39c06a">🎯 Triage osui: <b>${stats.triage.oikein||0}</b></span>
+      <span style="color:#ffd11a">🔺 Yliarvio: <b>${stats.triage.yli||0}</b></span>
+      <span style="color:#ff7a7a">🔻 Aliarvio: <b>${stats.triage.ali||0}</b></span>
+    </div>`:''}
+    ${stats.vaste?`<div style="display:flex;gap:10px;margin-top:6px;font-size:13px;flex-wrap:wrap">
+      <span style="color:#5b8dff">⏱️ Vaste tavoitteessa: <b>${stats.vaste.met||0}</b></span>
+      <span style="color:#ff7a7a">⏱️ Yli tavoiteajan: <b>${stats.vaste.missed||0}</b></span>
+      ${((stats.vaste.met||0)+(stats.vaste.missed||0))>0?`<span style="color:var(--dim)">(${Math.round(100*(stats.vaste.met||0)/((stats.vaste.met||0)+(stats.vaste.missed||0)))}% ajoissa)</span>`:''}
+    </div>`:''}
+    ${(stats.hOk||stats.hWrong||stats.hWasted)?`<div style="display:flex;gap:10px;margin-top:6px;font-size:13px;flex-wrap:wrap">
+      <span style="color:#39c06a">📞 Neuvonta oikein: <b>${stats.hOk||0}</b></span>
+      <span style="color:#ff7a7a">⚠ Aito jäi hälyttämättä: <b>${stats.hWrong||0}</b></span>
+      <span style="color:#ffd11a">🚫 Turha hälytys: <b>${stats.hWasted||0}</b></span>
+    </div>`:''}
     ${topCodes.length?'<div class="smallnote" style="margin-top:8px">Yleisimmät tehtävät:</div>'+topCodes.map(([c,n])=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span class="mono">${c}</span><span style="color:var(--dim)">${n} kpl</span></div>`).join(''):''}
   </div>`;
   const goals=getGoals();
@@ -6078,6 +6590,7 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
   h+=`<div class="toggle"><span>Vuodenaika / sää</span><select class="inp" style="width:auto;margin:0" onchange="G.season=this.value;G._seasonManual=true;toast('Sää: '+this.value)">${['kesä','talvi','myrsky'].map(s=>`<option ${G.season===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
   h+=sw('Tehtävät voivat laajentua',G.settings.autoEsc,"G.settings.autoEsc=!G.settings.autoEsc;renderSet()");
   h+=sw('Näytä ponnahdusilmoitukset',G.settings.showCallouts,"G.settings.showCallouts=!G.settings.showCallouts;renderSet()");
+  h+=sw('Päivittäiset ylläpitokulut (palkat/huolto)',G.settings.upkeep!==false,"G.settings.upkeep=(G.settings.upkeep===false);renderSet()");
   h+=sw('🔊 Äänimerkki kun uusi tehtävä ilmestyy',G.settings.dispatchSound!==false,"G.settings.dispatchSound=(G.settings.dispatchSound===false);try{if(G.settings.dispatchSound)playDispatchSound();}catch(e){}saveGame(false);renderSet()");
   // OPT-OUT: kytke pois spontaaneja tapahtumia (toggle ON = ominaisuus käytössä). saveGame jotta säilyy.
   h+=`<div style="font-size:11px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;font-weight:700;margin:14px 0 4px">Tapahtumat — kytke pois jos et halua</div>`;
@@ -6104,6 +6617,7 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
     h+=`<button class="btn-x" style="width:100%;margin-top:10px;color:#ffd11a" onclick="resetStuckUnits()">🔧 Korjaa jumittuneet yksiköt</button>`;
     h+=`<div class="smallnote" style="margin-top:4px;font-size:11px">Palauttaa jumiin jääneet vara-autot omaksi tunnukseksi, irrottaa yksiköt poistuneilta tehtäviltä ja kotiuttaa liikkuvat ilman tehtävää.</div></div>`;
   }
+  h+=`<details class="setgrp"><summary>🗺️ Kartan muokkaus</summary><div class="sgbody">`;
   h+=`<div class="toggle" style="flex-direction:column;align-items:stretch;gap:8px;padding:12px 0">
     <div style="display:flex;justify-content:space-between;align-items:center"><span>Tehtäväalueet</span><span class="smallnote">${activeStations().filter(s=>!s.spawnOff).length} asemaa${(G.spawnAreas&&G.spawnAreas.length)?' + '+G.spawnAreas.length+' lisäaluetta':''}</span></div>
     <div class="smallnote">💡 <b>Jokaisella asemalla on oma tehtäväalue automaattisesti</b> — säädä sen sädettä, tiheyttä tai sammuta se aseman omasta näkymästä (Asemat → asema → ⚙️ asetukset → 📍 Tehtäväalue).</div>
@@ -6125,6 +6639,8 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
     <button class="buy" style="width:100%" onclick="closePanels();startEditBoatWays()">⚓ Piirrä veneväyliä kartalle</button>
     <div class="smallnote">Piirrä väyliä viivoina (klikkaa pisteitä) saarten ohi — voit jopa ympyröidä saaren. Veneet seuraavat väyliä. Jos lähtö/määränpää ei ole väylän lähellä, vene menee suoraan. Eri väylät yhdistyvät kun ne ovat lähekkäin.</div>
   </div>`;
+  h+=`</div></details>`;
+  h+=`<details class="setgrp"><summary>📋 Koodit ja selosteet (ohje)</summary><div class="sgbody">`;
   h+=`<div class="card" style="margin-top:14px"><h3>📋 Ensihoidon X-koodit (tehtävän päättymisselosteet)</h3><div class="meta">Viralliset ensihoidon päättymiskoodit (Ensihoidon käsikirja).</div>
     <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;margin-top:6px">
     <div><b style="color:var(--ens)">X-0</b> — Tekninen este</div>
@@ -6150,15 +6666,22 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
     <div><b style="color:var(--txt)">Sairaankuljetus (79X)</b> · 790 hälytys puhelussa · 791 synnytys · 792 varautuminen · 793 hoitolaitossiirto · 794 muu</div>
     </div>
     <div class="meta" style="margin-top:8px">Kiireellisyysluokat: <b>A</b> = hengenvaara, hälytysajo · <b>B</b> = vakava, hälytysajo · <b>C</b> = kiireellinen, normaaliajo · <b>D</b> = kiireetön.</div></div>`;
+  h+=`</div></details>`;
   h+=`<div style="margin-top:14px;display:flex;gap:8px"><button class="buy" onclick="saveGame(true)">💾 Tallenna</button><button class="btn-x" onclick="if(confirm('Nollaa peli? Tallennuskoodi kannattaa ottaa talteen ensin!'))wipe()">🗑️ Nollaa</button></div>`;
-  h+=`<div class="card" style="margin-top:14px"><h3>Omat hälytyspaketit</h3><div class="meta">Tee oma vaste: nimeä se ja valitse montako mitäkin yksikkötyyppiä. Pakettia voi käyttää tehtävän lähetysikkunassa (valitsee lähimmät sopivat).</div>
+  document.getElementById('setbody').innerHTML=h;}
+function renderPkg(){
+  let h=`<div class="smallnote" style="margin-bottom:10px">Tee omia hälytyspaketteja (valmiita vasteita). Pakettia voi käyttää tehtävän lähetysikkunassa — se valitsee lähimmät vapaat sopivat yksiköt ja näyttää yhteenvedon ennen lähetystä.</div>`;
+  h+=`<div class="card"><h3>➕ Uusi paketti</h3>
     <input class="inp" id="pkg_name" placeholder="Paketin nimi (esim. Rakennuspalo iso)">
-    ${[['sammutus','Sammutus'],['sailio','Säiliö'],['nostolava','Nostolava'],['raivaus','Raivaus'],['ambulanssi','Ambulanssi'],['poliisi','Poliisi'],['vene','Vene'],['muu','Miehistö/muu'],['johto','Johto']].map(c=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="smallnote" style="flex:1">${c[1]}</span><input class="inp" id="pkg_${c[0]}" type="number" min="0" value="0" style="width:60px;margin:0;text-align:center"></div>`).join('')}
-    <button class="buy" style="margin-top:6px" onclick="savePackage()">+ Tallenna paketti</button>
-    <div style="margin-top:8px">${(G.packages||[]).map((p,i)=>`<div class="smallnote" style="display:flex;align-items:center;gap:6px"><span style="flex:1">★ ${p.name} (${p.items.map(it=>it.n+'× '+it.cls).join(', ')})</span><button class="btn-x" style="padding:2px 7px;color:#f88" onclick="delPackage(${i})">poista</button></div>`).join('')||'<div class="smallnote">Ei omia paketteja vielä.</div>'}</div></div>`;
+    ${(()=>{let s='';[['pelastus','🚒 Pelastus'],['ensihoito','🚑 Ensihoito'],['poliisi','🚓 Poliisi']].forEach(([tm,gl])=>{const vts=Object.keys(VTYPES).filter(k=>VTYPES[k].toimi===tm&&!k.endsWith('perv'));if(!vts.length)return;s+=`<details class="setgrp" style="margin-top:8px"><summary>${gl}</summary><div class="sgbody">`+vts.map(k=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span class="smallnote" style="flex:1">${VTYPES[k].label}</span><input class="inp" id="pkg_${k}" type="number" min="0" value="0" style="width:64px;margin:0;text-align:center"></div>`).join('')+`</div></details>`;});return s;})()}
+    <button class="buy" style="margin-top:10px;width:100%" onclick="savePackage()">+ Tallenna paketti</button></div>`;
+  h+=`<div class="card" style="margin-top:12px"><h3>★ Omat paketit</h3>${(G.packages||[]).map((p,i)=>`<div class="smallnote" style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--line)"><span style="flex:1">★ <b>${p.name}</b> <span style="color:var(--dim)">(${p.items.map(it=>it.n+'× '+((VTYPES[it.cls]&&VTYPES[it.cls].label)||it.cls)).join(', ')})</span></span><button class="btn-x" style="padding:2px 7px;color:#f88" onclick="delPackage(${i})">poista</button></div>`).join('')||'<div class="smallnote">Ei omia paketteja vielä.</div>'}</div>`;
+  document.getElementById('pkgbody').innerHTML=h;
+}
+function renderProf(){
   const isMobile=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  // PILVISYNKRONOINTI — automaattinen edistyksen siirto
-  h+=`<div class="card" style="margin-top:14px;border-color:var(--acc2)"><h3>👤 Tili & pilvitallennus</h3>
+  let h=`<div class="smallnote" style="margin-bottom:10px">Tilisi, pilvitallennus ja pelin siirto laitteelta toiselle.</div>`;
+  h+=`<div class="card" style="border-color:var(--acc2)"><h3>👤 Tili & pilvitallennus</h3>
     ${!fbConfigured()?`
       <div style="background:#1a2129;border:1px solid var(--line2);border-radius:6px;padding:9px;font-size:12.5px">
         <b>Tilit eivät ole vielä käytössä tällä sivustolla.</b><br>
@@ -6197,15 +6720,20 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
     </div>
     <textarea class="inp" id="codebox" style="height:52px;font-family:monospace;font-size:10px" placeholder="Liitä tallennuskoodi tähän…"></textarea>
     <div class="meta" style="margin-top:6px;color:var(--A)">⚠️ Lataaminen korvaa nykyisen pelin tällä laitteella.</div></div>`;
-  document.getElementById('setbody').innerHTML=h;}
+  document.getElementById('profbody').innerHTML=h;
+}
 
 /* ===== NAV ===== */
 function closePanels(){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));}
 function isOpen(id){return document.getElementById(id).classList.contains('open');}
+window.toggleMenu=(e)=>{if(e)e.stopPropagation();const m=document.getElementById('menupop');if(m)m.classList.toggle('open');};
+window.closeMenu=()=>{const m=document.getElementById('menupop');if(m)m.classList.remove('open');};
+document.addEventListener('click',(e)=>{const m=document.getElementById('menupop'),h=document.getElementById('hambtn');if(m&&m.classList.contains('open')&&!m.contains(e.target)&&h&&!h.contains(e.target))m.classList.remove('open');});
 function setNav(p){currentNav=p;document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));}
 // Palaa kartalle (sulkee paneelit). Käytetään ✕-napeissa.
 window.goMap=()=>{const wasMap=currentNav==='map';setNav('map');closePanels();document.getElementById('uinfo').classList.remove('open');map.invalidateSize();renderVpkQueue();if(!wasMap)restorePops();};
 function openPanel(p){
+  try{closeMenu();}catch(e){}
   const wasMap=currentNav==='map';
   // Jos painetaan jo auki olevaa välilehteä, palataan kartalle (toggle)
   if(p===currentNav&&p!=='map'){window.goMap();return;}
@@ -6218,7 +6746,7 @@ function openPanel(p){
   if(p==='map'){map.invalidateSize();renderVpkQueue();restorePops();return;}
   renderVpkQueue();
   document.getElementById('p-'+p).classList.add('open');
-  ({list:renderList,radio:renderRadio,build:renderBuild,miss:renderMiss,set:renderSet,ensh:renderEnsh})[p]?.();
+  ({list:renderList,radio:renderRadio,build:renderBuild,miss:renderMiss,set:renderSet,ensh:renderEnsh,pkg:renderPkg,prof:renderProf})[p]?.();
 }
 function renderEnsh(){
   const stats=G.taskStats||{total:0,byCode:{},saved:0,severe:0,dead:0,respSum:0,respCount:0,transported:0};
@@ -6299,11 +6827,11 @@ document.getElementById('spawnsel').onchange=function(){
 
 /* ===== TALLENNUS ===== */
 window.exportCode=exportCode;window.importCode=importCode;
-window.savePackage=()=>{const name=(document.getElementById('pkg_name').value||'').trim();if(!name){toast('Anna paketille nimi');return;}const items=[];['sammutus','sailio','nostolava','raivaus','ambulanssi','poliisi','vene','muu','johto'].forEach(c=>{const n=parseInt(document.getElementById('pkg_'+c).value)||0;if(n>0)items.push({cls:c,n});});if(!items.length){toast('Valitse vähintään yksi yksikkö');return;}G.packages=G.packages||[];G.packages.push({name,items});toast('Paketti tallennettu: '+name);renderSet();saveGame(false);};
-window.delPackage=(i)=>{G.packages.splice(i,1);renderSet();saveGame(false);};
+window.savePackage=()=>{const name=(document.getElementById('pkg_name').value||'').trim();if(!name){toast('Anna paketille nimi');return;}const items=[];Object.keys(VTYPES).filter(k=>!k.endsWith('perv')).forEach(c=>{const el=document.getElementById('pkg_'+c);if(!el)return;const n=parseInt(el.value)||0;if(n>0)items.push({cls:c,n});});if(!items.length){toast('Valitse vähintään yksi yksikkö');return;}G.packages=G.packages||[];G.packages.push({name,items});toast('Paketti tallennettu: '+name);renderPkg();saveGame(false);};
+window.delPackage=(i)=>{G.packages.splice(i,1);renderPkg();saveGame(false);};
 function serializeGame(){
-  return {v:12,money:G.money,clock:G.clock,dayCount:G.dayCount||0,startDateISO:G.startDateISO||'2026-01-01',upkeepT:G._upkeepT||0,spawnRate:G.spawnRate,realisticSpawn:!!G.realisticSpawn,spawnRadius:G.spawnRadius,spawnCenter:G.spawnCenter,spawnAreas:G.spawnAreas||[],pois:G.pois||[],season:G.season,settings:G.settings,missDone:G.missDone,missClaimed:G.missClaimed,randomGoals:G.randomGoals||[],taskStats:G.taskStats,timeMult:TIME_MULT,turnoutMult:TURNOUT_MULT,radio:G.radio,tidc:G.tidc,uidc:G.uidc,lastSpawn:lastSpawn,customSairaalat:G.customSairaalat||[],removedSairaalat:G.removedSairaalat||[],openPops:G.openPops||null,vpkValmius:G.vpkValmius||{},patrolAreas:G.patrolAreas||{},disabledStations:G.disabledStations||{},hakeAreaSettings:G.hakeAreaSettings||{},hakeStats:G.hakeStats||{},boatNodes:G.boatNodes||[],boatLanes:G.boatLanes||[],
-  stations:G.stations.map(s=>({id:s.id,n:s.n,t:s.t,reg:s.reg,num:s.num,hake:s.hake,muoto:s.muoto,turnout:s.turnout,turnoutNight:s.turnoutNight,nightStart:s.nightStart,nightEnd:s.nightEnd,paallikkoKotona:s.paallikkoKotona,availableLoads:s.availableLoads||null,linkedFireStations:s.linkedFireStations||null,spawnRadius:s.spawnRadius??null,spawnDensity:s.spawnDensity??null,spawnOff:s.spawnOff||false,lat:s.lat,lng:s.lng})),
+  return {v:12,money:G.money,clock:G.clock,dayCount:G.dayCount||0,startDateISO:G.startDateISO||'2026-01-01',upkeepT:G._upkeepT||0,spawnRate:G.spawnRate,realisticSpawn:!!G.realisticSpawn,spawnRadius:G.spawnRadius,spawnCenter:G.spawnCenter,spawnAreas:G.spawnAreas||[],pois:G.pois||[],season:G.season,settings:G.settings,missDone:G.missDone,missClaimed:G.missClaimed,randomGoals:G.randomGoals||[],taskStats:G.taskStats,timeMult:TIME_MULT,turnoutMult:TURNOUT_MULT,radio:G.radio,tidc:G.tidc,uidc:G.uidc,lastSpawn:lastSpawn,customSairaalat:G.customSairaalat||[],removedSairaalat:G.removedSairaalat||[],openPops:G.openPops||null,vpkValmius:G.vpkValmius||{},patrolAreas:G.patrolAreas||{},disabledStations:G.disabledStations||{},hakeAreaSettings:G.hakeAreaSettings||{},hakeStats:G.hakeStats||{},boatNodes:G.boatNodes||[],boatLanes:G.boatLanes||[],hospAdmits:(G.hospAdmits||[]).filter(a=>a.until>G.clock),
+  stations:G.stations.map(s=>({id:s.id,n:s.n,t:s.t,reg:s.reg,num:s.num,hake:s.hake,muoto:s.muoto,turnout:s.turnout,turnoutNight:s.turnoutNight,nightStart:s.nightStart,nightEnd:s.nightEnd,paallikkoKotona:s.paallikkoKotona,availableLoads:s.availableLoads||null,linkedFireStations:s.linkedFireStations||null,spawnRadius:s.spawnRadius??null,spawnDensity:s.spawnDensity??null,spawnOff:s.spawnOff||false,korjaamo:s.korjaamo||false,lat:s.lat,lng:s.lng})),
   units:G.units.map(u=>({id:u.id,vt:u.vt,stationId:u.stationId,homeStationId:u.homeStationId||null,dutyAt:u.dutyAt||null,dutyAtPartial:u.dutyAtPartial||false,dutyAtDays:u.dutyAtDays||null,dutyAtHourStart:u.dutyAtHourStart??null,dutyAtHourEnd:u.dutyAtHourEnd??null,atReadyStation:u.atReadyStation||false,_atReadyUntil:u._atReadyUntil||null,currentLoad:u.currentLoad||null,canDriveBoat:u.canDriveBoat||false,name:u.name,crew:u.crew,turnout:u.turnout,muoto:u.muoto||null,schedule:u.schedule||null,
     // Tallenna KAIKKI relevantit tilat mukaan lukien kohde/matka/paluu
     status:u.status,
@@ -6314,8 +6842,10 @@ function serializeGame(){
     patrolling:u.patrolling||false,patrolArea:u.patrolArea||null,trafficDuty:u.trafficDuty||false,patrolRoute:u.patrolRoute||null,patrolRouteIdx:u.patrolRouteIdx||0,
     spare:u.spare||false,spareScope:u.spareScope||null,spareCanDispatch:u.spareCanDispatch||false,_coverFor:u._coverFor||null,_origName:u._origName||null,_origStation:u._origStation||null,canSukellus:u.canSukellus||false,
     transport:u.transport||null,
+    _isLandBoat:u._isLandBoat||false,_boatLaunched:u._boatLaunched||false,_launchShore:u._launchShore||null,_hemsMode:u._hemsMode||null,_heliBroken:u._heliBroken||false,material:u.material??100,
+    _huoltoTarget:u._huoltoTarget||null,_huoltoUntilDur:u._huoltoUntilDur||null,
     lat:u.lat,lng:u.lng,hx:u.hx,hy:u.hy})),
-  tasks:G.tasks.filter(t=>t.status!=='valmis').map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||'any',shore:t.shore||null,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null,_leadAssessAt:t._leadAssessAt??null,_reqAnnounced:t._reqAnnounced||null,_reqLastAt:t._reqLastAt||null,_relNames:t._relNames||null,_relT:t._relT||null,_escT:t._escT||null,escSuggest:t.escSuggest||null,airwayRisk:t.airwayRisk||false,patrolGen:t.patrolGen||false})),
+  tasks:G.tasks.filter(t=>t.status!=='valmis').map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||'any',shore:t.shore||null,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null,_leadAssessAt:t._leadAssessAt??null,_reqAnnounced:t._reqAnnounced||null,_reqLastAt:t._reqLastAt||null,_relNames:t._relNames||null,_relT:t._relT||null,_escT:t._escT||null,escSuggest:t.escSuggest||null,airwayRisk:t.airwayRisk||false,patrolGen:t.patrolGen||false,_letkuReadyAt:t._letkuReadyAt||null,_letkuAnnounced:t._letkuAnnounced||false,waterNeed:(t.waterNeed==null?null:t.waterNeed),_origWorkNeeded:t._origWorkNeeded||null,_stabilizedAt:t._stabilizedAt||null,_firstResponder:t._firstResponder||null,_dupOf:t._dupOf||null,hTask:t.hTask||false,_expireAt:t._expireAt||null})),
   packages:G.packages||[],cloudId:G.cloudId||null,cloudEnabled:G.cloudEnabled||false,readyMigrated:true};
 }
 async function saveGame(manual){const json=JSON.stringify({...serializeGame(),lastSaveTs:Date.now()});let _lsOk=false;try{localStorage.setItem('hatakeskus_code',btoa(unescape(encodeURIComponent(json))));_lsOk=true;}catch(e){if(!G._lsWarned){G._lsWarned=true;try{toast('⚠️ Selain ei tallenna peliä (yksityinen selaus tai tallennus estetty). Salli evästeet/tallennus tälle sivustolle.');}catch(_){}}}try{await window.storage.set('hatakeskus_v2',json);if(manual&&_lsOk)toast('💾 Tallennettu');}catch(e){if(manual&&_lsOk)toast('💾 Tallennettu paikallisesti');}
@@ -6653,6 +7183,7 @@ function applyLoaded(d){
   G.disabledStations=d.disabledStations||{};
   G.customSairaalat=d.customSairaalat||[];
   G.removedSairaalat=d.removedSairaalat||[];
+  G.hospAdmits=d.hospAdmits||[];
   if(typeof d.lastSpawn==='number')lastSpawn=d.lastSpawn;
   G.openPops=d.openPops||null;
   if(d.taskStats)G.taskStats=d.taskStats;
@@ -6724,6 +7255,8 @@ function applyLoaded(d){
     if(u.patrolRoute)nu.patrolRoute=u.patrolRoute;
     if(u.patrolRouteIdx)nu.patrolRouteIdx=u.patrolRouteIdx;
     nu.taskId=u.taskId||null;
+    nu._isLandBoat=u._isLandBoat||false;nu._boatLaunched=u._boatLaunched||false;nu._launchShore=u._launchShore||null;nu._hemsMode=u._hemsMode||null;nu._heliBroken=u._heliBroken||false;nu.material=(u.material==null?100:u.material);
+    nu._huoltoTarget=u._huoltoTarget||null;nu._huoltoUntilDur=u._huoltoUntilDur||null;
     if(u.departAt)nu.departAt=u.departAt;
     // Palauta kaikki tilat suoraan
     const valid=['asema','huolto','muu','kohde','matka','paluu','vapaa_valmius','otettu','kuljetus'];
@@ -6745,10 +7278,16 @@ function applyLoaded(d){
     // Matkalla/otettu: aseta target ja hae reitti uudelleen (jatkaa nykysijainnista)
     if((u.status==='matka'||u.status==='otettu')&&u.taskId){
       const tk=G.tasks.find(t=>t.id===u.taskId);
-      if(tk){nu.target={lat:tk.lat,lng:tk.lng};}
+      if(tk){
+        if(isBoatUnit(nu)&&nu._isLandBoat&&!nu._boatLaunched&&tk.shore){nu.target={lat:tk.shore.lat,lng:tk.shore.lng};} // vene trailerilla -> matkalla rantaan
+        else{nu.target={lat:tk.lat,lng:tk.lng};}
+      }
       else{nu.status='asema';nu.taskId=null;nu.lat=nu.hx;nu.lng=nu.hy;}
     }
-    if(u.status==='paluu'){nu.target={lat:nu.hx,lng:nu.hy};}
+    if(u.status==='paluu'){
+      if(nu._huoltoTarget){const kor=G.stations.find(s=>s.id===nu._huoltoTarget);if(kor){nu.target={lat:kor.lat,lng:kor.lng};}else{nu._huoltoTarget=null;nu.target={lat:nu.hx,lng:nu.hy};}}
+      else nu.target={lat:nu.hx,lng:nu.hy};
+    }
     if((nu.status==='matka'||nu.status==='otettu')&&nu.target){
       fetchRoute(nu.lat,nu.lng,nu.target.lat,nu.target.lng).then(res=>{
         if((nu.status==='matka'||nu.status==='otettu')&&res){nu.route=res;nu.ri=0;
