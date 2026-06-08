@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v164 (Google-kirjautumisen virhe nyt NAKYVIIN: getRedirectResult catch naytti virheen toastilla, joka on piilossa asetussivulla -> nyt alert joka kertoo virhekoodin JA korjausohjeen (ota Google kayttoon + lisaa domain Firebasen Authorized domains -listaan). Koodi kayttaa jo redirectia mobiilissa. Itse kirjautumisen toimimattomuus johtuu Firebase Consolen asetuksista (domain ei sallittu / Google ei paalla), jotka kayttajan on lisattava. Sisaltaa v163 korjaukset.) -->
+<!-- HATAKESKUS - dispatch sim v165 (KOTINAYTTO-SOVELLUKSEN GOOGLE-KIRJAUTUMINEN: selaimessa redirect toimii, mutta standalone PWA:ssa redirect tapahtuu erillisessa Safarissa eika tulos palaa sovellukseen -> ei jaa paalle. Nyt fbSignIn tunnistaa standalone-tilan (navigator.standalone / display-mode:standalone) ja kayttaa siina signInWithPopup (palaa samaan ikkunaan), varalla redirect. Selain-mobiili kayttaa edelleen redirectia (toimii). Jos popupkaan ei onnistu, alert kertoo etta kyseessa on iOS-rajoitus ja peli tallentuu silti laitteelle. Sisaltaa v163/v164.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v164'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v165'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -7138,13 +7138,17 @@ window.fbSignIn=async()=>{
   // kirjautuminen ei mennyt läpi → ei G.user → ei pilvitallennusta. Mobiilissa käytetään UUDELLEENOHJAUSTA
   // (signInWithRedirect); työpöydällä popup + varalla redirect jos popup estyy.
   const isMobile=/Android|iPhone|iPad|iPod|Mobile|Silk|Kindle/i.test(navigator.userAgent)||(('ontouchstart' in window)&&window.matchMedia('(max-width:820px)').matches);
+  // KOTINÄYTTÖ-SOVELLUS (standalone PWA): uudelleenohjaus tapahtuu erillisessä Safarissa eikä tulos palaa
+  // sovellukseen -> kirjautuminen ei jää päälle. Standalone-tilassa kokeillaan POPUPia (palaa samaan ikkunaan).
+  const isStandalone=(window.navigator&&window.navigator.standalone===true)||window.matchMedia('(display-mode: standalone)').matches;
   try{
-    if(isMobile){ toast('Avataan Google-kirjautuminen…'); await fbAuth.signInWithRedirect(prov); }
+    if(isStandalone){ await fbAuth.signInWithPopup(prov); }
+    else if(isMobile){ toast('Avataan Google-kirjautuminen…'); await fbAuth.signInWithRedirect(prov); }
     else { await fbAuth.signInWithPopup(prov); }
   }catch(e){
-    // Popup estetty/epäonnistui → kokeile uudelleenohjausta
-    try{ await fbAuth.signInWithRedirect(prov); }
-    catch(e2){ toast('Kirjautuminen epäonnistui: '+((e2&&e2.code)||(e&&e.code)||(e&&e.message)||'?')); }
+    // Varalla: jos popup/redirect epäonnistui, kokeile toista tapaa
+    try{ if(isStandalone){ await fbAuth.signInWithRedirect(prov); } else { await fbAuth.signInWithPopup(prov); } }
+    catch(e2){ try{alert('Google-kirjautuminen ei onnistunut: '+((e2&&e2.code)||(e&&e.code)||(e&&e.message)||'?')+'\n\nKotinäyttö-sovelluksessa Google-kirjautuminen on iOS:n rajoitus. Kirjaudu selaimessa, tai jatka ilman (peli tallentuu silti laitteelle).');}catch(_){} }
   }
 };
 window.fbSignOut=async()=>{if(fbAuth){try{await fbAuth.signOut();toast('Kirjauduttu ulos');}catch(e){}}};
