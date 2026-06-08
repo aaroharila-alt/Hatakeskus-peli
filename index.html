@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v166 (DYNAMIC ISLAND koko ruudun nakymissa: aiempi korjaus koski vain paapalkkia (#top), mutta tehtavanakyma (#disp), asemanakyma (#smod) ja yksikko-popup (#uinfo) ovat mobiilissa koko ruutu / kiinnea ylhaalla ja niiden otsikko meni Dynamic Islandin alle. Nyt #disp .dhead ja #smod .dhead padding-top = calc(env(safe-area-inset-top) + 12-13px), ja #uinfo mobile top = calc(54-58px + env(safe-area-inset-top)). Kaikki ylareunan sisalto nakyy ja on kosketeltavissa standalone-tilassa. Alapalkki hoiti jo safe-area-inset-bottom. Sisaltaa v163-v165.) -->
+<!-- HATAKESKUS - dispatch sim v167 (PALAUTETTU "ei uusia tehtavia" (0) tehtavatahti-valikkoon - sita ei olisi pitanyt poistaa. Lisaksi applyLoaded lataa tahdin sellaisenaan (d.spawnRate??1) eli 0 = tauko PYSYY paalla jos pelaaja valitsee sen (ei enaa pakoteta ykkoseksi). Valikko: ei uusia / 0,33x / 0,5x / 0,75x / 1x / 2x / 3x / 4x / 5x / realistinen. Sisaltaa v163-v166.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -407,7 +407,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 <button class="fab" id="fab"></button>
 <div id="toast"></div>
 
-<div class="panel" id="p-list"><div class="head">📋 Tehtävät <span class="spacer"></span><span class="smallnote mono" id="listcount"></span><select class="pill" id="spawnsel" style="cursor:pointer;margin-left:6px" title="Tehtävien syntymisnopeus"><option value="0.33">0,33×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="5">5×</option><option value="real">🎲 realistinen</option></select><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="listbody"></div></div>
+<div class="panel" id="p-list"><div class="head">📋 Tehtävät <span class="spacer"></span><span class="smallnote mono" id="listcount"></span><select class="pill" id="spawnsel" style="cursor:pointer;margin-left:6px" title="Tehtävien syntymisnopeus"><option value="0">🚫 ei uusia tehtäviä</option><option value="0.33">0,33×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="5">5×</option><option value="real">🎲 realistinen</option></select><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="listbody"></div></div>
 <div class="panel" id="p-radio"><div class="head">📻 Radio <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body"><div class="rtab" id="rtabs"></div><div id="rfeed"></div></div></div>
 <div class="panel" id="p-build"><div class="head">🏢 Asemat & yksiköt <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="buildbody"></div></div>
 <div class="panel" id="p-miss"><div class="head">🎯 Tavoitteet <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="missbody"></div></div>
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v166'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v167'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -7426,7 +7426,7 @@ async function shareSave(){
 }
 window.shareSave=shareSave;
 function applyLoaded(d){
-  Object.assign(G,{money:d.money,clock:d.clock,dayCount:d.dayCount||0,startDateISO:d.startDateISO||'2026-01-01',spawnRate:(d.spawnRate&&d.spawnRate>0)?d.spawnRate:1,realisticSpawn:!!d.realisticSpawn,spawnRadius:d.spawnRadius??2.5,season:d.season||'kesä',missDone:d.missDone||0,missClaimed:d.missClaimed||[],randomGoals:d.randomGoals||[]});
+  Object.assign(G,{money:d.money,clock:d.clock,dayCount:d.dayCount||0,startDateISO:d.startDateISO||'2026-01-01',spawnRate:d.spawnRate??1,realisticSpawn:!!d.realisticSpawn,spawnRadius:d.spawnRadius??2.5,season:d.season||'kesä',missDone:d.missDone||0,missClaimed:d.missClaimed||[],randomGoals:d.randomGoals||[]});
   G._upkeepT=d.upkeepT||d.clock||0;
   if(d.spawnCenter)G.spawnCenter=d.spawnCenter;
   G.spawnAreas=d.spawnAreas||[];
