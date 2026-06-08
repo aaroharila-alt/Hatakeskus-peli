@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v161 (2 ASIAA: 1) TEHTAVANOPEUS-NAPPI TAKAISIN: ylavalikon spawnsel-valikko palautettu (0,5x / 1x / 2x / 3x / realistinen) MUTTA ilman "0 = ei uusia" -vaihtoehtoa, jottei tehtavien synty voi enaa jumittua. applyLoaded lataa tallennetun tahdin mutta ei koskaan 0 (clamp >0 -> muuten 1). 2) DYNAMIC ISLAND / NOTCH: koti-valikosta (standalone PWA) avattuna ylavalikko meni Dynamic Islandin alle. Nyt --top-h = calc(50px + env(safe-area-inset-top)) ja #top padding-top:env(safe-area-inset-top);box-sizing:border-box -> koko sisalto (ylapalkki, paneelit, kartan kontrollit) siirtyy turva-alueen verran alas standalone-tilassa; selaimessa ei muutu (inset 0).) -->
+<!-- HATAKESKUS - dispatch sim v162 (KORJAUS v161 yla-palkkiin: padding-top:env(safe-area-inset-top) KUMOUTUI rivin lopun padding:0 12px -lyhennemerkinnasta, joten ylapalkin pillerit jaivat Dynamic Islandin alle eika niihin ulottunut. Nyt #top padding = calc(env(safe-area-inset-top) + 4px) 12px 0 -> ylapalkin sisalto (kello, kalenteri, raha, Tallenna) tulee turva-alueen + 4px alas, kosketeltavaksi. --top-h = calc(50px + env(safe-area-inset-top)) ennallaan (paneelit/kartan kontrollit alkavat oikein).) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -66,7 +66,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 /* Zoom-napit aina yläpalkin ALLE ja paneelien ALLE (z-index) — ei vuoda dispatch/asetukset päälle */
 .leaflet-top.leaflet-left{margin-top:calc(var(--top-h) + 6px);z-index:450}
 
-#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;box-sizing:border-box;padding-top:env(safe-area-inset-top);background:#14171b;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;padding:0 12px}
+#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;box-sizing:border-box;background:#14171b;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;padding:calc(env(safe-area-inset-top) + 4px) 12px 0}
 #top:before{content:"";position:absolute;left:0;top:0;bottom:0;width:0}
 #top .logo{font-family:var(--fdisp);font-weight:800;letter-spacing:.5px;font-size:20px;color:var(--txt);text-transform:none;display:flex;align-items:center;gap:8px}
 #top .logo:before{content:none}
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v161'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v162'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
