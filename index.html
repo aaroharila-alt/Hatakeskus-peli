@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v162 (KORJAUS v161 yla-palkkiin: padding-top:env(safe-area-inset-top) KUMOUTUI rivin lopun padding:0 12px -lyhennemerkinnasta, joten ylapalkin pillerit jaivat Dynamic Islandin alle eika niihin ulottunut. Nyt #top padding = calc(env(safe-area-inset-top) + 4px) 12px 0 -> ylapalkin sisalto (kello, kalenteri, raha, Tallenna) tulee turva-alueen + 4px alas, kosketeltavaksi. --top-h = calc(50px + env(safe-area-inset-top)) ennallaan (paneelit/kartan kontrollit alkavat oikein).) -->
+<!-- HATAKESKUS - dispatch sim v164 (Google-kirjautumisen virhe nyt NAKYVIIN: getRedirectResult catch naytti virheen toastilla, joka on piilossa asetussivulla -> nyt alert joka kertoo virhekoodin JA korjausohjeen (ota Google kayttoon + lisaa domain Firebasen Authorized domains -listaan). Koodi kayttaa jo redirectia mobiilissa. Itse kirjautumisen toimimattomuus johtuu Firebase Consolen asetuksista (domain ei sallittu / Google ei paalla), jotka kayttajan on lisattava. Sisaltaa v163 korjaukset.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -66,7 +66,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 /* Zoom-napit aina yläpalkin ALLE ja paneelien ALLE (z-index) — ei vuoda dispatch/asetukset päälle */
 .leaflet-top.leaflet-left{margin-top:calc(var(--top-h) + 6px);z-index:450}
 
-#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;box-sizing:border-box;background:#14171b;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:9px;padding:calc(env(safe-area-inset-top) + 4px) 12px 0}
+#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;background:#14171b;border-bottom:1px solid var(--line2);box-sizing:border-box;display:flex;align-items:center;gap:9px;padding:calc(env(safe-area-inset-top) + 4px) 12px 0}
 #top:before{content:"";position:absolute;left:0;top:0;bottom:0;width:0}
 #top .logo{font-family:var(--fdisp);font-weight:800;letter-spacing:.5px;font-size:20px;color:var(--txt);text-transform:none;display:flex;align-items:center;gap:8px}
 #top .logo:before{content:none}
@@ -407,7 +407,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 <button class="fab" id="fab"></button>
 <div id="toast"></div>
 
-<div class="panel" id="p-list"><div class="head">📋 Tehtävät <span class="spacer"></span><span class="smallnote mono" id="listcount"></span><select class="pill" id="spawnsel" style="cursor:pointer;margin-left:6px" title="Tehtävien syntymisnopeus"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="real">🎲 realistinen</option></select><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="listbody"></div></div>
+<div class="panel" id="p-list"><div class="head">📋 Tehtävät <span class="spacer"></span><span class="smallnote mono" id="listcount"></span><select class="pill" id="spawnsel" style="cursor:pointer;margin-left:6px" title="Tehtävien syntymisnopeus"><option value="0.33">0,33×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="5">5×</option><option value="real">🎲 realistinen</option></select><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="listbody"></div></div>
 <div class="panel" id="p-radio"><div class="head">📻 Radio <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body"><div class="rtab" id="rtabs"></div><div id="rfeed"></div></div></div>
 <div class="panel" id="p-build"><div class="head">🏢 Asemat & yksiköt <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="buildbody"></div></div>
 <div class="panel" id="p-miss"><div class="head">🎯 Tavoitteet <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="missbody"></div></div>
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v162'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v164'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -1630,11 +1630,7 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
   window.renderStation=renderStation;smStation=sid;
   document.getElementById('smtitle').textContent='🏢 '+s.n;
   // Näytä tällä asemalla NYT olevat yksiköt (omat + muualta päivystämään tulleet)
-  const allow=VEH_BY_TOIMI[s.t]||[];
-  const us=unitsAtStation(s.id).slice().sort((a,b)=>{
-    const ai=allow.indexOf(a.vt),bi=allow.indexOf(b.vt);
-    return ((ai<0?99:ai)-(bi<0?99:bi))||String(a.name||'').localeCompare(String(b.name||''),'fi',{numeric:true});
-  });
+  const allow=VEH_BY_TOIMI[s.t]||[];const us=unitsAtStation(s.id).slice().sort((a,b)=>{const ai=allow.indexOf(a.vt),bi=allow.indexOf(b.vt);return ((ai<0?99:ai)-(bi<0?99:bi))||String(a.name||'').localeCompare(String(b.name||''),'fi',{numeric:true});});
   let body='';
   // välilehtinapit
   body+=`<div style="display:flex;gap:6px;margin-bottom:10px">
@@ -3447,10 +3443,7 @@ function defaultUrg(tk){return {'700':'A','701':'A','703':'A','704':'A','403':'A
 function dStatusInner(tk){
   const us=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean);
   if(!us.length)return '';
-  // Järjestys: JOHTAJA ensin, sitten päällystö (johtotaso), sitten loput tunnuksen mukaan.
-  const _isLead=u=>!!(tk.lead&&u.name===tk.lead);
-  us.sort((a,b)=>((_isLead(b)?1:0)-(_isLead(a)?1:0))||(leadLevel(b)-leadLevel(a))||String(a.name||'').localeCompare(String(b.name||''),'fi',{numeric:true}));
-  const _tag=u=>_isLead(u)?' <span style="color:var(--acc);font-weight:700;font-size:10px">JOHTAJA</span>':(leadLevel(u)>=2?' <span style="color:var(--dim);font-size:10px">päällystö</span>':'');
+  const _isLead=u=>!!(tk.lead&&u.name===tk.lead);us.sort((a,b)=>((_isLead(b)?1:0)-(_isLead(a)?1:0))||(leadLevel(b)-leadLevel(a))||String(a.name||'').localeCompare(String(b.name||''),'fi',{numeric:true}));const _tag=u=>_isLead(u)?' <span style="color:var(--acc);font-weight:700;font-size:10px">JOHTAJA</span>':(leadLevel(u)>=2?' <span style="color:var(--dim);font-size:10px">päällystö</span>':''); // järjestä tunnuksen mukaan (esim. RHE105 ennen RHE201)
   function rowFor(u){let s;if(u.status==='otettu'){
     if(u.departAt&&G.clock<u.departAt){s='asemalla, lähtee ~'+Math.ceil((u.departAt-G.clock)/60)+' min';}
     else s='lähdössä';
@@ -3615,7 +3608,7 @@ function openUnitInfo(id){const u=G.units.find(x=>x.id===id);if(!u)return;
       <div class="smallnote" style="font-size:11px;color:var(--dim2);margin-bottom:11px">Hälytysajossa: A ~${Math.round(spd0*1.45)} km/h · B ~${Math.round(spd0*1.30)} km/h</div>
       ${tk?`<div style="background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:11px">
         <div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px">Tehtävä</div>
-        <div style="font-weight:700">${tk.c} ${tk.urg?`<span class="tag tag-${tk.urg}">${tk.urg}</span>`:''} <span style="color:var(--dim);font-weight:400">${tk.n}</span></div>
+        <div style="font-weight:700">${shownCode(tk)} ${tk.urg?`<span class="tag tag-${tk.urg}">${tk.urg}</span>`:''} <span style="color:var(--dim);font-weight:400">${codeConfirmed(tk)?tk.n:''}</span></div>
         <div class="smallnote">📍 ${tk.addr}</div>
       </div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">${acts}${readyBtn}${tk?`<button class="btn-go" style="flex:1;min-width:130px;font-size:13px;padding:10px 0" onclick="openDispatch('${tk.id}');closeUnitInfo()">Avaa tehtävä</button>`:''}</div>
@@ -4125,7 +4118,7 @@ function codeListHtml(toimi,q){
   const ord=t=>(t.toimi===toimi?0:1); // tehtävän oma toimiala ensin, muut perään
   list.sort((a,b)=>(ord(a)-ord(b))||((parseInt(a.c,10)||0)-(parseInt(b.c,10)||0))||String(a.c).localeCompare(String(b.c)));
   if(!list.length)return '<div class="smallnote" style="padding:8px">Ei osumia</div>';
-  return list.slice(0,90).map(t=>`<div class="cli" onclick="setTaskCode('${t.c}','${t.toimi}')" style="padding:7px 9px;border-bottom:1px solid #1c242c;cursor:pointer;font-size:13px">${ic[t.toimi]||''} <b class="mono" style="color:var(--acc)">${t.c}</b> ${t.n}</div>`).join('');
+  return list.slice(0,400).map(t=>`<div class="cli" onclick="setTaskCode('${t.c}','${t.toimi}')" style="padding:7px 9px;border-bottom:1px solid #1c242c;cursor:pointer;font-size:13px">${ic[t.toimi]||''} <b class="mono" style="color:var(--acc)">${t.c}</b> ${t.n}</div>`).join('');
 }
 window.filterCodes=(q)=>{if(!dCur)return;const el=document.getElementById('codelist');if(el)el.innerHTML=codeListHtml(dCur.toimi,q);};
 window.setTaskCode=(code,toimi)=>{
@@ -6822,6 +6815,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 /* ===== ASETUKSET ===== */
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
 function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio '+VERSION+' · Asetukset</div>';
+  h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="3" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
   h+=`<div class="toggle"><span>Pelin nopeus (aika nopeutuu)</span><input type="range" min="1" max="16" step="1" value="${TIME_MULT}" oninput="TIME_MULT=parseInt(this.value);document.getElementById('tmv').textContent=TIME_MULT+'×'"><span id="tmv">${TIME_MULT}×</span></div>`;
@@ -7061,7 +7055,7 @@ function renderEnsh(){
 window.renderEnsh=renderEnsh;
 document.querySelectorAll('#nav button').forEach(b=>{b.onclick=()=>openPanel(b.dataset.p);});
 document.getElementById('fab').onclick=()=>{const t=G.tasks.find(x=>x.status==='avoin');if(t)openDispatch(t.id);else toast('Ei avoimia tehtäviä');};
-var _spsEl=document.getElementById('spawnsel');if(_spsEl)_spsEl.onchange=function(){
+document.getElementById('spawnsel').onchange=function(){
   if(this.value==='real'){G.spawnRate=1;G.realisticSpawn=true;toast('🎲 Realistinen tehtäväsyntymä: vaihtelua, pieniä klustereita');}
   else{G.realisticSpawn=false;G.spawnRate=parseFloat(this.value);toast(G.spawnRate===0?'Uudet tehtävät pysäytetty':'Tehtävänopeus '+this.value+'×');}
   saveGame(false); // tallenna heti — muuten asetus voi kadota jos peli suljetaan ennen autosavea
@@ -7134,7 +7128,7 @@ function fbInit(){
     });
     // MOBIILI-KIRJAUTUMINEN (redirect): kun palataan Google-uudelleenohjauksesta, viimeistele kirjautuminen
     // ja näytä mahdollinen virhe. onAuthStateChanged asettaa käyttäjän + lataa pilvitallennuksen.
-    try{ fbAuth.getRedirectResult().then(res=>{ if(res&&res.user){try{toast('☁️ Kirjauduttu sisään');}catch(_){}} }).catch(e=>{ try{toast('Kirjautuminen epäonnistui: '+((e&&e.code)||'?'));}catch(_){}}); }catch(e){}
+    try{ fbAuth.getRedirectResult().then(res=>{ if(res&&res.user){try{toast('☁️ Kirjauduttu sisään');}catch(_){}} }).catch(e=>{ try{alert('Google-kirjautuminen ei onnistunut: '+((e&&e.code)||(e&&e.message)||'?')+'\n\nKorjaa Firebase Consolessa:\n1) Authentication > Sign-in method: ota Google käyttöön\n2) Authentication > Settings > Authorized domains: lisää '+location.hostname);}catch(_){}}); }catch(e){}
   }catch(e){console.warn('Firebase init epäonnistui',e);}
 }
 window.fbSignIn=async()=>{

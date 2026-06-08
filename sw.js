@@ -5,7 +5,7 @@
    - CDN-kuori + fontit + karttalaatat: cache-first (staattisia)
    - Firestore/Auth/OSRM: EI cachea (oltava live; Firestoren oma offline-jono hoitaa kirjoitukset)
    HUOM: nosta CACHE-versiota kun julkaiset uuden pelin, niin vanha kuori siivotaan. */
-const CACHE = 'hk-v84';
+const CACHE = 'hk-v163';
 const SHELL = [
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
