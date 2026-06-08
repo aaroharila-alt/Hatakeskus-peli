@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v155 (VAIHE 3/3: PERUUTUKSET kun tehtava paljastuu pieneksi. maybeDeescalate: palopuolen automaatti-/ilmoitin-/savu-/karyhalytys (tunnistus tehtavan nimesta) osoittautuu usein vaarattomaksi kun johtaja on tiedustellut (~45s kohteessa). automaatti chance 0.85 (ei juuri koskaan nouse), savu/kary 0.55 - kuten oikeasti. deescalateTask: kohteeseen jaa JOHTO + eka TYOyksikko (ei komentoauto); jos VPK kohteessa, jaa VPK + yksi vakkari-sammutusyksikko (hooki) parina. Muut peruuntuvat itse (myos matkalla olevat palaavat asemalle freeUnitilla). Jaava (mieluiten johtaja) ilmoittaa "X ja Y jatkaa kohteeseen, muille peruutus". Tehtava kutistuu pieneksi (need pieni, workNeeded +120s, escSuggest pois) ja jaaneet hoitavat loppuun. Kohteessa-hiljaisuus oli jo voimassa (ei saapumisilmoitusta). Pelitestattu.) -->
+<!-- HATAKESKUS - dispatch sim v157 (Poistettu v156:ssa lisatty monisoittaja-keikan hylkaysesto dismissCurrentAsAdvice-funktiosta: roskakori (hoida neuvontana) toimii taas normaalisti myos useamman soittajan keikoilla. Koodin pakotus ennen lahetysta (v156 bugi 2) jaa voimaan: yksikoita ei voi lahettaa ilman valittua koodia.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v155'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v157'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3928,7 +3928,9 @@ async function sendDispatch(next){
   // KORJAUS (BUGI): estä hälytys tehtävään joka on jo poistettu (esim. ehti "jäädä hoitamatta"
   // samalla kun paneeli oli auki) — muuten yksikkö lähti ajamaan haamutehtävään.
   if(!G.tasks.includes(tk)){toast('Tehtävä ei ole enää aktiivinen');const dp=document.getElementById('disp');if(dp)dp.classList.remove('open');dCur=null;return;}
-  if(!tk.urg){toast('Valitse ensin kiireellisyys (A/B/C/D)');return;}if(dSel.size===0&&!next)return;
+  if(!tk.urg){toast('Valitse ensin kiireellisyys (A/B/C/D)');return;}
+  if(dSel.size>0&&!codeConfirmed(tk)){toast('Valitse ensin koodi');return;} // pelaajan on luokiteltava itse, peli ei valitse koodia
+  if(dSel.size===0&&!next)return;
   G._lastActivity=Date.now(); // tämä laite aktiivinen → pilvisynkka ei ylikirjoita sitä passiivisen laitteen tallennuksella
   const names=[];const ids=[...dSel];
   // Suodata pois ei-hälytettävissä olevat (mutta salli partioivat)
