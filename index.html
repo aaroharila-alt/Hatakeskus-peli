@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v195 (FinnHEMS-halytys tulee normaalille paikalliselle ensihoidon annolle EN ANTO, ei enaa erilliselle EN LU ANTO -kanavalle; vanhat EN LU ANTO -viestit siirretaan EN ANTO:lle latauksessa) -->
+<!-- HATAKESKUS - dispatch sim v197 (deescalate: yksikot saa lahettaa pois myos kohteesta mutta johtaja ILMOITTAA radiossa ja nimeaa peruutettavat; poliisin 03x tekotavan mukaan 031 ampuminen 032 puukotus 033 pahoinpitely 034 tappelu; poistettu tupla-205) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v195'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v197'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -1151,7 +1151,11 @@ const TASKS=[
  {c:'214',n:'Raideliikenneonnett.: suuronnettomuus',toimi:'pelastus',w:0.015,need:{sammutus:6,sailio:2,ambulanssi:8,johto:3},minCrew:34,rew:10000,where:'any',patients:20,sev:'critical',timeCrit:1000,esc:0,dur:[200,400],info:'Suuri raideliikenteen suuronnettomuus.',variants:['Matkustajajuna suistunut sillalta, kymmeniä uhreja, laaja monipotilastilanne.','Junan ja vaarallisten aineiden kuljetuksen törmäys, evakuointi + lääkintä.']},
 
  /* ===== POLIISI ===== */
- {c:'032',n:'Pahoinpitely',toimi:'poliisi',w:5,need:{poliisi:1},rew:250,where:'urban',patients:1,sev:'medium',esc:.1,dur:[15,35],info:'Pahoinpitely.',variants:[
+ {c:'032',n:'Puukotus',toimi:'poliisi',w:0.5,need:{poliisi:2,ambulanssi:1},minCrew:4,rew:800,where:'urban',patients:1,sev:'high',timeCrit:480,esc:0,dur:[30,90],info:'Puukotus, terävä ase.',variants:[
+   'Mies puukotettu yökerhon edessä, vuotaa verta, tajuissaan. Tekijä paennut. Soittaja: vartija.',
+   'Riita kärjistynyt puukotukseksi asunnossa, uhri maassa, tekijä yhä paikalla. Soittaja: naapuri.',
+   'Nuori puukotettu puistossa vatsaan, makaa maassa, hengittää. Soittaja: ohikulkija.']},
+ {c:'033',n:'Pahoinpitely',toimi:'poliisi',w:5,need:{poliisi:1},rew:250,where:'urban',patients:1,sev:'medium',esc:.1,escTo:'032',dur:[15,35],info:'Pahoinpitely.',variants:[
    'Tappelu baarin edustalla. 1-2 lyöty, verta. Soittaja: vartija.',
    'Mies maassa kadulla, lyöty, tekijät paenneet. Soittaja: ohikulkija.',
    'Pahoinpitely puistossa, uhri maassa, ei vastaa kysymyksiin. Soittaja: ohikulkija.',
@@ -1173,12 +1177,6 @@ const TASKS=[
    'Parkkikolhu, vastapuoli paennut paikalta. Soittaja: omistaja.',
    'Auto ojassa, kuljettaja ulkona ja kunnossa. Tarvitsee hinausta.',
    'Kolari risteyksessä, kuljettajat riitelevät syyllisyydestä. Soittaja: ohikulkija.']},
- {c:'205',n:'Eläin liikenteessä',toimi:'poliisi',w:4,need:{poliisi:1},rew:180,where:'road',patients:0,sev:'none',esc:0,dur:[10,25],info:'Eläin tiellä.',variants:[
-   'Hirvi tiellä, autot pysähtyneet. Eläin haavoittunut. Soittaja: kuljettaja.',
-   'Koira juossut moottoritielle, autot väistelevät. Soittaja: ohikulkija.',
-   'Auto törmännyt kauriiseen, eläin maassa elossa. Auto ehjä.',
-   'Hirvilauma metsätien laidassa, useita yritti väistää.',
-   'Iso koira irti omakotialueella, käyttäytyy uhkaavasti. Soittaja: asukas.']},
  {c:'381',n:'Kadonnut lapsi',toimi:'poliisi',w:1.5,need:{poliisi:2},rew:500,where:'any',patients:0,sev:'medium',esc:.05,dur:[30,90],info:'Lapsi kadonnut.',variants:[
    'Lapsi 5v kadonnut puistosta, viimeksi nähty 30min sitten. Soittaja: vanhempi.',
    'Lapsi ei palannut koulusta, normaali aika 2h sitten. Soittaja: äiti.',
@@ -1304,7 +1302,11 @@ const TASKS=[
    'Useita henkilöitä pahoinpidellyt yhden, uhrilla murskavammoja.',
    'Aseellinen pahoinpitely yökerhon edessä.',
    'Lyömäaseella tehty pahoinpitely, uhri tajuton.']},
- {c:'031',n:'Tappelu',toimi:'poliisi',w:3.5,need:{poliisi:2},minCrew:2,rew:280,where:'urban',patients:0,sev:'medium',esc:.15,escTo:'032',dur:[15,40],info:'Useamman hengen tappelu.',variants:[
+ {c:'031',n:'Ampuminen',toimi:'poliisi',w:0.25,need:{poliisi:3,ambulanssi:1},minCrew:5,rew:1200,where:'urban',patients:1,sev:'high',timeCrit:480,esc:0,dur:[40,120],info:'Ampuminen, ampuja mahdollisesti paikalla.',variants:[
+   'Laukauksia kuultu kerrostalon pihalla, yksi henkilö maassa. Soittaja: asukas. Ampujasta ei tietoa.',
+   'Mies ampunut aseella baarin edustalla, yksi loukkaantunut. Tekijä paennut jalan.',
+   'Ampumista parkkihallissa, kaksi maassa, ampuja mahdollisesti yhä paikalla. Soittaja piiloutunut.']},
+ {c:'034',n:'Tappelu',toimi:'poliisi',w:3.5,need:{poliisi:2},minCrew:2,rew:280,where:'urban',patients:0,sev:'medium',esc:.15,escTo:'033',dur:[15,40],info:'Useamman hengen tappelu.',variants:[
    'Tappelu baarin sisällä, vartija pyytää apua.',
    'Nuoret tappelevat puistossa, järjestyksenvalvojaa tarvitaan.',
    'Useiden hengen yhteenotto kadulla, lyömäaseita havaittu.']},
@@ -4241,15 +4243,17 @@ function setLead(tk){
     ||(_career(b)-_career(a))
     ||((b.status==='kohde'?1:0)-(a.status==='kohde'?1:0))
     ||(_idx(a)-_idx(b)));
+  const _prevLead=tk.lead;
   tk.lead=sorted[0]?sorted[0].name:null;
-  // JOHTOILMOITUS: jos johdon ottaa varsinainen johtoyksikkö (mestari/päällikkö/kj/lääkäri), se ilmoittaa
-  // KERRAN ottavansa johdon (kun se on hälytetty / lähtenyt asemalta). Vakkari-/tavallinen johtaja ei ilmoita.
+  // JOHTOILMOITUS: johtoyksikkö ilmoittaa ottavansa johdon VAIN jos johto VAIHTUU myöhemmin toiselle
+  // yksikölle. Jos yksikkö oli jo EKASSA LÄHDÖSSÄ, johto on automaattinen eikä sitä erikseen ilmoiteta.
   const _ld=sorted[0];
-  if(_ld && !tk._leadAnnounced && (_ld.cls==='johto' || (VTYPES[_ld.vt]&&VTYPES[_ld.vt].cls==='johto'))){
-    tk._leadAnnounced=true;
+  const _isCmd=_ld&&(_ld.cls==='johto'||(VTYPES[_ld.vt]&&VTYPES[_ld.vt].cls==='johto'));
+  if(_isCmd && tk._leadEverSet && _prevLead && _ld.name!==_prevLead && !tk._leadAnnounceAt){
     tk._leadAnnounceName=_ld.name;
-    tk._leadAnnounceAt=G.clock+rnd(15,45);   // PIENI VIIVE ennen "ottaa johdon" -ilmoitusta (johtaja kuittaa hetken päästä, ei heti)
+    tk._leadAnnounceAt=G.clock+rnd(15,45);   // pieni viive ennen "ottaa johdon" -ilmoitusta
   }
+  tk._leadEverSet=true;
 }
 // Tehtävän OMAN toimialan johtaja (palotehtävässä pelastusyksikkö, ei ambulanssi).
 // Edellytys: joku oman alan yksikkö on KOHTEESSA arvioimassa tilannetta. Johtaja itse voi olla
@@ -6148,14 +6152,12 @@ function deescalateTask(tk){
   const all=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean);
   if(all.length<=1)return; // ei ylimääräisiä peruttavaksi
   const onsc=all.filter(u=>u.status==='kohde');
-  const keep=new Set();
   const _isCmd=u=>u.cls==='johto'||(VTYPES[u.vt]&&VTYPES[u.vt].cls==='johto');
-  const _work=u=>!_isCmd(u); // työyksikkö = ei komentoauto
-  // 1) Johtaja jää
+  const _work=u=>!_isCmd(u);
+  // Pieni miehitys jää loppuselvittelyyn: johtaja + yksi työyksikkö (+ VPK-pari jos paikalla).
+  const keep=new Set();
   const leadU=all.find(u=>u.name===tk.lead); if(leadU)keep.add(leadU.id);
-  // 2) Eka TYÖyksikkö kohteessa (ei komentoauto); jos kukaan ei vielä kohteessa, eka hälytetty työyksikkö
   const firstAt=onsc.find(_work)||onsc[0]||all.find(_work)||all[0]; if(firstAt)keep.add(firstAt.id);
-  // 3) Jos VPK on kohteessa: pidä VPK + yksi vakkari-sammutusyksikkö (hööki) parina
   const vpkAt=onsc.find(u=>unitMuoto(u)==='vpk');
   if(vpkAt){keep.add(vpkAt.id);
     const hooki=onsc.find(u=>unitMuoto(u)!=='vpk'&&_work(u)&&['sammutus','miehisto'].includes(u.vt))
@@ -6165,16 +6167,18 @@ function deescalateTask(tk){
   }
   const drop=all.filter(u=>!keep.has(u.id));
   if(!drop.length)return;
+  // Yksiköt SAA lähettää pois (myös kohteessa olevat), MUTTA siitä ILMOITETAAN AINA radiossa: johtaja
+  // nimeää peruutettavat yksiköt eikä niitä katoa hiljaa.
+  const speaker=tk.lead||(leadU&&leadU.name)||(firstAt&&firstAt.name)||drop[0].name;
+  const dropNames=drop.map(u=>u.name);
   const keptNames=all.filter(u=>keep.has(u.id)).map(u=>u.name);
-  // Peruuta ylimääräiset — matkalla olevat palaavat asemalle itsestään (freeUnit hoitaa reitityksen)
   drop.forEach(u=>{freeUnit(u);tk.assigned=tk.assigned.filter(i=>i!==u.id);});
-  // Kutista tehtävä pieneksi: nopea loppuselvittely jääneillä, ei enää lisävastepainetta
   tk.escSuggest=null;tk.need={[tk.toimi]:1};tk.minCrew=0;tk.alert=false;
   tk.workNeeded=Math.min(tk.workNeeded,(tk.work||0)+120);
   setLead(tk);
-  // Ilmoitus: johtaja (vaikkei kohteessa) kertoo luonnollisesti ketkä jatkaa / muille peruutus.
-  const _sd=standDown(tk,keptNames,drop.map(u=>u.name));
-  try{radio(chFor(tk.toimi,'INFO',tk),_sd.speaker,_sd.text);}catch(e){}
+  const _bye=Math.random()<0.3?', kiitti':'';
+  const msg=`${tk.addr} — kohde tarkastettu, ei vaaraa. ${_joinNames(dropNames)} ${dropNames.length>1?'voivat':'voi'} kääntyä takaisin${keptNames.length?`, ${_joinNames(keptNames)} ${keptNames.length>1?'jäävät':'jää'} selvittämään`:''}${_bye}`;
+  try{radio(chFor(tk.toimi,'INFO',tk),speaker,msg);}catch(e){}
   try{refreshTaskAlert(tk);}catch(e){}
   renderList();
 }
