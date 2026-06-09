@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v168 (Kartan ylavalikon pillerit (kello/kalenteri/raha/Tallenna) lasketaan selvasti alemmas pois Dynamic Islandin alta: --top-h calc(76px + safe-area-inset-top), #top padding-top calc(safe-area-inset-top + 30px). Sisaltovara ~46px. Sisaltaa v167.) -->
+<!-- HATAKESKUS - dispatch sim v169 (Leikattu musta tyhja pillerirvin alta: #top hugaa nyt pillerit. Pillerit pysyvat samalla korkeudella (sama keskikohta kuin v168). --top-h calc(safe-area-inset-top/2 + 55px), #top padding-top calc(safe-area-inset-top/2 + 23px). Korjattu kaksi #top-saantoa (gap6/gap4) jotka nollasivat ylataytteen: padding:0 X -> padding-left/right vain. Sisaltaa v167-v168.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -53,7 +53,7 @@
   --acc-ink:#1a1200;        /* tumma teksti meripihkan päällä */
   --A:#ff3b3b; --B:#ff8a1e; --C:#ffd11a; --D:#39c06a; --N:#7c8794;
   --pel:#ff7a3c; --ens:#27c2c2; --pol:#4f8bff;
-  --nav-h:62px; --top-h:calc(76px + env(safe-area-inset-top));
+  --nav-h:62px; --top-h:calc(env(safe-area-inset-top) / 2 + 55px);
   --fdisp:"Barlow Condensed","Barlow Semi-Condensed",system-ui,sans-serif;
   --fui:"Barlow Semi-Condensed",system-ui,sans-serif;
   --fmono:"JetBrains Mono",ui-monospace,Consolas,monospace;
@@ -66,7 +66,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 /* Zoom-napit aina yläpalkin ALLE ja paneelien ALLE (z-index) — ei vuoda dispatch/asetukset päälle */
 .leaflet-top.leaflet-left{margin-top:calc(var(--top-h) + 6px);z-index:450}
 
-#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;background:#14171b;border-bottom:1px solid var(--line2);box-sizing:border-box;display:flex;align-items:center;gap:9px;padding:calc(env(safe-area-inset-top) + 30px) 12px 0}
+#top{position:absolute;top:0;left:0;right:0;height:var(--top-h);z-index:600;background:#14171b;border-bottom:1px solid var(--line2);box-sizing:border-box;display:flex;align-items:center;gap:9px;padding:calc(env(safe-area-inset-top) / 2 + 23px) 12px 0}
 #top:before{content:"";position:absolute;left:0;top:0;bottom:0;width:0}
 #top .logo{font-family:var(--fdisp);font-weight:800;letter-spacing:.5px;font-size:20px;color:var(--txt);text-transform:none;display:flex;align-items:center;gap:8px}
 #top .logo:before{content:none}
@@ -108,7 +108,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 @keyframes slideup{from{transform:translateY(14px);opacity:.4}}
 /* ===== PC-LAYOUT (≥900px): sivupaneeli vasemmalla, kartta aina näkyvissä oikealla ===== */
 @media(min-width:900px){
-  :root{--nav-h:52px;--top-h:calc(76px + env(safe-area-inset-top))}
+  :root{--nav-h:52px;--top-h:calc(env(safe-area-inset-top) / 2 + 55px)}
   .panel{right:auto;width:420px;border-right:1px solid var(--line2);box-shadow:10px 0 40px #000a}
   .panel.open{animation:slidein .18s ease}
   @keyframes slidein{from{transform:translateX(-14px);opacity:.4}}
@@ -137,7 +137,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
      mahtuu — etenkin raha. Leaflet-zoom siirretään ettei jää logon/piste päälle. */
   /* KORJAUS (mobiili): yläpalkki vieritettävissä vaakaan, ettei sisältö (Ruuhka/tapahtuma/tehtävätahti)
      vuoda ruudun ulkopuolelle ja aiheuta koko sivun vaakavieritystä. Aika/pvm/raha näkyvät heti. */
-  #top{gap:6px;padding:0 8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #top{gap:6px;padding-left:8px;padding-right:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   #top::-webkit-scrollbar{display:none}
   #top .logo{font-size:0;gap:0;letter-spacing:0;flex:none}
   #top .pill{padding:4px 7px;font-size:12px;gap:3px}
@@ -154,7 +154,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 }
 /* Erittäin kapea (pienet puhelimet): tiivistä pillit vielä + lyhennä päivämäärä koodilla */
 @media(max-width:430px){
-  #top{gap:4px;padding:0 6px}
+  #top{gap:4px;padding-left:6px;padding-right:6px}
   #top .pill{padding:3px 6px;font-size:11.5px}
 }
 .panel .head{padding:13px 14px;border-bottom:1px solid var(--line2);font-family:var(--fdisp);font-weight:700;font-size:19px;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:9px;min-height:50px;background:linear-gradient(180deg,#10151b,#0c1014)}
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v168'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v169'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
