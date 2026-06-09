@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v186 (peravaunu ei enaa aja itse asemalle: pysyy kiinni vetoautossa myos kotimatkalla ja pysakoidaan perilla; jos vetaja katoaa tai sita ei oteta mukaan, peravaunu jaa paikalleen odottamaan noutoa) -->
+<!-- HATAKESKUS - dispatch sim v189 (palo ei enaa laajene/escaloidu jos se on hallinnassa: kun riittava vahvuus kohteessa ja tyo etenee hyvin yksi sammutusauto hoitaa pienen palon; vain alimitoitettu junnaava palo voi levita) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v186'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v189'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3607,7 +3607,7 @@ function openUnitInfo(id){const u=G.units.find(x=>x.id===id);if(!u)return;
       <div class="smallnote" style="font-size:11px;color:var(--dim2);margin-bottom:11px">Hälytysajossa: A ~${Math.round(spd0*1.45)} km/h · B ~${Math.round(spd0*1.30)} km/h</div>
       ${tk?`<div style="background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:11px">
         <div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:4px">Tehtävä</div>
-        <div style="font-weight:700">${shownCode(tk)} ${tk.urg?`<span class="tag tag-${tk.urg}">${tk.urg}</span>`:''} <span style="color:var(--dim);font-weight:400">${codeConfirmed(tk)?tk.n:''}</span></div>
+        <div style="font-weight:700">${shownCode(tk)} ${tk.urg?`<span class="tag tag-${tk.urg}">${tk.urg}</span>`:''} <span style="color:var(--dim);font-weight:400">${codeConfirmed(tk)?pickedName(tk):''}</span></div>
         <div class="smallnote">📍 ${tk.addr}</div>
       </div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap">${acts}${readyBtn}${tk?`<button class="btn-go" style="flex:1;min-width:130px;font-size:13px;padding:10px 0" onclick="openDispatch('${tk.id}');closeUnitInfo()">Avaa tehtävä</button>`:''}</div>
@@ -3644,10 +3644,17 @@ function codeConfirmed(tk){return !!(tk&&(tk._codeConfirmed||tk.hTask||tk.onScen
 // (pickedCode). Pelin oma "todellinen" koodi (tk.c) on vain pelin sisäinen totuus eikä saa näkyä
 // matkalla — kohteessa P3 tietää todellisen tilanteen, mutta sitä ei kirjoiteta koodina ulos.
 function shownCode(tk){return (tk&&tk.pickedCode)||(tk&&tk.c)||'';}
+// Pelaajan VALITSEMAN koodin nimi (esim. 202 -> "Tieliikenneonnettomuus, pieni"). Näytetään tämä, EI pelin
+// oikeaa nimeä (tk.n) — näkyvä koodi ja nimi vastaavat pelaajan luokittelua.
+function pickedName(tk){
+  if(!tk)return '';
+  if(tk.pickedCode){const pc=String(tk.pickedCode),pt=tk.pickedToimi||tk.toimi;const m=TASKS.find(t=>String(t.c)===pc&&t.toimi===pt)||TASKS.find(t=>String(t.c)===pc);if(m&&m.n)return m.n;}
+  return tk.n||'';
+}
 function renderDispatch(){
   const tk=dCur;
   document.getElementById('dcode').innerHTML=`${codeConfirmed(tk)?(tk.pickedCode||tk.c):'?'} <span class="tag tag-${tk.urg||'none'}">${tk.urg||'?'}</span>`;
-  document.getElementById('dname').textContent=codeConfirmed(tk)?(' '+tk.n):'';
+  document.getElementById('dname').textContent=codeConfirmed(tk)?(' '+pickedName(tk)):'';
   document.getElementById('daddr').textContent='📍 '+tk.addr;
   let near=nearestUnits(tk).filter(x=>classFilter(x.u,dFilter));
   document.getElementById('dbody').innerHTML=`
@@ -4391,7 +4398,7 @@ function renderRadioWin(ch){const w=openRadioWins[ch];if(!w)return;clearRadioUnr
 function makeDraggable(el,handle){let sx,sy,ox,oy;const down=e=>{const p=e.touches?e.touches[0]:e;sx=p.clientX;sy=p.clientY;ox=el.offsetLeft;oy=el.offsetTop;el.style.zIndex=++rwZ;document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});document.addEventListener('mouseup',up);document.addEventListener('touchend',up);e.preventDefault();};const move=e=>{const p=e.touches?e.touches[0]:e;el.style.left=(ox+p.clientX-sx)+'px';el.style.top=(oy+p.clientY-sy)+'px';if(e.cancelable)e.preventDefault();};const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('touchmove',move);document.removeEventListener('mouseup',up);document.removeEventListener('touchend',up);try{clampWinIntoView(el);capturePopState();}catch(e){}};handle.addEventListener('mousedown',down);handle.addEventListener('touchstart',down,{passive:false});}
 let taskPopOpen=false;
 window.toggleTaskPop=()=>{taskPopOpen=!taskPopOpen;document.getElementById('taskpop').classList.toggle('open',taskPopOpen);if(taskPopOpen)renderTaskPop();capturePopState();};
-function renderTaskPop(){if(!taskPopOpen)return;const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{if((a.status==='avoin')!==(b.status==='avoin'))return a.status==='avoin'?-1:1;const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4));});document.getElementById('taskpopbody').innerHTML=open.map(t=>`<div class="ti u-${t.urg||'N'}" style="border-left-color:${URG_COL[t.urg||'N']}" onclick="popOpenTask('${t.id}')"><span style="flex:1">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'}${t.urg||''} ${codeConfirmed(t)?t.n:''}</span>${t.status==='avoin'?'<span style="color:var(--A)">●</span>':''}</div>`).join('')||'<div class="smallnote" style="padding:8px">Ei tehtäviä</div>';}
+function renderTaskPop(){if(!taskPopOpen)return;const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{if((a.status==='avoin')!==(b.status==='avoin'))return a.status==='avoin'?-1:1;const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4));});document.getElementById('taskpopbody').innerHTML=open.map(t=>`<div class="ti u-${t.urg||'N'}" style="border-left-color:${URG_COL[t.urg||'N']}" onclick="popOpenTask('${t.id}')"><span style="flex:1">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'}${t.urg||''} ${codeConfirmed(t)?pickedName(t):''}</span>${t.status==='avoin'?'<span style="color:var(--A)">●</span>':''}</div>`).join('')||'<div class="smallnote" style="padding:8px">Ei tehtäviä</div>';}
 window.popOpenTask=(id)=>{const tk=G.tasks.find(t=>t.id===id);if(!tk)return;map.panTo([tk.lat,tk.lng]);openDispatch(id);};
 
 /* ===== POP-UP TILAN MUISTAMINEN (kartta-näkymä) ===== */
@@ -4551,7 +4558,7 @@ function tick(dt){G.clock+=dt;
     // RUUHKASUOJA: älä syötä uutta tehtävää jos avoimia (yksiköittä odottavia) on jo liikaa.
     // Näin tehtäviä EI tule nopeammin kuin niihin ehtii vastata; hiljainen hetki ruuhkassa on realistinen.
     const _openWaiting=G.tasks.filter(t=>t.status==='avoin').length;
-    const _backlogOk=_openWaiting<Math.max(3,Math.round(fleetCapacity()*0.35));
+    const _backlogOk=_openWaiting<Math.max(4,Math.round(fleetCapacity()*0.5));
     // REALISTINEN AJOITUS (Poisson) — mutta ohitetaan jos jono on jo täynnä (nextAt silti etenee, ei patoudu).
     if(G.clock>=b.nextAt){if(_backlogOk){lastSpawn=G.clock;spawnTask();}b.nextAt=G.clock+_expInterval(baseInterval);}
     // VARMUUSRAJA (maxTaskGap): ei pakota luonnollista tahtia tiheämmäksi (pieni laitos ei huku) —
@@ -6044,6 +6051,13 @@ function maybeEscalate(tk,arriving){
   //    EI koodin vaihtoa). Nostotaajuus on per-koodi tk.esc (esim. 203→204 harvinaista, koska 204 vaatii
   //    epärealistisen paljon kalustoa). Jos koodi EI voi realistisesti nousta (esim. 483) → ei koodi-
   //    ehdotusta; vakavissa tehtävissä satunnainen tilanneraportti radioon.
+  // PALO ei laajene jos se on HALLINNASSA: riittävä vahvuus kohteessa ja työ etenee hyvin (esim. yksi
+  // sammutusauto hoitaa auton konepellin käryn — ei leimahda/leviä) → EI eskaloidu. Vain alimitoitettu/
+  // junnaava palo (teho gated alas, esim. rakennuspalo ilman toista savusukellusparia) voi levitä.
+  if(isFireTask(tk)){
+    const _onscE=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
+    if(_onscE.length && workRate(tk,_onscE)>=0.6) return;
+  }
   const canEsc=tk.escTo&&tk.escTo!==tk.c&&TASKS.find(t=>t.c===tk.escTo);
   if(canEsc){
     // KÄYTTÄJÄ: jos JO hälytetty vaste (myös matkalla) kattaa suuremman koodin tarpeen, EI ehdoteta
@@ -6258,12 +6272,31 @@ function progressTask(tk,dt){
     const letku=onsc.find(isLetkuUnit);
     if(letku&&tk._letkuReadyAt&&G.clock>=tk._letkuReadyAt&&!tk._letkuAnnounced){tk._letkuAnnounced=true;try{radio(chFor(tk.toimi,'INFO',tk),letku.name,'letku vedetty, vesi riittää — sarjaajo voidaan purkaa');}catch(e){}}
     // Palo "palaa kasaan" jos vettä ei saada riittävästi: rakennus palaa enemmän -> työ kasvaa (katto +80%).
-    if(_met && rate<0.85 && fireWaterDemand(tk)>0){
+    if(_met && rate<0.85 && fireWaterDemand(tk)>0 && tk.firstArrival && (G.clock-tk.firstArrival>240)){
+      // Tuli alkaa levitä vasta lyhyen armonajan jälkeen → pelaajalla on aikaa reagoida lisävastepyyntöön.
       if(tk._origWorkNeeded==null)tk._origWorkNeeded=tk.workNeeded;
       if(tk.workNeeded < tk._origWorkNeeded*1.8) tk.workNeeded += dt*(1-rate)*0.4;
     }
   }
   if(_met||_selfResolve){if(tk.alert){tk.alert=false;refreshTaskAlert(tk);}tk.work+=dt*rate;midTaskRelease(tk);if(tk.work>tk.workNeeded)completeTask(tk);}
+  // LISÄVASTE AJOISSA: jos kohteessa oleva vahvuus EI riitä työhön (teho gated alas, esim. ei toista
+  // savusukellusparia / ei vettä / ei imeytysainetta), johtaja PYYTÄÄ lisää RADIOSSA heti lyhyen
+  // tilannearvion jälkeen — EI vasta kun tilanne on jo laajentunut.
+  if(tk.onScene && onsc.length && rate<0.5 && !tk._capReqDone && tk.firstArrival && (G.clock-tk.firstArrival>75)){
+    let _need=null;
+    if(/rakennuspalo/i.test(tk.n||'') && fireWaterDemand(tk)>3000){
+      const _pairs=onsc.filter(u=>['sammutus','miehisto'].includes(u.vt)&&effCrewN(u)>=4).length;
+      if(_pairs<2)_need='emme pääse turvalliseen savusukellukseen yksin — pyydän lisää sammutusyksikön (savusukelluspari) kohteeseen';
+    }
+    if(!_need && isFireTask(tk) && fireWaterDemand(tk)>0 && fireWaterSupply(onsc,tk)<fireWaterDemand(tk)) _need='vesi ei riitä — pyydän lisää säiliöautoa kohteeseen';
+    if(!_need && /^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water' && !onsc.some(u=>oilCapable(u)&&((u.material==null)||u.material>5))) _need='ei imeytysainetta — pyydän vahingontorjunta-auton kohteeseen';
+    if(_need){
+      tk._capReqDone=true;
+      const _sp=tk.lead||onsc[0].name;
+      try{radio(chFor(tk.toimi,'INFO',tk),_sp,tk.addr+' — '+_need);}catch(e){}
+      tk.reqMsg=_need; try{renderList();updateBadge();}catch(e){}
+    }
+  }
   // Johtajan ARVIOT vasta kun hän on ehtinyt sizetä tilanteen (johtaja ei tiedä heti):
   if(leadAssessReady(tk)){
     // 1) Eskalaatio / koodinkorjaus — rullataan harvakseltaan (n. 30 s välein), ei joka tikki
@@ -6622,7 +6655,7 @@ function spawnFollowUp(parent){
 }
 
 /* ===== RENDER LISTAT ===== */
-function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${codeConfirmed(t)?t.n:''}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
+function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${codeConfirmed(t)?pickedName(t):''}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
 function updateBadge(){
   const n=G.tasks.filter(t=>t.status==='avoin').length,b=document.getElementById('navbadge');
   if(n>0){b.style.display='block';b.textContent=n;}else b.style.display='none';
