@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v169 (Leikattu musta tyhja pillerirvin alta: #top hugaa nyt pillerit. Pillerit pysyvat samalla korkeudella (sama keskikohta kuin v168). --top-h calc(safe-area-inset-top/2 + 55px), #top padding-top calc(safe-area-inset-top/2 + 23px). Korjattu kaksi #top-saantoa (gap6/gap4) jotka nollasivat ylataytteen: padding:0 X -> padding-left/right vain. Sisaltaa v167-v168.) -->
+<!-- HATAKESKUS - dispatch sim v171 (PILVI: lisatty fbWarnIfNewer() - kun sovellus palaa etualalle ja tilin pilvessa on UUDEMPI tallennus (toiselta laitteelta, ei oma push), kysytaan haluaako pelaaja ladata sen (ei adoptoi automaattisesti, throttle 60s). Lisaksi kirjautumispalaute: jos juuri kirjautui eika uudempaa pilvitallennusta ollut, kerrotaan se. _wantCloud siirretty fbLoadUserSave-funktion alkuun. Sisaltaa v167-v170.) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v169'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v171'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -7133,6 +7133,10 @@ function fbInit(){
 }
 window.fbSignIn=async()=>{
   if(!fbReady){toast('Tilit ei käytössä — Firebase-config (firebase-config.js) puuttuu, ks. ohje');return;}
+  // AIE: kun pelaaja painaa kirjautumisnappia, han haluaa TILINSA pilvipelin. Merkitaan aie (sailyy myos
+  // mobiilin redirect-uudelleenlatauksen yli) -> fbLoadUserSave hakee pilven vaikka laitteen oma tallennus
+  // olisi tuoreempi. Tama korjaa "peli ei lataudu toiselle laitteelle".
+  try{localStorage.setItem('hk_wantCloud','1');}catch(e){}
   const prov=new firebase.auth.GoogleAuthProvider();
   // KORJAUS (puhelin ei tallentanut pilveen): popup-kirjautuminen estyy useimmissa PUHELINSELAIMISSA →
   // kirjautuminen ei mennyt läpi → ei G.user → ei pilvitallennusta. Mobiilissa käytetään UUDELLEENOHJAUSTA
@@ -7156,6 +7160,7 @@ function decodePayload(b64){try{return JSON.parse(decodeURIComponent(escape(atob
 // Lataa kirjautuneen käyttäjän tallennus pilvestä (adoptoi jos PIDEMMÄLLÄ kuin paikallinen).
 async function fbLoadUserSave(){
   if(!fbReady||!G.user)return;
+  let _wantCloud=false;try{_wantCloud=localStorage.getItem('hk_wantCloud')==='1';}catch(e){}
   let snap;try{snap=await fbDb.collection('saves').doc(G.user.uid).get();}catch(e){return;}
   if(snap&&snap.exists){
     const d=snap.data()||{};const remote=d.data?decodePayload(d.data):null;
@@ -7164,8 +7169,13 @@ async function fbLoadUserSave(){
       // tallennus (= toista laitetta pelattu viimeksi) → adoptoi automaattisesti. missDone vain tasapelin
       // ratkaisija. Popupit (avoimet ikkunat) PIDETÄÄN paikallisina → eivät tule toiselta laitteelta.
       const rTs=d.ts||remote.lastSaveTs||0, lTs=G.lastSaveTs||0;
-      const _remEmpty=!(remote.stations&&remote.stations.length),_locHas=(G.stations&&G.stations.length>0);
-      if((rTs>lTs || (rTs===lTs && (remote.missDone||0)>(G.missDone||0))) && !(_remEmpty&&_locHas)){
+      const _remEmpty=!(remote.stations&&remote.stations.length),_locHas=(G.stations&&G.stations.some(s=>s.t!=='sairaala'&&s.t!=='hatakeskus'));
+      const _tsWins=(rTs>lTs || (rTs===lTs && (remote.missDone||0)>(G.missDone||0)));
+      // JUURI KIRJAUTUNUT: hae tilin pilvipeli vaikka laitteen oma olisi tuoreempi. Varmista vain jos
+      // laitteella on oma RAKENNETTU peli (omia asemia, missDone>3) jota ei haluta hukata vahingossa.
+      let _adopt=_tsWins;
+      if(_wantCloud && !_remEmpty){ _adopt = (_locHas && (G.missDone||0)>3 && !_tsWins) ? confirm('Tilisi pilvitallennus loytyi ('+(d.missDone||0)+' tehtavaa suoritettu). Korvataanko taman laitteen nykyinen peli silla? Taman laitteen peli haviaa.') : true; }
+      if(_adopt && !_remEmpty){
         remote.openPops=G.openPops||null;
         applyLoaded(remote);G.lastSaveTs=rTs||Date.now();_myPushTs=d.ts||_myPushTs;
         try{localStorage.setItem('hatakeskus_code',btoa(unescape(encodeURIComponent(JSON.stringify(remote)))));}catch(e){}
@@ -7174,11 +7184,18 @@ async function fbLoadUserSave(){
         // ajalta kun olit poissa (katto 7 vrk, ks. spawnCatchUp). Ennen tätä aika ei edennyt puhelimella.
         try{spawnCatchUp();}catch(e){}
         G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
+        try{localStorage.removeItem('hk_wantCloud');}catch(e){}
         toast('☁️ Tilisi peli haettu pilvestä');return;
       }
     }
   }
-  fbPushDo(); // paikallinen yhtä pitkällä/pidemmällä → tallenna pilveen
+  try{localStorage.removeItem('hk_wantCloud');}catch(e){}
+  // KIRJAUTUMISPALAUTE: jos pelaaja juuri kirjautui mutta tilillä ei ollut uudempaa pilvitallennusta,
+  // kerro se selkeästi — muuten näyttää siltä ettei mitään tapahtunut.
+  if(_wantCloud){ try{toast('☁️ Kirjauduttu. Tililläsi ei ollut uudempaa pilvitallennusta — tämän laitteen peli tallentuu nyt tilillesi.');}catch(e){} }
+  // ALA ylikirjoita tilin pilvitallennusta tyhjalla/oletuspelilla (ei omia asemia) -> muuten toisen
+  // laitteen oikea peli katoaisi pilvesta. Tyonna vain jos talla laitteella on RAKENNETTU peli.
+  if(G.stations&&G.stations.some(s=>s.t!=='sairaala'&&s.t!=='hatakeskus')) fbPushDo();
 }
 function scheduleFbPush(){if(!fbReady||!G.user||_fbPushT)return;_fbPushT=setTimeout(()=>{_fbPushT=null;fbPushDo();},6000);}
 // Pysyvä laitetunniste (selainkohtainen) → erottaa oman pushin toisen laitteen tallennuksesta synkassa.
@@ -7237,6 +7254,32 @@ async function fbPeriodicPull(){
   G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});renderList();updateBadge();updateMoney();
   toast('☁️ Päivitetty toisen laitteen tallennuksesta');
 }
+// VAROITUS: jos pilvessä on UUDEMPI tallennus (todennäköisesti toiselta laitteelta) kuin tällä laitteella,
+// kysytään haluaako pelaaja ladata sen. Kutsutaan kun sovellus palaa etualalle. Ei adoptoi automaattisesti.
+async function fbWarnIfNewer(){
+  if(!fbReady||!G.user||_fbBusy||_isWiping)return;
+  if(G._cloudWarnT && Date.now()-G._cloudWarnT < 60000) return; // älä kysy liian usein
+  let snap;try{snap=await fbDb.collection('saves').doc(G.user.uid).get();}catch(e){return;}
+  if(!snap||!snap.exists)return;
+  const d=snap.data()||{};
+  if(!d.data||!d.ts)return;
+  if(d.device&&d.device===_fbDeviceId())return;      // tämän laitteen oma tallennus
+  if(d.ts===_myPushTs)return;
+  if((d.ts||0) <= (G.lastSaveTs||0)+3000) return;     // ei uudempi → ei varoiteta
+  const remote=decodePayload(d.data);if(!remote)return;
+  if(!(remote.stations&&remote.stations.length))return; // tyhjä pilvitallennus → ei varoiteta
+  G._cloudWarnT=Date.now();
+  if(confirm('☁️ Tililläsi on UUDEMPI pelitallennus pilvessä ('+(d.missDone||0)+' tehtävää suoritettu) — todennäköisesti toiselta laitteelta. Ladataanko se nyt? Tämän laitteen nykyinen peli korvautuu.')){
+    remote.openPops=G.openPops||null;
+    try{applyLoaded(remote);}catch(e){return;}
+    G.lastSaveTs=d.ts;_myPushTs=d.ts;
+    G.units.forEach(u=>{try{refreshUnitMarker(u);}catch(e){}});
+    try{renderList();updateBadge();updateMoney();renderSet();}catch(e){}
+    try{localStorage.setItem('hatakeskus_code',btoa(unescape(encodeURIComponent(JSON.stringify(remote)))));}catch(e){}
+    toast('☁️⬇️ Uudempi pilvitallennus haettu');
+  }
+}
+window.fbWarnIfNewer=fbWarnIfNewer;
 setInterval(fbPeriodicPull,120000);
 window.addEventListener('online',()=>{if(fbReady&&G.user)fbPeriodicPull();});
 function exportCode(){const code=btoa(unescape(encodeURIComponent(JSON.stringify(serializeGame()))));navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast('📋 Tallennuskoodi kopioitu leikepöydälle')).catch(()=>{});return code;}
@@ -7749,6 +7792,8 @@ async function init(){
         if(realMin>=2){const t=realMin>=60?Math.floor(realMin/60)+'h '+(realMin%60)+'min':realMin+' min';setTimeout(()=>toast('🕐 Olit poissa '+t+' — peli eteni taustalla'+(_done?' · '+_done+' tehtävää valmistui':'')+(G._offlineIncome?'. Tuki +'+G._offlineIncome.toLocaleString('fi-FI')+'€':'')+'.'),600);}
       }
       last=performance.now(); // nollaa silmukan kello ettei tule kaksoislaskua
+      // PILVI: jos toisella laitteella on tehty uudempi tallennus, kysy haluaako pelaaja ladata sen.
+      setTimeout(()=>{try{fbWarnIfNewer();}catch(e){}},1500);
     }
   });
   // PAGEHIDE: luotettavin "sovellus suljetaan/taustalle" -signaali (etenkin puhelin) → työnnä pilveen
