@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v179 (PERAVAUNU auto-vetoauto: pelaaja lahettaa peravaunun, ja jos valinnassa EI ole vetoautoa, peli hakee automaattisesti vapaan vetoauton (sama asema etusijalla, muuten lahin) -> peravaunu saadaan kohteeseen ilman erillista vetoauton valintaa. Jos vapaata vetoautoa ei loydy mistaan, peravaunua ei voi halyttaa (toast). Auto-vetoauto ei mene VPK-vajaaksi (varma lahto). Sisaltaa v167-v178.) -->
+<!-- HATAKESKUS - dispatch sim v181 (tehtavatahtiin vuorokausirytmi: yot rauhallisia paivat vilkkaita; VPK-sailioauto lahtee nopeasti pienella vahvuudella useimmiten 0+1; peravaunua ei voi asettaa asemavalmiuteen) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v179'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v181'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -1950,7 +1950,7 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
       const _dutyWord=(u.status==='paluu'||u.status==='matka')?'saapumassa':'päivystää'; // rehellinen: vielä matkalla ≠ paikalla
       const visitStr=_dutyHere?'<span style="font-size:10px;color:var(--acc2);margin-left:6px">⇄ '+_dutyWord+' (koti: '+((G.stations.find(x=>x.id===u.stationId)||{}).n||'?').split(' ')[0]+')</span>':'';
       // VPK-asemalla per-yksikkö valmiusnappi näkyy AINA (valitse mitkä yksiköt asemavalmiuteen) — ei enää vain H351-ikkunan aikana
-      const readyBtn=(s.muoto==='vpk'||u.muoto==='vpk')?`<button class="${u.atReadyStation?'buy':'btn-x'}" style="font-size:11px;padding:3px 8px;margin-left:6px" onclick="event.stopPropagation();toggleAtReady('${u.id}');renderStation('${s.id}')">${u.atReadyStation?'⚡ valmius':'⚡ aseta'}</button>`:'';
+      const readyBtn=((s.muoto==='vpk'||u.muoto==='vpk')&&!(VTYPES[u.vt]&&VTYPES[u.vt].trailer))?`<button class="${u.atReadyStation?'buy':'btn-x'}" style="font-size:11px;padding:3px 8px;margin-left:6px" onclick="event.stopPropagation();toggleAtReady('${u.id}');renderStation('${s.id}')">${u.atReadyStation?'⚡ valmius':'⚡ aseta'}</button>`:'';
       return `<div class="urow" onclick="smUnit='${u.id}';renderStation('${s.id}')"><span class="sq ${u.off?'off':''}" style="background:${unitColor(u)}33;border-color:${unitColor(u)}"></span><div style="flex:1"><div class="uname mono">${u.name}${tagStr}${coverStr}${visitStr}</div><div class="umeta">${VTYPES[u.vt].label}</div></div><span style="color:${unitColor(u)};font-size:11px">${statusLabel(u)} ›</span>${readyBtn}</div>`;}).join('')||'<div class="smallnote">Ei yksiköitä. Osta alta.</div>'}</div>`;
     if(allow.length)body+=`<div class="sec"><h4>Osta yksikkö</h4><select class="inp" id="smsel">${vehOptions(allow)}</select><input class="inp" id="smname" placeholder="Oma tunnus (valinnainen)"><button class="buy" onclick="buyVeh('${s.id}','smsel','smname')">+ Osta yksikkö</button></div>`;
   }
@@ -2057,6 +2057,7 @@ window.removeUnitBoostDate=(id,date)=>{const u=G.units.find(x=>x.id===id);if(!u|
 // olla loputtomasti valmiudessa → tickVpkReadiness purkaa valmiuden automaattisesti ajan täyttyessä.
 function maxReadySec(u){const m=unitMuoto(u);return (m==='vpk'||m==='sopimus')?4*3600:24*3600;}
 window.toggleAtReady=(id)=>{const u=G.units.find(x=>x.id===id);if(!u)return;
+  if(!u.atReadyStation&&VTYPES[u.vt]&&VTYPES[u.vt].trailer){toast(u.name+' on perävaunu — ei miehistöä, ei voi asettaa asemavalmiuteen');return;}
   u.atReadyStation=!u.atReadyStation;
   if(u.atReadyStation)u._atReadyUntil=G.clock+maxReadySec(u); else u._atReadyUntil=null;
   // Päivitä status näkyväksi kartalla
@@ -2091,7 +2092,7 @@ window.forceUnitFree=(id,sid)=>{
 // per-yksikkö ⚡-napilla, tai kaikki näillä). Vara-autoja ei kosketa.
 window.setAllReady=(sid,on)=>{
   const st0=G.stations.find(s=>s.id===sid);const onlyVpk=st0&&st0.muoto!=='vpk'; // vakituisella asemalla vain VPK-autot
-  const units=G.units.filter(u=>u.stationId===sid&&!u.spare&&(!onlyVpk||unitMuoto(u)==='vpk'));
+  const units=G.units.filter(u=>u.stationId===sid&&!u.spare&&!(VTYPES[u.vt]&&VTYPES[u.vt].trailer)&&(!onlyVpk||unitMuoto(u)==='vpk'));
   let n=0;
   units.forEach(u=>{
     if(on&&!u.atReadyStation&&!u.taskId){u.atReadyStation=true;u._atReadyUntil=G.clock+maxReadySec(u);if(u.status==='asema'||u.status==='paluu')u.status='vapaa_valmius';refreshUnitMarker(u);n++;}
@@ -2243,6 +2244,7 @@ window.valmiussiirto=(unitId,sid)=>{
   const u=G.units.find(x=>x.id===unitId);if(!u)return;
   if(!sid||sid===u.stationId){toast('Valitse eri kohdeasema');return;}
   if(u.taskId){toast(u.name+' on tehtävällä');return;}
+  if(VTYPES[u.vt]&&VTYPES[u.vt].trailer){toast(u.name+' on perävaunu — ei miehistöä, ei voi siirtää valmiuteen');return;}
   const st=G.stations.find(s=>s.id===sid);if(!st)return;
   u.dutyAt=sid;u.dutyAtPartial=false;u.atReadyStation=true;
   u.hx=st.lat;u.hy=st.lng;                       // kotipiste = kohdeasema (duty)
@@ -3295,7 +3297,7 @@ async function spawnTask(){
   }
   G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
   try{maybeSpawnDuplicate(tk);}catch(e){}
-  if(G.settings.showCallouts)toast('Uusi tehtävä: '+tk.n);
+  if(G.settings.showCallouts)toast('Uusi tehtävä');
   // Äänimerkki UUDESTA tehtävästä (asetuksista). Throttle estää piippusarjan jos monta syntyy kerralla.
   try{ if(!G._offlineSim && (!window.__taskBeepT || Date.now()-window.__taskBeepT>1200)){ window.__taskBeepT=Date.now(); playDispatchSound(); } }catch(e){}
 }
@@ -3719,7 +3721,7 @@ function mergedUnitRows(tk){
     } else if(u.currentLoad){
       loadPicker=' · 📦 '+(LOAD_NAMES[u.currentLoad]||u.currentLoad);
     }
-    const clickAction=isNonDispatch?`toast('${u.name} ei hälytettävissä')`:(isBusyTransferable?`pullToHere('${u.id}','${tk.id}')`:`toggleSel('${u.id}')`);
+    const clickAction=isNonDispatch?`toast('${u.name} ei hälytettävissä')`:`toggleSel('${u.id}')`;
     return `<div class="urow${sel?' sel':''}"${dim} data-uid="${u.id}" onclick="${clickAction}" ><span class="selbox">${sel?'✓':''}</span><span class="sq ${u.off?'off':''}" style="background:${unitColor(u)}33;border-color:${unitColor(u)}"></span><div style="flex:1"><div class="uname mono">${u.name}${tagStr}${driverBadge}${coverStr}</div><div class="umeta">${VTYPES[u.vt]?.label||u.vt} · ${u.crew}${waterStr}${loadPicker}</div></div><div class="ueta">${x.osrm?'':'~'}${Math.max(1,Math.round(x.t))} min${x.osrm?'<span style="font-size:9px;color:var(--acc2);margin-left:2px">●</span>':''}<br><span style="color:${scol}">${stxt}</span></div></div>`;
   }).join('');
 }
@@ -3788,12 +3790,8 @@ window.toggleSel=id=>{
   if(dSel.has(id)){
     dSel.delete(id);
   } else {
-    const u=G.units.find(x=>x.id===id);
-    if(u&&u.taskId&&u.taskId!==(dCur&&dCur.id)){
-      const ot=G.tasks.find(t=>t.id===u.taskId);
-      if(ot){ot.assigned=ot.assigned.filter(i=>i!==id);ot.reqKey='';
-        if(ot.assigned.length===0){ot.status='avoin';ot.onScene=false;}}
-    }
+    // Toisella tehtävällä oleva yksikkö vain VALITAAN (kuten asemalla oleva). Irrotetaan vanhalta
+    // tehtävältä vasta kun "Lähetä" painetaan (sendDispatch hoitaa siirron) — ei heti valittaessa.
     dSel.add(id);
   }
   // Päivitä vain yksittäisen rivin visuaali — älä järjestä listaa uudelleen.
@@ -3957,10 +3955,18 @@ async function sendDispatch(next){
     const cur=finalIds.map(i=>G.units.find(x=>x.id===i)).filter(Boolean);
     if(cur.some(x=>x.id!==u.id&&_isTow(x))||_onTaskTow.some(_isTow))return; // vetoauto jo mukana
     const towPool=G.units.filter(x=>_isTow(x)&&!x.taskId&&['asema','vapaa_valmius','muu'].includes(x.status)&&!finalIds.includes(x.id));
-    let tow=towPool.filter(x=>x.stationId===u.stationId).sort((a,b)=>km(a.lat,a.lng,tk.lat,tk.lng)-km(b.lat,b.lng,tk.lat,tk.lng))[0]
-          || towPool.slice().sort((a,b)=>km(a.lat,a.lng,tk.lat,tk.lng)-km(b.lat,b.lng,tk.lat,tk.lng))[0];
+    const _towScore=x=>(x.spare?100:0)+(['johto','paallikko','kj','laakari','joke'].includes(x.vt)?40:0); // vältä vara-autoa ja johtoyksiköitä vetoautona
+    const _byPref=(a,b)=>(_towScore(a)-_towScore(b))||(km(a.lat,a.lng,tk.lat,tk.lng)-km(b.lat,b.lng,tk.lat,tk.lng));
+    let tow=towPool.filter(x=>x.stationId===u.stationId).sort(_byPref)[0] || towPool.slice().sort(_byPref)[0];
     if(tow){ tow._isAutoTow=true; finalIds.push(tow.id); if(G.settings.showCallouts)toast('🚚 '+tow.name+' lähtee vetämään perävaunua '+u.name); }
     else { finalIds=finalIds.filter(i=>i!==u.id); toast(u.name+' on perävaunu — ei vapaata vetoautoa, ei voida hälyttää'); }
+  });
+  // PERÄVAUNU KIINNI VETOAUTOON: paritetaan jokainen perävaunu vetoautoon (sama hälytys) → liikkuvat yhdessä.
+  finalIds.map(i=>G.units.find(x=>x.id===i)).filter(Boolean).forEach(u=>{
+    if(!(VTYPES[u.vt]&&VTYPES[u.vt].trailer))return;
+    const _tows=finalIds.map(i=>G.units.find(x=>x.id===i)).filter(x=>x&&_isTow(x)&&!x._towing);
+    const _tow=_tows.filter(x=>x.stationId===u.stationId)[0]||_tows[0];
+    if(_tow){ u._towedBy=_tow.id; _tow._towing=u.id; }
   });
   if(!finalIds.length){return;}
   const _vajaaUnits=[];
@@ -4007,17 +4013,19 @@ async function sendDispatch(next){
     // lähtee asemalta normaalisti. (u.lat/u.lng on jo asemalla.)
     if(u._drill){u._drill=false;u._drillRoute=null;u._drillRi=0;u._drillPhase=null;u._drillLat=null;u._drillLng=null;u.lat=u.hx;u.lng=u.hy;try{refreshUnitMarker(u);}catch(e){}}
     // Jos yksikkö jo toisella tehtävällä, poista sieltä ensin
-    if(u.taskId&&u.taskId!==tk.id){const ot=G.tasks.find(t=>t.id===u.taskId);if(ot){ot.assigned=ot.assigned.filter(i=>i!==id);ot.reqKey='';if(ot.assigned.length===0&&ot.status!=='valmis')ot.status='avoin';}}
+    if(u.taskId&&u.taskId!==tk.id){const ot=G.tasks.find(t=>t.id===u.taskId);if(ot){ot.assigned=ot.assigned.filter(i=>i!==id);ot.reqKey='';if(ot.assigned.length===0&&ot.status!=='valmis'){ot.status='avoin';ot.onScene=false;}try{refreshTaskLabel(ot);}catch(e){}}}
     // Jos EI asemalla (ruokatauko/harjoitus/partio), yksikkö lähtee suoraan nykysijainnista → status 'matka'.
     // Jos asemalla, yksikkö menee ensin 'otettu'-tilaan (vastaanotettu, odottaa lähtöä asemalla).
     // Vesitehtävä: maayksiköt ajavat RANTAAN (tk.shore), veneet/heli menevät vesipisteeseen (tk.lat/lng).
     // VPK LÄHTÖVAHVUUS: jos VPK on asemalla (on-call, ei valmiudessa/vapaana), sopimusvahvuus ei aina
     // riitä. ~85% saa vahvuuden; muuten yksikkö joko EI lähde tai lähtee VAJAALLA ja ilmoittaa HÄKElle.
     // Valmiudessa/vapaana yksiköllä on AINA vähintään sopimusvahvuus → ei arvontaa.
+    const _isTankki=(u.vt==='sailio'||u.vt==='tankki');   // säiliöauto: vesihuolto, riittää kuljettaja
     let _vpkRoll='full';
     if(u.muoto==='vpk' && atStation && !wasValmius && !u.atReadyStation && !u._isAutoTow){
       const _r=Math.random();
-      _vpkRoll = _r<0.85 ? 'full' : (_r<0.96 ? 'vajaa' : 'eiLahde');
+      if(_isTankki) _vpkRoll = _r<0.95 ? 'tankki' : 'eiLahde';   // lähtee lähes aina heti pienellä vahvuudella
+      else _vpkRoll = _r<0.85 ? 'full' : (_r<0.96 ? 'vajaa' : 'eiLahde');
     }
     const _dest=(tk.where==='water'&&!goesStraight(u)&&tk.shore)?tk.shore:{lat:tk.lat,lng:tk.lng};
     u.status=atStation?'otettu':'matka';u.taskId=tk.id;u.target={lat:_dest.lat,lng:_dest.lng};u.route=null;u.ri=0;u.omamieli=u.omamieli==='partio'?null:u.omamieli;
@@ -4042,6 +4050,15 @@ async function sendDispatch(next){
       // ILMOITTAA vasta kun MAX VASTEAIKA on kulunut. (Käsittely moveUnitin 'otettu'-haarassa.)
       u._vpkNoCrew=true;
       u.departAt=G.clock+baseTurnout*TURNOUT_MULT*rnd(1.0,1.3);
+    } else if(_vpkRoll==='tankki'){
+      // SÄILIÖAUTO lähtee NOPEASTI heti kun kuljettaja on asemalla. Useimmiten 0+1 (vain kuljettaja),
+      // joskus 1+1 tai 0+2. Vesihuolto onnistuu kevyellä miehityksellä → ei miehistöauton täydennystä.
+      const _tnk=Math.random();
+      u._vajaaStr = _tnk<0.70 ? '0+1' : (_tnk<0.86 ? '1+1' : '0+2');
+      u._vajaaVahvuus=true;
+      u.departAt=G.clock+rnd(20,70)*TURNOUT_MULT*rnd(0.9,1.1);   // nopea lähtö (säiliöauto usein nopein liikkeelle)
+      try{radio(chFor(u.toimi,'INFO',tk),u.name,'lähdössä vahvuudella '+u._vajaaStr+', vesihuolto kohteeseen');}catch(e){}
+      if(G.settings.showCallouts)toast(u.name+' (VPK säiliöauto) lähtee heti — '+u._vajaaStr);
     } else if(_vpkRoll==='vajaa'){
       // VAJAA VAHVUUS: montako saatiin (väh. 1+1, yleensä korkeintaan 1+2). "Yli 1+1" = 3+ henkilöä.
       u._vajaaVahvuus=true;
@@ -4483,7 +4500,10 @@ function tick(dt){G.clock+=dt;
     // spawnRate-liukuri (oletus 1×) kertoo tämän; kalenteriboosti tihentää. Näin pieni laitos ei
     // huku (sai ennen saman ~16/h kuin iso verkosto) eikä iso jää tyhjäkäynnille.
     const cap=fleetCapacity();
-    const perHour=Math.max(1.5,Math.min(45,cap*0.5*G.spawnRate*dayBoost)); // ~0.5 tehtävää/h per yksikkö normaalipäivänä; juhlaboost (dayBoost) ja liukuri kiristävät
+    const _spH=(Math.floor(G.clock/3600)%24);
+    // VUOROKAUSIRYTMI: tehtäviä eniten iltapäivällä/illalla (~16-17), vähiten aamuyöllä (~04-05). Keskiarvo ~0.95.
+    const _diurnal=0.95+0.45*Math.cos((_spH-16.5)/12*Math.PI);
+    const perHour=Math.max(0.8,Math.min(30,cap*0.40*G.spawnRate*dayBoost*_diurnal)); // ~0.4/h per yksikkö × vuorokausirytmi; yöllä rauhallista
     const baseInterval=3600/perHour;
     // REALISTINEN AJOITUS: Poisson-prosessi (eksponentiaaliset väliajat) → luonnolliset ryppäät ja
     // hiljaiset hetket, ei tasaista kelloa. Sama kummassakin tilassa; spawnRate-liukuri säätää tahtia.
@@ -4492,7 +4512,7 @@ function tick(dt){G.clock+=dt;
     // RUUHKASUOJA: älä syötä uutta tehtävää jos avoimia (yksiköittä odottavia) on jo liikaa.
     // Näin tehtäviä EI tule nopeammin kuin niihin ehtii vastata; hiljainen hetki ruuhkassa on realistinen.
     const _openWaiting=G.tasks.filter(t=>t.status==='avoin').length;
-    const _backlogOk=_openWaiting<Math.max(3,Math.round(fleetCapacity()*0.5));
+    const _backlogOk=_openWaiting<Math.max(3,Math.round(fleetCapacity()*0.35));
     // REALISTINEN AJOITUS (Poisson) — mutta ohitetaan jos jono on jo täynnä (nextAt silti etenee, ei patoudu).
     if(G.clock>=b.nextAt){if(_backlogOk){lastSpawn=G.clock;spawnTask();}b.nextAt=G.clock+_expInterval(baseInterval);}
     // VARMUUSRAJA (maxTaskGap): ei pakota luonnollista tahtia tiheämmäksi (pieni laitos ei huku) —
@@ -5368,6 +5388,7 @@ function topKmh(u){
   const vt=VTYPES[u.vt]||{};
   if(vt.heli&&u._hemsMode!=='car')return 99999;        // kopteri lentää, ei tien rajaa
   if(vt.trailer)return 80;                              // perävaunu max 80
+  if(u._towing)return 80;                                // vetoauto+perävaunu yhdistelmä max 80
   const cls=vt.cls;
   if(cls==='sammutus'||cls==='nostolava'||cls==='vahinko')return 80; // raskaat paloautot 80
   if(cls==='maasto')return 45;                          // mönkijä
@@ -5386,6 +5407,15 @@ const ETA_TRAFFIC=0.85;
 function etaSpeed(u,urg){return effectiveSpeed(u,urg)*ETA_TRAFFIC;}
 
 function moveUnit(u,dt){
+  // PERÄVAUNU seuraa vetoautoa KIINNI (sama sijainti/status), ei reititä itse. Jos vetoauto katosi → irtoaa.
+  if(VTYPES[u.vt]&&VTYPES[u.vt].trailer&&u._towedBy){
+    const _tow=G.units.find(x=>x.id===u._towedBy);
+    if(_tow&&_tow.taskId&&_tow.taskId===u.taskId){
+      u.lat=_tow.lat;u.lng=_tow.lng;u.status=_tow.status;u.target=_tow.target;u.route=null;u.ri=0;u.departAt=_tow.departAt;
+      try{refreshUnitMarker(u);}catch(e){}
+      return;
+    } else { u._towedBy=null; u.status='paluu'; u.target={lat:u.hx,lng:u.hy}; }
+  }
   // Partioiva poliisi liikkuu omalla logiikallaan (ajaa reittiä alueella)
   if(u.omamieli==='partio'&&u.status==='muu'&&!u.taskId){movePatrol(u,dt);return;}
   if(u.omamieli==='vpkajo'&&u.status==='muu'&&!u.taskId){moveVpkDrive(u,dt);return;}
@@ -5655,7 +5685,7 @@ function arriveOrHome(u){
 function crewCount(u){const m=(u.crew||'1+0').match(/(\d+)\+(\d+)/);return m?(parseInt(m[1])+parseInt(m[2])):1;}
 // EFEKTIIVINEN vahvuus: vajaalla vahvuudella lähtenyt yksikkö lasketaan todellisen miehityksensä mukaan
 // (1+1=2, 1+2=3). Tätä käytetään savusukelluskyvyn arviointiin (alle 1+3 ei voi aloittaa savusukellusta).
-function effCrewN(u){ if(u&&u._vajaaVahvuus) return u._vajaaStr==='1+2'?3:2; return crewCount(u); }
+function effCrewN(u){ if(u&&u._vajaaVahvuus&&u._vajaaStr){const _p=String(u._vajaaStr).split('+');return (parseInt(_p[0])||0)+(parseInt(_p[1])||0);} return crewCount(u); }
 function _computeHave(units){
   const have={};let crew=0;
   units.forEach(u=>{
@@ -5790,8 +5820,9 @@ function requestMissing(tk,leadName){
 }
 function freeUnit(u){
   if(!u)return;
+  if(u._towing){const _tr=G.units.find(x=>x.id===u._towing);u._towing=null;if(_tr&&_tr.id!==u.id){_tr._towedBy=null;try{freeUnit(_tr);}catch(e){}}}
   // Nollaa KAIKKI tehtäväkentät VÄLITTÖMÄSTI
-  u.taskId=null;u.departAt=null;u.routeEta=null;u.routeDistance=null;u._guessedFor=null;u._vajaaVahvuus=false;u._vpkNoCrew=false;u._vajaaStr=null;u._rotateFor=null;u._rotArrivedAt=null;u._isAutoTow=false;
+  u.taskId=null;u.departAt=null;u.routeEta=null;u.routeDistance=null;u._guessedFor=null;u._vajaaVahvuus=false;u._vpkNoCrew=false;u._vajaaStr=null;u._rotateFor=null;u._rotArrivedAt=null;u._isAutoTow=false;u._towedBy=null;u._towing=null;
   u.transport=null; // jos oli kuljetuksessa, perutaan
   // Reittitoken: vanha async-reittihaku ei saa enää palauttaa yksikköä tehtävälle
   u._routeToken=(u._routeToken||0)+1;const tok=u._routeToken;
