@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v189 (palo ei enaa laajene/escaloidu jos se on hallinnassa: kun riittava vahvuus kohteessa ja tyo etenee hyvin yksi sammutusauto hoitaa pienen palon; vain alimitoitettu junnaava palo voi levita) -->
+<!-- HATAKESKUS - dispatch sim v190 (ensihoidon L4-pyynto selkeaksi: vain pyydan kenttajohtajan kohteeseen, ei epamaaraista tilanne laajentunut; johtoyksikon ottaa johdon -ilmoitus tulee pienen viiveen jalkeen ei heti) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v189'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v190'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -4212,8 +4212,8 @@ function setLead(tk){
   const _ld=sorted[0];
   if(_ld && !tk._leadAnnounced && (_ld.cls==='johto' || (VTYPES[_ld.vt]&&VTYPES[_ld.vt].cls==='johto'))){
     tk._leadAnnounced=true;
-    const _sana=tk.toimi==='pelastus'?'pelastustoimen johdon':(tk.toimi==='ensihoito'?'ensihoidon johdon':'tilannejohdon');
-    try{radio(chFor(tk.toimi,'INFO',tk),_ld.name,`ottaa ${_sana}, ${tk.addr}`);}catch(e){}
+    tk._leadAnnounceName=_ld.name;
+    tk._leadAnnounceAt=G.clock+rnd(15,45);   // PIENI VIIVE ennen "ottaa johdon" -ilmoitusta (johtaja kuittaa hetken päästä, ei heti)
   }
 }
 // Tehtävän OMAN toimialan johtaja (palotehtävässä pelastusyksikkö, ei ambulanssi).
@@ -6078,7 +6078,7 @@ function maybeEscalate(tk,arriving){
       else if(tk.toimi==='poliisi')
         msg=`${tk.addr} — ${_escWhy(tk.c)} — pyydän lisäpartioita kohteeseen`;
       else
-        msg=`${tk.addr} — ${_escWhy(tk.c)} — ${(tk.sev==='critical')?'pyydän lääkäriyksikköä kohteeseen':'pyydän ensihoidon kenttäjohtajaa (L4) kohteeseen'}`;
+        msg=`${tk.addr} — ${(tk.sev==='critical')?'pyydän lääkäriyksikön kohteeseen':'pyydän ensihoidon kenttäjohtajan (L4) kohteeseen'}`;
       radio(ch,cmd.name,msg);alertTask(tk,`${cmd.name}: ${msg}`);renderList();
     }
   }
@@ -6240,6 +6240,8 @@ function workRate(tk,onsc){
 function progressTask(tk,dt){
   // HÄKE välittää viivästetyn 551-virka-apupyynnön PE ANTO:lle peliajassa (asetettu maybeRequest551:ssä).
   if(tk._req551At&&G.clock>=tk._req551At){tk._req551At=null;try{radio('PE ANTO','HÄKE',`551; ${tk.urg}; ${tk.addr}; virka-apu ensihoidolle — ${tk._req551Reason||''}`);}catch(e){}}
+  // JOHDON OTTO pienen viiveen jälkeen (johtoyksikkö ilmoittaa ottavansa johdon hetken päästä, ei heti).
+  if(tk._leadAnnounceAt&&G.clock>=tk._leadAnnounceAt){const _sj=tk.toimi==='pelastus'?'pelastustoimen johdon':(tk.toimi==='ensihoito'?'ensihoidon johdon':'tilannejohdon');try{radio(chFor(tk.toimi,'INFO',tk),tk._leadAnnounceName,`ottaa ${_sj}, ${tk.addr}`);}catch(e){}tk._leadAnnounceAt=null;}
   if(tk.status!=='ajossa'||!tk.onScene)return;
   const onsc=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
   // Jos johtaja on poistunut, valitse uusi
