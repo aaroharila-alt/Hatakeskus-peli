@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v193 (luonnollisemmat purku/peruutusviestit: johtaja nimeaa pienemman ryhman X jaa/jatkaa kohteeseen muille peruutus, tai yksi peruttava kuittaa itse 103 ottaa peruutuksen, satunnainen kiitti moi; johtaja voi ilmoittaa vaikkei olisi kohteessa) -->
+<!-- HATAKESKUS - dispatch sim v195 (FinnHEMS-halytys tulee normaalille paikalliselle ensihoidon annolle EN ANTO, ei enaa erilliselle EN LU ANTO -kanavalle; vanhat EN LU ANTO -viestit siirretaan EN ANTO:lle latauksessa) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -503,7 +503,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v193'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v195'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -2521,6 +2521,7 @@ function clearPoiMarkers(){poiMarkers.forEach(m=>{try{map.removeLayer(m);}catch(
 function renderPois(){
   clearPoiMarkers();
   (G.pois||[]).forEach(p=>{
+    if(G.settings.hidePois&&!editingPois)return; // piilotettu kartalta (näkyy silti muokkaustilassa)
     const def=POI_TYPES[p.type]||{icon:'📍',label:p.type};
     // Pienempi merkki + himmeämpi kun ei muokata.
     const ic=L.divIcon({html:`<div style="font-size:12px;line-height:14px;text-align:center;filter:drop-shadow(0 0 1px #000a);opacity:${editingPois?1:0.55}">${def.icon}</div>`,className:'',iconSize:[15,15],iconAnchor:[8,8]});
@@ -2554,6 +2555,7 @@ window.stopEditPois=()=>{
   toast((G.pois&&G.pois.length)?('Kohdepisteet tallennettu ('+G.pois.length+' kpl)'):'Ei kohdepisteitä — tehtävät syntyvät alueille normaalisti');
 };
 window.clearAllPois=()=>{if(!(G.pois&&G.pois.length)){toast('Ei kohdepisteitä');return;}if(!confirm('Poistetaanko KAIKKI kohdepisteet?'))return;G.pois=[];renderPois();toast('Kohdepisteet poistettu');};
+window.togglePoiVisibility=()=>{G.settings.hidePois=!G.settings.hidePois;renderPois();saveGame(false);toast(G.settings.hidePois?'Kohdepisteet piilotettu kartalta':'Kohdepisteet näkyvät kartalla');try{closePanels();}catch(e){}};
 
 /* ===== VENEVÄYLIEN MUOKKAUS KARTALLA ===== */
 let editingBoatWays=false;
@@ -3935,8 +3937,8 @@ function announceDispatch(tk,newUnits){
   const msg=`${shownCode(tk)}; ${tk.urg}; ${tk.addr}; ${listText}`;
   toimet.forEach(toimi=>radio(chFor(toimi,'ANTO',tk),'HÄKE',msg));
   if(newUnits.some(u=>u.vt==='hems')){
-    const reg=regionOf(tk);
-    radio('EN '+reg+' ANTO','HÄKE',`${shownCode(tk)}; ${tk.urg}; ${tk.addr}; ${newUnits.filter(u=>u.vt==='hems').map(u=>u.name).join(', ')} (FinnHEMS)`);
+    // FinnHEMS hälytetään NORMAALILLE paikalliselle ensihoidon annolle (EN ANTO) — EI erilliselle EN LU ANTO -kanavalle.
+    radio(chFor('ensihoito','ANTO',tk),'HÄKE',`${shownCode(tk)}; ${tk.urg}; ${tk.addr}; ${newUnits.filter(u=>u.vt==='hems').map(u=>u.name).join(', ')} (FinnHEMS)`);
   }
   tk.initialAnnounced=true;
 }
@@ -4339,6 +4341,8 @@ function checkNeglect(tk){
 }
 function ensureChannels(){
   ['PE ANTO','EN ANTO','PO ANTO'].forEach(c=>{if(!G.radio[c])G.radio[c]=[];});
+  // SIIVOUS: vanhat virheelliset alueelliset ANTO-kanavat (esim. "EN LU ANTO") siirretään perus-annolle (EN ANTO).
+  Object.keys(G.radio).forEach(k=>{const m=k.match(/^(PE|EN|PO) .+ ANTO$/);if(m){const base=m[1]+' ANTO';G.radio[base]=(G.radio[base]||[]).concat(G.radio[k]||[]);delete G.radio[k];}});
   // Luo INFO-kanavat VAIN niille alueille joilla on asemia (ei oletus-LU:ta)
   const regs=[...new Set(G.stations.filter(s=>s.reg&&s.t!=='hems').map(s=>s.reg))];
   regs.forEach(r=>{['PE '+r+' INFO','EN '+r+' INFO','PO '+r+' INFO'].forEach(c=>{if(!G.radio[c])G.radio[c]=[];});});
@@ -6038,6 +6042,10 @@ function maybeRequestSuoja(tk,u){
 }
 const ESC_REASON={'401':['voimakasta savunmuodostusta ikkunasta','liekit levinneet yläpohjaan','tuli levinnyt viereiseen huoneistoon'],'402':['palo levinnyt useaan kerrokseen','katto syttynyt, leviämisvaara','useita henkilöitä pelastettavana'],'411':['palo levinnyt useampaan ajoneuvoon','tuli tarttunut rakennukseen'],'421':['maastopalo levinnyt nopeasti','tuuli yltynyt, rintama kasvaa'],'431':['palo levinnyt viereiseen rakennukseen'],'202':['henkilö puristuksissa, tarvitaan irrotusta','potilaan tila romahti, peruselintoiminnot uhattuna','useampi loukkaantunut kuin ilmoitettiin','potilas jäänyt ajoneuvon alle, nostotarve'],'203':['useita autoja osallisena, lisää loukkaantuneita'],'451':['vuoto laajentunut, evakuointitarve'],'444':['sortumavaara kasvanut']};
 function _escWhy(old){const r=ESC_REASON[old]||['tilanne laajentunut'];return r[Math.floor(Math.random()*r.length)];}
+// Lääketieteelliset (potilaan tila) syyt EIVÄT oikeuta PELASTUKSEN koodin nostoa (tarvitaan ensihoitoa,
+// ei lisää pelastusyksiköitä). Palauttaa pelastus-syyn, tai null jos kaikki syyt ovat lääketieteellisiä.
+const _MED_RE=/potila|peruselintoiminnot|tila romahti|elottom|elvyty|hengit/i;
+function _escWhyRescue(old){const r=(ESC_REASON[old]||['tilanne laajentunut']).filter(x=>!_MED_RE.test(x));return r.length?r[Math.floor(Math.random()*r.length)]:null;}
 // Yksiköt jotka voi AIDOSTI vapauttaa ILMAN että vaste menee vajaaksi. neededKeep suojaa
 // tyyppitarpeet; lisäksi varmistetaan needMetBy poistamalla yksi kerrallaan. Korjaa bugin jossa
 // johtaja vapautti juuri pyydetyn/tarvitun yksikön (esim. säiliö) → tehtävä jäi jumiin.
@@ -6104,8 +6112,11 @@ function maybeEscalate(tk,arriving){
       // Muu ensihoito ei nosta koodia: pyytää kenttäjohtajan/lääkärin. Poliisi pyytää lisäpartioita.
       const _ARREST=['700','701'];
       let msg;
-      if(tk.toimi==='pelastus')
-        msg=`nosta ${shownCode(tk)} ${tk.addr} ${tk.escTo}, ${_escWhy(tk.c)}`;
+      if(tk.toimi==='pelastus'){
+        const _whyR=_escWhyRescue(tk.c);
+        if(_whyR){ msg=`nosta ${shownCode(tk)} ${tk.addr} ${tk.escTo}, ${_whyR}`; }
+        else { msg=`${tk.addr} — potilaan tila huononee, pyydän lisää ensihoitoa kohteeseen`; tk.escSuggest=null; } // lääketieteellinen syy → EI nosteta pelastuksen koodia
+      }
       else if(_ARREST.includes(String(tk.escTo)))
         msg=`nosta ${shownCode(tk)} ${tk.addr} ${tk.escTo}, potilas mennyt elottomaksi`;
       else if(tk.toimi==='poliisi')
@@ -7178,6 +7189,7 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
     <div style="display:flex;justify-content:space-between;align-items:center"><span>📍 Kohdepisteet (ympäristö)</span><span class="smallnote">${(G.pois&&G.pois.length)||0} pistettä</span></div>
     <div class="smallnote">Merkitse kartalle ympäristöjä (juna-asema, yökerho, kauppakeskus, satama, hoitokoti…) — niiden lähelle alkaa syntyä juuri sinne sopivia tehtäviä, ja kyseisten tehtävien todennäköisyys kasvaa.</div>
     <button class="buy" style="width:100%" onclick="closePanels();startEditPois()">📍 Aseta kohdepisteitä kartalle</button>
+    <button class="buy" style="width:100%;margin-top:6px" onclick="togglePoiVisibility()">${G.settings.hidePois?'👁️ Näytä kohdepisteet kartalla':'🙈 Piilota kohdepisteet kartalta'}</button>
   </div>`;
   h+=`<div class="toggle" style="flex-direction:column;align-items:stretch;gap:8px;padding:12px 0">
     <div style="display:flex;justify-content:space-between;align-items:center"><span>Sairaalat ja terveysasemat</span><span class="smallnote">${allHospitals().length} kpl</span></div>
