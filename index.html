@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v214 (kontit/lavat ostetaan asemalle erikseen eivat tule automaattisesti + peruslava avolava lisatty koura/vaihtolava; vanhat tallennukset saavat lavat omistukseen; ostolista ryhmitelty paremmin halvin ensin) -->
+<!-- HATAKESKUS - dispatch sim v216 (tilannepaivitysraportit poistettu; suoja-auto pyydetaan heti alussa jo matkalla nopean tien tehtavissa; yhdistetty pyynto nostaisitko joukkuelahtoon ja lisaisitko myos yhden suoja-auton) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -504,7 +504,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v214'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v216'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3955,6 +3955,8 @@ function chFor(toimi,kind,tk){
 function unitSortKey(u){const o={pelastus:0,ensihoito:1,poliisi:2};return [o[u.toimi]??3,u.name];}
 function fullUnitList(tk){return tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean).sort((a,b)=>{const ka=unitSortKey(a),kb=unitSortKey(b);return ka[0]-kb[0]||ka[1].localeCompare(kb[1]);}).map(u=>u.name).join(', ');}
 function announceDispatch(tk,newUnits){
+  // SUOJA HETI ALUSSA: nopealla tiellä suojatarve tajutaan heti — pyyntö tulee jo matkalla (45-120 s).
+  if(tk.where==='road'&&tk.fastRoad&&tk.reqSuoja==null&&!tk._suojaCheckAt)tk._suojaCheckAt=G.clock+rnd(45,120);
   // ILMOITUS MUILLE VIRANOMAISILLE: HÄKE välittää tiedon tarvittaville tahoille (lokimerkintä)
   if(!tk._extNotified&&codeConfirmed(tk)){
     const _c=String(shownCode(tk));let _ext=null; // PELAAJAN valitsema koodi ratkaisee — HÄKE toimii kirjatun koodin mukaan
@@ -6001,7 +6003,7 @@ function missingRequestPhrase(tk){
     // ISO vajaus: pyydetään koko vaste kohteeseen MUODOSTELMANA (ei autolistana). EI ehdoteta koodin
     // nostoa (esim. 203→204) — alimitoitus ei ole sama kuin tilanteen laajeneminen; eskalaation
     // suosittaa johtaja erikseen (maybeEscalate).
-    phrase=(tk.toimi==='ensihoito')?'pyydän lisää ensihoitoyksiköitä kohteeseen':(tk.toimi==='poliisi')?'pyydän lisää partioita kohteeseen':('tarvitaan vahvennusta — '+formationWord(tk)+'vahvuus kohteeseen');
+    phrase=(tk.toimi==='ensihoito')?'pyydän lisää ensihoitoyksiköitä kohteeseen':(tk.toimi==='poliisi')?'pyydän lisää partioita kohteeseen':('nostaisitko '+formationWord(tk)+'lähtöön'+_suojaTag(tk));
   } else {
     const parts=items.map(it=>{const nm=REQ_NAME[it.k]||CLS_NAME[it.k]||it.k;return it.n===1?('yksi '+nm):(it.n+'× '+nm);});
     if(crewShort)parts.push('lisää miehistöä');
@@ -6123,6 +6125,16 @@ function maybeRequest551(tk,u){
 // kohteeseen suojaamaan työpaikkaa. Ydinkaupungissa harvoin tarvitaan, motarilla aina.
 // Suojauto: tarvitaan NOPEALLA TIELLÄ (motari/valtatie) — myös pienissä keikoissa.
 // Ratkaisee tien tyyppi (tk.fastRoad), EI keikan koko. Pikkutiellä/pihassa ei tarvita.
+// Yhdistetty suojapyyntö: jos suoja tarvitaan eikä sitä ole vielä pyydetty/hälytetty, palauttaa
+// jatkeen "... ja lisäisitkö myös yhden suoja-auton" ja merkitsee pyynnön tehdyksi (ei tuplaviestiä).
+function _suojaTag(tk){
+  if(G.settings.noSuoja)return '';
+  if(tk.where!=='road'||!tk.fastRoad||tk.reqSuoja!=null)return '';
+  const _au=(tk.assigned||[]).map(id=>G.units.find(x=>x.id===id)).filter(Boolean);
+  if((_computeHave(_au).have.suoja||0)>0){tk.reqSuoja=false;return '';}
+  tk.reqSuoja=true;tk.need.suoja=1;tk._suojaCheckAt=null;
+  return ' ja lisäisitkö myös yhden suoja-auton';
+}
 function maybeRequestSuoja(tk,u){
   if(tk.reqSuoja!=null)return;
   if(G.settings.noSuoja){tk.reqSuoja=false;return;}
@@ -6225,7 +6237,7 @@ function maybeEscalate(tk,arriving){
       let msg;
       if(tk.toimi==='pelastus'){
         const _whyR=_escWhyRescue(tk.c);
-        if(_whyR){ msg=`nosta ${shownCode(tk)} ${tk.addr} ${tk.escTo}, ${_whyR}`; }
+        if(_whyR){ msg=`nosta ${shownCode(tk)} ${tk.addr} ${tk.escTo}, ${_whyR}`+_suojaTag(tk); }
         else { msg=`${tk.addr} — potilaan tila huononee, pyydän lisää ensihoitoa kohteeseen`; tk.escSuggest=null; } // lääketieteellinen syy → EI nosteta pelastuksen koodia
       }
       else if(_ARREST.includes(String(tk.escTo)))
@@ -6478,7 +6490,10 @@ function progressTask(tk,dt){
   }
   // SUOJA-VARMISTUS: jos vaste vaatii suojayksikön eikä sellaista ole hälytetty, muistutetaan radiossa
   // (ettei suojatarve jää huomaamatta esim. vanhasta tallennuksesta).
-  if(tk.onScene&&tk.need&&tk.need.suoja>0&&!tk._suojaNote){
+  if(tk.onScene&&tk.status!=='valmis'&&tk.need&&tk.need.suoja>0&&!tk._suojaNote
+     &&tk.workNeeded&&tk.work<tk.workNeeded*0.6&&onsc.length>0){
+    // Muistutus VAIN jos tehtävä on oikeasti vielä kesken (alle 60% tehty) ja kohteessa on väkeä —
+    // ei lähtiessä eikä valmiille tehtävälle.
     const _allU=tk.assigned.map(id=>G.units.find(x=>x.id===id)).filter(Boolean);
     if((_computeHave(_allU).have.suoja||0)===0&&tk.firstArrival&&G.clock-tk.firstArrival>420){
       tk._suojaNote=true;const _sp2=tk.lead||(onsc[0]&&onsc[0].name);
@@ -6487,6 +6502,12 @@ function progressTask(tk,dt){
   }
   // LISÄAPU-MERKIN POISTO: kun tilanne on ratkennut (työteho täysi + vaste täyttä), ei jätetä "lisäapua" roikkumaan.
   if(tk.reqMsg && rate>=0.999 && needMetBy(tk,onsc)){ tk.reqMsg=null;tk._capReqDone=false; try{renderList();updateBadge();}catch(e){} }
+  // SUOJA-PYYNTÖ MATKALLA: nopean tien tehtävissä pyyntö tulee heti alussa, ei vasta kohteessa
+  if(tk._suojaCheckAt&&G.clock>=tk._suojaCheckAt){
+    tk._suojaCheckAt=null;
+    const _u1=tk.assigned.map(id=>G.units.find(x=>x.id===id)).find(Boolean);
+    if(_u1&&tk.reqSuoja==null)maybeRequestSuoja(tk,_u1);
+  }
   // VAINAJA: elottomuustehtävässä potilas voi olla ilmeisesti menehtynyt → X-1, ei kuljetusta,
   // poliisi pyydetään kohteeseen (kuolemansyyn selvittäminen).
   if((tk.realCode||tk.c)==='700'&&tk.onScene&&!tk._vainajaChecked&&onsc.some(u=>u.toimi==='ensihoito')){
@@ -6499,12 +6520,7 @@ function progressTask(tk,dt){
       try{renderList();updateBadge();}catch(e){}
     }
   }
-  // TILANNEPÄIVITYKSET: johtoyksikkö raportoi edistymisestä radiossa (väliraportit kohteesta)
-  if(tk.onScene&&tk.lead&&tk.workNeeded){
-    const _fr=tk.work/tk.workNeeded;
-    if(!tk._rep1&&_fr>0.3){tk._rep1=true;if(Math.random()<0.7){const _m=isFireTask(tk)?'sammutustyöt käynnissä':(tk.toimi==='ensihoito'?'potilaan hoito käynnissä':(tk.toimi==='poliisi'?'tilanne kohteessa selvitettävänä':'selvitystyöt käynnissä'));try{radio(chFor(tk.toimi,'INFO',tk),tk.lead,tk.addr+' — '+_m);}catch(e){}}}
-    if(!tk._rep2&&_fr>0.78){tk._rep2=true;if(Math.random()<0.7){try{radio(chFor(tk.toimi,'INFO',tk),tk.lead,tk.addr+' — tilanne hallinnassa');}catch(e){}}}
-  }
+
   // Johtajan ARVIOT vasta kun hän on ehtinyt sizetä tilanteen (johtaja ei tiedä heti):
   if(leadAssessReady(tk)){
     // 1) Eskalaatio / koodinkorjaus — rullataan harvakseltaan (n. 30 s välein), ei joka tikki
