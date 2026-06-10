@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v220 (PELITESTATTU headless-ajolla: route-bugi korjattu 3 paikassa u.route=r.coords - yksikot eivat enaa jumitu perutun/epaonnistuneen tehtavan jalkeen tai Laheta asemalle -napista; vainajatehtava valmistuu kun poliisi kohteessa; luovutus-statusteksti palautettu; testattu: lisaapupyynnot, suojapyynnot, lisahalytykset, merkkien poistuminen, spawn, ei haamutehtavia) -->
+<!-- HATAKESKUS - dispatch sim v221 (kuormatasapaino: uusia tehtavia harvemmin kun kalusto lahes varattu; kaatumisia vahemman; tavoitteet tasarahoiksi ja 2 asemaa pois; X kysyy jos halytys kesken; jono-toiminto D-tehtaville pause-napilla; halytyslistan ryhmittely tyypeittain asetuksena; 551-nostoavun tuplaviesti pois) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -430,6 +430,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
       <span style="color:var(--dim);font-size:12px" id="dname"></span><br>
       <span class="smallnote" id="daddr"></span></div>
     <button class="btn-x" id="dadvice" title="Hoida neuvontana — ei yksikköä (H-tehtävä, portinvartija)" onclick="dismissCurrentAsAdvice()" style="margin-right:4px">📞</button>
+    <button class="btn-x" id="dpark" title="Siirrä jonoon odottamaan (esim. D-tehtävä ruuhkassa)" onclick="parkTask()" style="margin-right:4px">⏸</button>
     <button class="btn-x" id="ddelete" title="Hylkää tehtävä (SAKKO — vain jumittuneeseen)" onclick="removeCurrentTask()" style="margin-right:4px">🗑️</button>
     <button class="btn-x x" id="dclose">✕</button>
   </div>
@@ -504,7 +505,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v220'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v221'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -776,7 +777,7 @@ const TASKS=[
    'Työtapaturma, raaja jäänyt koneeseen, runsasta vuotoa. Soittaja: työnjohto.',
    'Mies vuotaa runsaasti reidestä, soittajan mukaan teräase, ei tarkkaa kuvausta — puukko tai jokin muu, ei nähty tarkasti.',
    'Nainen löytänyt itsensä verissään keittiössä, ei muista miten — voi olla lasi, voi olla terä, ei selvyyttä.']},
- {c:'745',n:'Kaatuminen',toimi:'ensihoito',w:10,need:{ambulanssi:1},rew:230,where:'any',patients:1,sev:'low',esc:.05,dur:[6,20],info:'Kaatuminen.',variants:[
+ {c:'745',n:'Kaatuminen',toimi:'ensihoito',w:7,need:{ambulanssi:1},rew:230,where:'any',patients:1,sev:'low',esc:.05,dur:[6,20],info:'Kaatuminen.',variants:[
    'Vanhus kaatunut kotona, ollut lattialla useita tunteja. Soittaja: kotihoito.',
    'Nainen ~80v kaatunut rappukäytävässä, lonkkakipu, ei pääse ylös.',
    'Mies kaatunut pihalla liukkaalla, päässä haava, sekava. Soittaja: naapuri.',
@@ -3592,6 +3593,7 @@ function dStatusInner(tk){
   const actions=`<div style="display:flex;gap:6px;margin-top:9px"><button class="btn-x" style="flex:1;color:#f99" data-act="freeall">Kotiuta kaikki yksiköt</button></div>`;
   return `<div class="sec" style="background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:10px"><h4>Tilanne kohteessa</h4>${rows}${prog}${actions}</div>`;
 }
+window.parkTask=()=>{const tk=dCur;if(!tk)return;tk.parked=!tk.parked;toast(tk.parked?('⏸ '+ (tk.pickedCode||tk.c)+' siirretty jonoon'):('▶ '+(tk.pickedCode||tk.c)+' otettu jonosta'));document.getElementById('disp').classList.remove('open');dCur=null;renderList();updateBadge();saveGame(false);};
 window.forceComplete=(tid)=>{const tk=G.tasks.find(t=>t.id===tid);if(!tk)return;completeTask(tk);document.getElementById('disp').classList.remove('open');};
 window.freeAll=(tid)=>{const tk=G.tasks.find(t=>t.id===tid);if(!tk)return;[...tk.assigned].forEach(id=>{const u=G.units.find(x=>x.id===id);if(u)freeUnit(u);});tk.assigned=[];tk.onScene=false;tk.status='avoin';tk.reqKey='';tk._reqAnnounced=null;tk.reqMsg=null;if(dCur&&dCur.id===tid)renderDispatch();renderList();updateBadge();toast('Kaikki yksiköt kotiutettu');};
 // POISTA TEHTÄVÄ kokonaan (esim. jumittunut tehtävä jota ei saa muuten pois). Vapauttaa yksiköt,
@@ -3794,7 +3796,8 @@ function mergedUnitRows(tk){
     });
     list=list.concat(busy).concat(transp);
   }
-  list.sort((a,b)=>a.t-b.t);
+  if(G.settings.groupDisp){const _gc=x=>String((VTYPES[x.u.vt]&&VTYPES[x.u.vt].cls)||x.u.vt);list.sort((a,b)=>((a.busy?1:0)-(b.busy?1:0))||_gc(a).localeCompare(_gc(b))||(a.t-b.t));}
+  else list.sort((a,b)=>a.t-b.t);
   if(!list.length)return '<div class="smallnote">Ei yksiköitä. Rakenna asemia ja osta yksiköitä Asemat-välilehdeltä.</div>';
   return list.slice(0,50).map(x=>{const u=x.u;const sel=dSel.has(u.id);
     let stxt,scol;
@@ -3945,7 +3948,7 @@ window.applyPkg=i=>{
   else if(added)toast('✓ '+added+' yksikköä valittu — tarkista ja paina LÄHETÄ');
 };
 window.clearDsel=()=>{dSel=new Set();renderDispatch();};
-document.getElementById('dclose').onclick=()=>document.getElementById('disp').classList.remove('open');
+document.getElementById('dclose').onclick=()=>{if(dSel&&dSel.size>0&&!confirm('Yksiköitä on valittuna mutta ei hälytetty. Suljetaanko silti?'))return;document.getElementById('disp').classList.remove('open');};
 document.getElementById('dsend').onclick=()=>sendDispatch(false);
 document.getElementById('dsendnext').onclick=()=>sendDispatch(true);
 // DELEGOITU käsittely: "Tilanne kohteessa" -napit (Peruuta / Kotiuta kaikki). Kuuntelija on
@@ -4409,6 +4412,7 @@ function checkNeglect(tk){
       renderList();updateBadge();
     }
   }
+  if(tk.parked)return; // JONOSSA: pelaaja siirsi odottamaan — ei varoituksia, ei sakkoa, ei eskalaatiota
   // SOITTAJA SOITTAA UUDESTAAN: ensihoidon tehtävä odottanut pitkään ilman yksiköitä →
   // potilaan tila voi huonontua, kiireellisyys pitää arvioida uudelleen.
   if(tk.toimi==='ensihoito'&&tk.status==='avoin'&&!tk.pilapuhelu&&(tk.patients||0)>0&&!tk._recalled){
@@ -4697,7 +4701,11 @@ function tick(dt){G.clock+=dt;
     const _spH=(Math.floor(G.clock/3600)%24);
     // VUOROKAUSIRYTMI: tehtäviä eniten iltapäivällä/illalla (~16-17), vähiten aamuyöllä (~04-05). Keskiarvo ~0.95.
     const _diurnal=0.95+0.45*Math.cos((_spH-16.5)/12*Math.PI);
-    const perHour=Math.max(0.8,Math.min(30,cap*0.40*G.spawnRate*dayBoost*_diurnal)); // ~0.4/h per yksikkö × vuorokausirytmi; yöllä rauhallista
+    const _busyN=G.units.filter(u=>u.taskId&&!u.spare).length;const _util=cap?_busyN/cap:0;
+    // KUORMATASAPAINO: jos lähes kaikki yksiköt ovat varattuina, HÄKE-simu hidastaa tahtia —
+    // ruuhkapiikkejä tulee joskus (realistista), mutta EI jatkuvaa kaikki-varattuna-tilaa.
+    const _loadMul=_util>0.9?0.35:(_util>0.75?0.65:1);
+    const perHour=Math.max(0.8,Math.min(30,cap*0.40*G.spawnRate*dayBoost*_diurnal*_loadMul)); // ~0.4/h per yksikkö × vuorokausirytmi; yöllä rauhallista
     const baseInterval=3600/perHour;
     // REALISTINEN AJOITUS: Poisson-prosessi (eksponentiaaliset väliajat) → luonnolliset ryppäät ja
     // hiljaiset hetket, ei tasaista kelloa. Sama kummassakin tilassa; spawnRate-liukuri säätää tahtia.
@@ -4705,7 +4713,7 @@ function tick(dt){G.clock+=dt;
     const b=G._burst;
     // RUUHKASUOJA: älä syötä uutta tehtävää jos avoimia (yksiköittä odottavia) on jo liikaa.
     // Näin tehtäviä EI tule nopeammin kuin niihin ehtii vastata; hiljainen hetki ruuhkassa on realistinen.
-    const _openWaiting=G.tasks.filter(t=>t.status==='avoin').length;
+    const _openWaiting=G.tasks.filter(t=>t.status==='avoin'&&!t.parked).length;
     const _backlogOk=_openWaiting<Math.max(4,Math.round(fleetCapacity()*0.5));
     // REALISTINEN AJOITUS (Poisson) — mutta ohitetaan jos jono on jo täynnä (nextAt silti etenee, ei patoudu).
     if(G.clock>=b.nextAt){if(_backlogOk){lastSpawn=G.clock;spawnTask();}b.nextAt=G.clock+_expInterval(baseInterval);}
@@ -6134,7 +6142,7 @@ function maybeRequest551(tk,u){
   if(Math.random()<0.06){tk.req551=true;
     const reasons=['lukittu ovi, ei pääse potilaan luo','potilas nostettava ahtaasta tilasta, tarvitaan kantoapua','potilas liian painava yksin nostettavaksi'];
     const r=reasons[Math.floor(Math.random()*reasons.length)];
-    tk.needRescue=true;tk.need.sammutus=(tk.need.sammutus||0)+1;tk.rew+=200;tk.reqDone=true;
+    tk.needRescue=true;tk.need.sammutus=(tk.need.sammutus||0)+1;tk.rew+=200;tk.reqDone=true;tk._reqLastAt=G.clock; // estä requestMissing-tuplaviesti samasta tarpeesta heti perään
     const reg=regionOf(tk);
     // Pyytäjä on ENSIHOITOYKSIKKÖ (ei pelastus). Jos lead on pelastus, käytä ambulanssin tunnusta.
     const ehUnit=tk.assigned.map(id=>G.units.find(x=>x.id===id)).find(x=>x&&x.toimi==='ensihoito');
@@ -6928,7 +6936,7 @@ function spawnFollowUp(parent){
 }
 
 /* ===== RENDER LISTAT ===== */
-function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};const al=t=>(t.alert||(t.onScene&&t.reqMsg))?0:1;return ((o[a.urg]??4)-(o[b.urg]??4))||(al(a)-al(b))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${codeConfirmed(t)?pickedName(t):''}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
+function renderList(){const _all=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};const al=t=>(t.alert||(t.onScene&&t.reqMsg))?0:1;return ((o[a.urg]??4)-(o[b.urg]??4))||(al(a)-al(b))||(a.created-b.created);});const parked=_all.filter(t=>t.parked);const open=_all.filter(t=>!t.parked);const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${codeConfirmed(t)?pickedName(t):''}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');if(parked.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">⏸ JONOSSA ('+parked.length+')</div>'+parked.map(row).join('');}document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
 function updateBadge(){
   const n=G.tasks.filter(t=>t.status==='avoin').length,b=document.getElementById('navbadge');
   if(n>0){b.style.display='block';b.textContent=n;}else b.style.display='none';
@@ -7188,10 +7196,11 @@ function getGoals(){
   [5,10,25,50,100,250,500,1000].forEach(n=>goals.push({id:'tasks'+n,t:'Suorita '+n.toLocaleString('fi-FI')+' tehtävää',cat:'tasks',n,rew:Math.round(Math.pow(n,1.45)*60)}));
   [10,25,50,100,250,500].forEach(n=>goals.push({id:'saved'+n,t:'Pelasta '+n.toLocaleString('fi-FI')+' potilasta',cat:'saved',n,rew:Math.round(Math.pow(n,1.45)*120)}));
   [10,25,50,100,250].forEach(n=>goals.push({id:'tr'+n,t:'Kuljeta '+n.toLocaleString('fi-FI')+' potilasta sairaalaan',cat:'transported',n,rew:Math.round(Math.pow(n,1.45)*80)}));
-  [2,5,10,20,35].forEach(n=>goals.push({id:'st'+n,t:'Rakenna '+n+' asemaa',cat:'stations',n,rew:Math.round(Math.pow(n,1.7)*1200)}));
+  [5,10,20,35].forEach(n=>goals.push({id:'st'+n,t:'Rakenna '+n+' asemaa',cat:'stations',n,rew:Math.round(Math.pow(n,1.7)*1200)}));
   [10,25,50,100,200].forEach(n=>goals.push({id:'u'+n,t:'Hanki '+n+' yksikköä',cat:'units',n,rew:Math.round(Math.pow(n,1.4)*100)}));
   if(G.randomGoals)G.randomGoals.forEach(g=>goals.push(g));
-  return goals;
+  // TASARAHAT: kaikki palkkiot pyöristetään 500 € tarkkuuteen (ei 17 423 € -tyyppisiä summia)
+  return goals.map(g=>({...g,rew:Math.max(500,Math.round((g.rew||0)/500)*500)}));
 }
 const RANDOM_GOAL_TEMPLATES=[
   {cat:'tasks',name:'lisätehtävää',range:[50,250],rewMul:400,icon:'📋'},
@@ -7358,6 +7367,7 @@ function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</s
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
   h+=`<div class="toggle"><span>Pelin nopeus (aika nopeutuu)</span><input type="range" min="1" max="16" step="1" value="${TIME_MULT}" oninput="TIME_MULT=parseInt(this.value);document.getElementById('tmv').textContent=TIME_MULT+'×'"><span id="tmv">${TIME_MULT}×</span></div>`;
   h+=`<div class="toggle"><span>Vasteaika-kerroin (lähtöaika)</span><input type="range" min="0" max="2.5" step="0.1" value="${TURNOUT_MULT}" oninput="TURNOUT_MULT=parseFloat(this.value);document.getElementById('tov').textContent=TURNOUT_MULT.toFixed(1)+'×'"><span id="tov">${TURNOUT_MULT.toFixed(1)}×</span></div>`;
+  h+=`<div class="toggle"><span>Ryhmittele hälytyslistan yksiköt tyypeittäin (samaa tekevät peräkkäin)</span><input type="checkbox" ${G.settings.groupDisp?'checked':''} onchange="G.settings.groupDisp=this.checked;saveGame(false)"></div>`;
   h+=`<div class="toggle"><span>Vuodenaika</span><span class="smallnote">${G.season} (kalenterista${G.season==='myrsky'?' — myrsky ohi pian':''})</span></div>`;
   h+=sw('Tehtävät voivat laajentua',G.settings.autoEsc,"G.settings.autoEsc=!G.settings.autoEsc;renderSet()");
   h+=sw('Näytä ponnahdusilmoitukset',G.settings.showCallouts,"G.settings.showCallouts=!G.settings.showCallouts;renderSet()");
