@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v222 (VPK-asemavalmius AINA viiveella: miehisto halytetaan asemalle ja valmius alkaa vasta saapuessa aseman lahtoajan verran, koskee seka aseman togglea etta yksikon salamanappia, vakinaisella heti koska vaki jo paikalla; kiireellisyyden vaihto ei enaa vilauta pelin sisaista koodia ?-kohdassa) -->
+<!-- HATAKESKUS - dispatch sim v225 (minimivahvuus 0+1 myos nostolava/vaihtolava/koura/letku/huolto eli kuskiautot, johto 1+0; harjoitus pysakoi yhteen paikkaan out-parked-back) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -505,7 +505,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v222'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v225'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -2039,6 +2039,7 @@ function statusLabel(u){
     if(u.omamieli==='vpkajo')return u._vpkFree?'Vapaa':'Asemalla'; // VPK liikkeellä: "Vapaa" vain jos sopimusvahvuus mukana, muuten "Asemalla"
     return ['partio','kauppa','harjoitus'].includes(u.omamieli)?'Vapaa':'Ei hälytettävissä';
   }
+  if(u._readyAt&&!u.taskId)return 'Valmiuskutsu ~'+Math.max(1,Math.round((u._readyAt-G.clock)/60))+' min'; // kutsu lähetetty, miehistö matkalla asemalle
   if(u._drill&&!u.taskId)return 'Asemalla';              // harjoitus: lähtövalmius asemalta → status Asemalla
   const M={asema:'Asemalla',vapaa_valmius:'Vapaa',paluu:'Vapaa',otettu:'Tehtävä vastaanotettu',matka:'Matkalla',kuljetus:'Kuljetus',kohde:'Kohteessa',huolto:'Ei hälytettävissä'};
   return M[u.status]||'Vapaa';
@@ -2116,6 +2117,24 @@ window.toggleAtReady=(id)=>{const u=G.units.find(x=>x.id===id);if(!u)return;
   // (aseman normaali lähtöaika). Toinen painallus peruu kutsun.
   if(u._readyAt){u._readyAt=null;toast(u.name+': asemavalmiuskutsu peruttu');try{renderStation(u.stationId);}catch(e){}return;}
   const _rm=unitMuoto(u);
+  // Jos VPK on JO liikkeellä miehistöllä (vapaa-ajelu/harjoitus), valmius alkaa HETI (väh. 0+1
+  // autossa) — yksikkö ajaa asemalle vapaalla odottamaan keikkaa.
+  if(!u.atReadyStation&&(_rm==='vpk'||_rm==='sopimus')&&(u._drill||u.omamieli==='vpkajo')&&!u.taskId){
+    u._drill=false;u._drillHard=false;u._drillRoute=null;u._drillRi=0;u._drillPhase=null;u._drillLat=null;u._drillLng=null;
+    u.omamieli=null;u._vpkFree=false;u._driveRoute=null;u._driveRi=0;u._driveTarget=null;
+    // Auton OMA minimivahvuus: säiliö/tankki 0+1 → ajossa olevassa on aina väh. 1 → heti vapaalle.
+    // Isompaa miehistöä vaativat (esim. sammutus 1+3): ajossa on vain osa → status "kutsu lähetetty"
+    // ja VAPAA vasta kun kaikki ovat asemalla.
+    const _minOk=['sailio','tankki','johto','miehisto','nostolava','vaihtolava','koura','letku','huolto'].includes(u.vt); // 0+1-autot (vain kuski) + johto (1+0: päällystö itse ajossa)
+    if(_minOk){u.atReadyStation=true;u._atReadyUntil=G.clock+maxReadySec(u);}
+    else{const _rs2=G.stations.find(x=>x.id===u.stationId);u._readyAt=G.clock+Math.max(120,(_rs2?stationTurnout(_rs2):300)*(TURNOUT_MULT||1)*rnd(0.85,1.15));}
+    u.status='paluu';u.route=null;u.ri=0;u.target={lat:u.hx,lng:u.hy};
+    try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});}catch(e){}
+    try{refreshUnitMarker(u);}catch(e){}
+    toast(_minOk?('⚡ '+u.name+' jo liikkeellä minimivahvuudella — vapaalle, ajaa asemalle'):('⚡ '+u.name+': autossa osa miehistöstä — vapaalle kun kaikki asemalla'));
+    try{renderStation(u.stationId);}catch(e){}
+    return;
+  }
   if(!u.atReadyStation&&(_rm==='vpk'||_rm==='sopimus')){
     const _rs=G.stations.find(x=>x.id===u.stationId);
     u._readyAt=G.clock+Math.max(120,(_rs?stationTurnout(_rs):300)*(TURNOUT_MULT||1)*rnd(0.85,1.15));
@@ -3286,6 +3305,22 @@ async function spawnHTask(){
     lat:loc.lat,lng:loc.lng,urg:null,status:'avoin',assigned:[],created:G.clock,addr:randAddrFor(tpl.where||'any'),addrBlurred:false,
     onScene:false,escDone:false,lead:null,workNeeded:60,work:0,mislabeled:false,pilapuhelu:false,outcome:null,
     hTask:true,_expireAt:G.clock+rnd(8,18)*60};
+  // HOITOLAITOSSIIRTO: tehtävä syntyy OIKEASTA sairaalasta jonne on viety potilaita, ja
+  // kuljetus menee TOISEEN sairaalaan (pickHospital ohittaa lähtösairaalan).
+  if((tk.base==='707'||tk.base==='793'||tk.c==='707'||tk.c==='793')){
+    try{
+      const _hosps=allHospitals();
+      if(_hosps.length>=2){
+        const _adm=(G.hospAdmits||[]).filter(a=>G.clock<a.until);
+        const _withPat=_hosps.filter(h=>_adm.some(a=>a.id===h.id));
+        const _from=(_withPat.length?_withPat:_hosps)[Math.floor(Math.random()*(_withPat.length?_withPat.length:_hosps.length))];
+        tk.lat=_from.lat;tk.lng=_from.lng;tk.addr=_from.n;tk._siirtoFrom=_from.id;
+        const _ai=(G.hospAdmits||[]).findIndex(a=>a.id===_from.id&&G.clock<a.until);
+        if(_ai>=0)G.hospAdmits.splice(_ai,1); // potilas lähtee jatkohoitoon
+        try{if(tk.marker)map.removeLayer(tk.marker);}catch(e){}
+      }
+    }catch(e){}
+  }
   G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
   if(G.settings.showCallouts)toast('Uusi ilmoitus: '+tk.n);
 }
@@ -5425,7 +5460,7 @@ function tickVpkDrive(dt){
       // Harvoin ilmoittavat HÄKElle lähdöstä — useimmiten vain lähtevät ajelulle (vähemmän kohinaa).
       if(Math.random()<0.15)radio(reg+' VPK',u.name,'liikkeellä kaupungilla, vapaana tarvittaessa');
     } else {
-      u._drill=true;u._drillPhase='out';u._drillRoute=null;u._drillRi=0;u._drillLat=u.hx;u._drillLng=u.hy;u._drillUntil=G.clock+rnd(1200,3000);
+      u._drill=true;u._drillPhase='out';u._drillRoute=null;u._drillRi=0;u._drillLat=u.hx;u._drillLng=u.hy;u._drillUntil=G.clock+rnd(60,240)*60; // harjoitus voi kestää tunteja (1-4 h)
       // status PYSYY 'asema' (lähtövalmius asemalta). VAIN vaativa harjoitus ilmoitetaan HÄKElle koska
       // se voi hidastaa lähtöä; tavallinen harjoitus on hiljainen.
       u._drillHard=Math.random()<0.3;
@@ -5676,6 +5711,10 @@ function moveUnit(u,dt){
   }
   // JUMITUKSEN ESTO: jos departAt on järjettömän kaukana tulevaisuudessa (bugi), nollaa se järkeväksi
   // → yksikkö lähtee heti eikä jää tunneiksi jumiin "lähtee ~N min" -tilaan.
+  if(u._drill&&u._drillUntil&&G.clock-u._drillUntil>1800){
+    // VAHTIKOIRA: harjoitus venyi yli puoli tuntia yliajan (esim. tilakone jumissa päiviä) → kotiin
+    u._drill=false;u._drillHard=false;u._drillRoute=null;u._drillRi=0;u._drillPhase=null;u._drillLat=null;u._drillLng=null;u.lat=u.hx;u.lng=u.hy;try{refreshUnitMarker(u);}catch(e){}
+  }
   if(u._readyAt&&G.clock>=u._readyAt){
     // Miehistö saapunut asemalle → painavat statuksen vapaalle (1 min lähtö)
     u._readyAt=null;
@@ -6776,6 +6815,7 @@ function pickHospital(tk){
   const all=allHospitals();
   const absNearest=all.slice().sort((a,b)=>km(tk.lat,tk.lng,a.lat,a.lng)-km(tk.lat,tk.lng,b.lat,b.lng))[0];
   let pool=all.filter(h=>(rank[h.taso]??1)>=minLvl);
+  if(tk._siirtoFrom){pool=pool.filter(h=>h.id!==tk._siirtoFrom);if(!pool.length)pool=all.filter(h=>h.id!==tk._siirtoFrom);} // siirto: EI takaisin lähtösairaalaan
   if(!pool.length)pool=all.slice();
   if(!pool.length)return null;
   pool.sort((a,b)=>km(tk.lat,tk.lng,a.lat,a.lng)-km(tk.lat,tk.lng,b.lat,b.lng));
@@ -6879,7 +6919,7 @@ function completeTask(tk){tk.status='valmis';
   if(out.saved)G.taskStats.saved=(G.taskStats.saved||0)+out.saved;
   if(out.severe)G.taskStats.severe=(G.taskStats.severe||0)+out.severe;
   if(out.dead)G.taskStats.dead=(G.taskStats.dead||0)+out.dead;
-  if(tk.firstArrival&&tk.created){const resp=tk.firstArrival-tk.created;G.taskStats.respSum+=resp;G.taskStats.respCount++;
+  if(tk.firstArrival&&tk.created){let resp=tk.firstArrival-tk.created;if(resp<0)resp+=86400;G.taskStats.respSum+=resp;G.taskStats.respCount++;
     // Per-kiireellisyysluokka vasteaika (hälytyksestä eka kohteessa)
     const ug=tk.urg||'B';
     G.taskStats.respByUrg=G.taskStats.respByUrg||{};
@@ -6896,7 +6936,7 @@ function completeTask(tk){tk.status='valmis';
     if(out.saved)hs.saved+=out.saved;
     if(out.severe)hs.severe+=out.severe;
     if(out.dead)hs.dead+=out.dead;
-    if(tk.firstArrival&&tk.created){const resp=tk.firstArrival-tk.created;hs.respSum+=resp;hs.respCount++;
+    if(tk.firstArrival&&tk.created){let resp=tk.firstArrival-tk.created;if(resp<0)resp+=86400;hs.respSum+=resp;hs.respCount++;
       const ug=tk.urg||'B';hs.respByUrg[ug]=hs.respByUrg[ug]||{sum:0,count:0};hs.respByUrg[ug].sum+=resp;hs.respByUrg[ug].count++;}
   }
   const big=(tk.minCrew&&tk.minCrew>=14);
@@ -8078,6 +8118,8 @@ function applyLoaded(d){
   (d.stations||[]).forEach(s=>{G.stations.push(s);addStationMarker(s);});
   // MIGRAATIO: lavat ovat nyt OSTETTAVIA. Vanhat asemat joilla on lava-autoja mutta ei valintaa
   // saavat kaikki lavat omistukseen (vanha peli ei rikkoudu). Uudet asemat aloittavat ilman lavoja.
+  const _fixResp=o=>{if(!o)return;if((o.respSum||0)<0){o.respSum=0;o.respCount=0;}if(o.respByUrg)Object.keys(o.respByUrg).forEach(k=>{if((o.respByUrg[k].sum||0)<0)delete o.respByUrg[k];});};
+  _fixResp(G.taskStats);if(G.hakeStats)Object.values(G.hakeStats).forEach(_fixResp); // keskiyön yli menneet pilasivat vanhat tilastot
   G.stations.forEach(st=>{ if(!Array.isArray(st.availableLoads)&&(d.units||[]).some(u=>u.stationId===st.id&&VTYPES[u.vt]&&VTYPES[u.vt].loads)){st.availableLoads=Object.keys(LOAD_NAMES);} });
   // Lataa tehtävät ensin jotta unit.taskId validoidaan
   G.tasks=[];(d.tasks||[]).forEach(t=>{
