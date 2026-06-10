@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v216 (tilannepaivitysraportit poistettu; suoja-auto pyydetaan heti alussa jo matkalla nopean tien tehtavissa; yhdistetty pyynto nostaisitko joukkuelahtoon ja lisaisitko myos yhden suoja-auton) -->
+<!-- HATAKESKUS - dispatch sim v220 (PELITESTATTU headless-ajolla: route-bugi korjattu 3 paikassa u.route=r.coords - yksikot eivat enaa jumitu perutun/epaonnistuneen tehtavan jalkeen tai Laheta asemalle -napista; vainajatehtava valmistuu kun poliisi kohteessa; luovutus-statusteksti palautettu; testattu: lisaapupyynnot, suojapyynnot, lisahalytykset, merkkien poistuminen, spawn, ei haamutehtavia) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -504,7 +504,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v216'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v220'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -671,7 +671,7 @@ const TASKS=[
  /* ===== ENSIHOITO — peruselintoiminnot (A/B yleisiä) ===== */
  /* ===== ENSIHOITO — viralliset suomalaiset koodit (Ensihoidon käsikirja) ===== */
  // 7XX = peruselintoiminnan häiriö
- {c:'700',n:'Eloton',toimi:'ensihoito',w:5,need:{ambulanssi:1,johto:1,sammutus:1},minCrew:6,rew:650,where:'any',patients:1,sev:'critical',timeCrit:300,esc:.05,dur:[12,32],info:'Henkilö eloton.',variants:[
+ {c:'700',n:'Eloton',toimi:'ensihoito',w:2.5,need:{ambulanssi:1,johto:1,sammutus:1},minCrew:6,rew:650,where:'any',patients:1,sev:'critical',timeCrit:300,esc:.05,dur:[12,32],info:'Henkilö eloton.',variants:[
    'Mies n. 60v, ei hengitä, ei reagoi. Soittajana puoliso, ohjeistettu painelu.',
    'Iäkäs nainen löytynyt elottomana sängystä. Soittaja: kotihoitaja. Ihon väri sininen.',
    'Mies romahti kadulla, ohikulkija soitti, ei reagoi. Ikä epäselvä.',
@@ -688,6 +688,9 @@ const TASKS=[
    'Ensihoito ilmoittaa: 701, defibrillointi käynnissä.',
    'Eloton todettu kohteessa, elvytys aloitettu.']},
  {c:'702',n:'Tajuttomuus',toimi:'ensihoito',w:7,need:{ambulanssi:1},rew:380,where:'any',patients:1,sev:'high',timeCrit:600,esc:.15,dur:[10,25],info:'Tajuton, hengittää.',variants:[
+   'Mies löydetty tajuttomana puistonpenkiltä, hengittää. Soittaja: ohikulkija.',
+   'Nainen ~50v ei herää, hengitys kuuluu. Soittaja: puoliso.',
+   'Henkilö lyyhistynyt kaupan kassalle, ei reagoi puhutteluun.',
    'Mies (45v) löydetty tajuttomana, hengittää. Soittaja: työkaveri.',
    'Vanhus omassa kodissaan, ei herää, hengittää tasaisesti. Soittaja: omainen.',
    'Nuori nainen pyörtynyt baarissa, ei vielä herännyt. Soittaja: ystävä, alkoholin määrä ei tiedossa.',
@@ -696,6 +699,9 @@ const TASKS=[
    'Tajuton lapsi (8v) kuumesairaudessa. Soittaja: äiti, hengittää mutta ei vastaa.',
    'Mies ulkona, vaikuttaa nukkuvalta, ohikulkija ei saa herätettyä. Alkoholi? Ei tiedossa.']},
  {c:'703',n:'Hengitysvaikeus',toimi:'ensihoito',w:8,need:{ambulanssi:1},rew:340,where:'any',patients:1,sev:'high',timeCrit:540,esc:.12,dur:[8,22],info:'Hengitysvaikeus.',variants:[
+   'Nainen ~75v, hengenahdistus pahentunut yön aikana, ei jaksa puhua lauseita.',
+   'COPD-potilas, hengitysvaikeus, huulet sinertävät. Soittaja: omainen.',
+   'Mies ~60v, äkillinen hengenahdistus, korisevaa. Soittaja: itse.',
    'Nainen (60v) saa huonosti henkeä, istuu, sininen huulissa. Soittaja: itse.',
    'Astmakohtaus, lääkkeet eivät auta. Soittaja: potilas, ääni heikkenee.',
    'Mies COPD, paha hapenpuute. Soittaja: vaimo, vaikuttaa pahalta.',
@@ -706,30 +712,27 @@ const TASKS=[
    'Keuhkoahtaumapotilaalla limaisuutta ja vinkunaa, inhalaattori loppu. Soittaja: itse.',
    'Nuori nainen hyperventiloi paniikkikohtauksessa, pistelyä sormissa. Soittaja: ystävä.']},
  {c:'704',n:'Rintakipu',toimi:'ensihoito',w:9,need:{ambulanssi:1},rew:360,where:'any',patients:1,sev:'high',timeCrit:720,esc:.1,dur:[10,25],info:'Rintakipu.',variants:[
+   'Nainen ~65v, puristava rintakipu levossa, säteilee käsivarteen.',
+   'Mies ~55v, rintakipu rasituksessa alkanut, nitro ei auta. Soittaja: itse.',
+   'Mies ~70v, rintakipua ja pahoinvointia, kylmänhikinen. Soittaja: puoliso.',
    'Mies n. 50v, rintakipua 30 min, hikoilua. Soittajana puoliso.',
    'Aiempi infarktipotilas, samanlaiset oireet kuin ennen. Soittaja: itse.',
    'Nainen (65v), rintakipua ja pahoinvointia. Ihon väri harmaa. Soittaja: tytär.',
    'Henkilö (40v) lievä rintakipu rasituksessa, helpottaa levossa. Soittaja: itse, epävarma onko hätä.',
    'Mies ravintolassa, kova kipu rintaan, säteilee käsivarteen. Soittaja: tarjoilija.',
    'Iäkäs mies, painon tunne rinnassa pari tuntia, vaimo painostanut soittamaan.']},
- {c:'705',n:'Rytmihäiriö',toimi:'ensihoito',w:5,need:{ambulanssi:1},rew:340,where:'any',patients:1,sev:'high',timeCrit:600,esc:.08,dur:[10,25],info:'Rytmihäiriö.',variants:[
+ {c:'705',n:'Rytmihäiriö',toimi:'ensihoito',w:4,need:{ambulanssi:1},rew:340,where:'any',patients:1,sev:'high',timeCrit:600,esc:.08,dur:[10,25],info:'Rytmihäiriö.',variants:[
    'Sydän hakkaa, huimaa. Soittaja: itse, n. 55v.',
    'Tykytyskohtaus tunti, ei mene ohi, hengenahdistus. Soittaja: itse.',
    'Aiempi rytmihäiriöpotilas, oireet pahentuneet. Soittaja: vaimo.',
    'Voimakas tykytys, lähes pyörtynyt. Soittaja: omainen.',
    'Iäkäs henkilö, sydämen rytmi epätasainen, mittari näyttää korkeaa pulssia.']},
- {c:'706',n:'Aivoverenkiertohäiriö',toimi:'ensihoito',w:5,need:{ambulanssi:1},rew:400,where:'any',patients:1,sev:'high',timeCrit:600,esc:.12,dur:[10,25],info:'Aivohalvausepäily.',variants:[
+ {c:'706',n:'Aivoverenkiertohäiriö',toimi:'ensihoito',w:4,need:{ambulanssi:1},rew:400,where:'any',patients:1,sev:'high',timeCrit:600,esc:.12,dur:[10,25],info:'Aivohalvausepäily.',variants:[
    'Mies (70v), suupieli roikkuu, puhe puuroutunut. Soittaja: puoliso, alkoi 30 min sitten.',
    'Nainen, äkillinen halvausoire kädessä, alkoi 20 min sitten. Soittaja: itse, vaikea puhua.',
    'Puhekyky kadonnut äkillisesti, toinen käsi ei toimi. Soittaja: omainen.',
    'Iäkäs nainen sekava, toinen jalka pettää. Soittaja: tytär, viimeksi normaali tunti sitten.',
    'Mies kaatunut työpaikalla, ei saa sanoja ulos. Soittaja: työkaveri.']},
- {c:'793',n:'Hoitolaitossiirto (kiireetön)',toimi:'ensihoito',w:1.5,need:{ambulanssi:1},rew:170,where:'urban',patients:1,sev:'low',esc:0,dur:[25,50],instCaller:true,info:'Kiireetön siirtokuljetus hoitolaitosten välillä, ei hätätilanne.',variants:[
-   'Potilas siirretään terveyskeskuksesta vuodeosastolle, vointi vakaa.',
-   'Vanhus kotiutetaan sairaalasta hoivakotiin, tarvitsee paarikuljetuksen.',
-   'Potilas röntgentutkimukseen toiseen yksikköön, ajanvaraus.',
-   'Kuntoutuspotilas siirretään jatkohoitopaikkaan, vointi vakaa.'],
-  },
  {c:'707',n:'Hoitolaitossiirto (kiireellinen)',toimi:'ensihoito',w:2,need:{ambulanssi:1},rew:260,where:'urban',patients:1,sev:'medium',timeCrit:1200,esc:.04,dur:[20,40],instCaller:true,info:'Kiireellinen siirto sairaalasta toiseen.',variants:[
    'Sydänpotilas siirretään yliopistosairaalaan, päivystävä lääkäri pyytää nopeaa siirtoa.',
    'Monivammapotilas, jatkohoito traumakeskuksessa. Hoitaja antaa raportin lähdössä.',
@@ -773,7 +776,10 @@ const TASKS=[
    'Työtapaturma, raaja jäänyt koneeseen, runsasta vuotoa. Soittaja: työnjohto.',
    'Mies vuotaa runsaasti reidestä, soittajan mukaan teräase, ei tarkkaa kuvausta — puukko tai jokin muu, ei nähty tarkasti.',
    'Nainen löytänyt itsensä verissään keittiössä, ei muista miten — voi olla lasi, voi olla terä, ei selvyyttä.']},
- {c:'745',n:'Kaatuminen',toimi:'ensihoito',w:9,need:{ambulanssi:1},rew:230,where:'any',patients:1,sev:'low',esc:.05,dur:[6,20],info:'Kaatuminen.',variants:[
+ {c:'745',n:'Kaatuminen',toimi:'ensihoito',w:10,need:{ambulanssi:1},rew:230,where:'any',patients:1,sev:'low',esc:.05,dur:[6,20],info:'Kaatuminen.',variants:[
+   'Vanhus kaatunut kotona, ollut lattialla useita tunteja. Soittaja: kotihoito.',
+   'Nainen ~80v kaatunut rappukäytävässä, lonkkakipu, ei pääse ylös.',
+   'Mies kaatunut pihalla liukkaalla, päässä haava, sekava. Soittaja: naapuri.',
    'Iäkäs kaatunut kotona, ei pääse ylös. Ei näkyviä vammoja. Soittaja: itse.',
    'Vanhus liukastunut pihatiellä, lonkkakipu, ei pysty seisomaan. Soittaja: omainen.',
    'Mopo kaatunut, kuljettaja istuu tien laidassa, polvi kipeä. Soittaja: ohikulkija.',
@@ -836,11 +842,11 @@ const TASKS=[
    'Raskaana (k.36), runsas vuoto, soittaja: puoliso.',
    'Kuukautisten yhteydessä poikkeavan runsas vuoto.',
    'Verivirtsaisuus, kova kipu kyljessä. Soittaja: itse.']},
- {c:'763',n:'Korva-/nenävuoto',toimi:'ensihoito',w:5,need:{ambulanssi:1},rew:160,where:'any',patients:1,sev:'low',esc:.02,dur:[6,12],info:'Vuoto korvasta tai nenästä.',variants:[
+ {c:'763',n:'Korva-/nenävuoto',toimi:'ensihoito',w:2,need:{ambulanssi:1},rew:160,where:'any',patients:1,sev:'low',esc:.02,dur:[6,12],info:'Vuoto korvasta tai nenästä.',variants:[
    'Nenäverenvuoto ei tyrehdy 45 min painamisesta.',
    'Korvavuotoa pään iskun jälkeen, lapsi kaatui pyörällä.',
    'Toistuvat nenäverenvuodot, verenpaine korkea.']},
- {c:'764',n:'Säärihaava / muu vuoto',toimi:'ensihoito',w:5,need:{ambulanssi:1},rew:180,where:'any',patients:1,sev:'low',esc:.02,dur:[6,12],info:'Krooninen haavavuoto.',variants:[
+ {c:'764',n:'Säärihaava / muu vuoto',toimi:'ensihoito',w:3,need:{ambulanssi:1},rew:180,where:'any',patients:1,sev:'low',esc:.02,dur:[6,12],info:'Krooninen haavavuoto.',variants:[
    'Säärihaava alkanut vuotaa runsaasti.',
    'Vanhuksen krooninen haava ei lakkaa vuotamasta sidoksen vaihdosta huolimatta.']},
  // 77X = sairaus (löydös)
@@ -864,7 +870,10 @@ const TASKS=[
    'Pähkinäallergikko söi vahingossa ravintolassa, kasvojen turvotus.',
    'Lääkeyliherkkyys, ihottuma leviää, hengitys vinkuu. Soittaja: itse.',
    'Lapsi syönyt mansikkaa, äkillinen turvotus.']},
- {c:'774',n:'Muu sairastuminen / yleistilan lasku',toimi:'ensihoito',w:8,need:{ambulanssi:1},rew:230,where:'any',patients:1,sev:'low',esc:.04,dur:[6,18],info:'Yleistilan lasku.',variants:[
+ {c:'774',n:'Muu sairastuminen / yleistilan lasku',toimi:'ensihoito',w:9,need:{ambulanssi:1},rew:230,where:'any',patients:1,sev:'low',esc:.04,dur:[6,18],info:'Yleistilan lasku.',variants:[
+   'Vanhus ei syönyt pariin päivään, voimaton, sänkyyn jäänyt. Soittaja: kotihoito.',
+   'Nainen ~85v, yleistila laskenut viikossa, ei pärjää kotona. Soittaja: tytär.',
+   'Mies ~78v, kuumeilua ja sekavuutta, virtsatieoireita. Soittaja: hoivakoti.',
    'Vanhus jaksamaton, kuume 39,2. Soittaja: omainen.',
    'Henkilö huimausta ja heikkoa oloa, ei ole syönyt vuorokauteen.',
    'Voimakas päänsärky ja pahoinvointi, ei vastaa puhelimeen.',
@@ -899,7 +908,7 @@ const TASKS=[
    'Mies maniavaiheessa, karkaa kotoa, ei tunnista omaisia.',
    'Henkilö rikkonut tavaroita, sekava, alkoholin osuus? Ei tiedossa.']},
  // 79X = sairaankuljetustehtävä
- {c:'790',n:'Hälytys puhelun aikana',toimi:'ensihoito',w:3,need:{ambulanssi:1},rew:320,where:'any',patients:1,sev:'high',timeCrit:480,esc:.12,dur:[10,25],info:'Soittaja menetti tajuntansa puhelun aikana.',variants:[
+ {c:'790',n:'Hälytys puhelun aikana',toimi:'ensihoito',w:1.5,need:{ambulanssi:1},rew:320,where:'any',patients:1,sev:'high',timeCrit:480,esc:.12,dur:[10,25],info:'Soittaja menetti tajuntansa puhelun aikana.',variants:[
    'Soittaja kuvaili oloa, vaikeni kesken puhelun. Ei vastaa.',
    'Henkilö kuvaili rintakipua, ääni hiljeni, kuuluu hengitystä.',
    'Hätäpuhelu katkesi, taustalla romahdus kuultiin.',
@@ -943,6 +952,10 @@ const TASKS=[
 
  /* ===== PELASTUS — tulipalot ===== */
  {c:'103',n:'Automaattinen palohälytys',toimi:'pelastus',w:9,need:{sammutus:1},rew:300,where:'industrial',patients:0,sev:'none',esc:.18,escTo:'401',dur:[8,20],info:'Automaattinen paloilmoitin.',variants:[
+   'Automaattinen paloilmoitin, hoivakoti. Kohteesta ei lisätietoa.',
+   'Paloilmoitin lauennut koululla, ei savuhavaintoa ilmoituksen mukaan.',
+   'Automaatti-ilmoitus teollisuushallista, kiinteistöhuolto matkalla kohteeseen.',
+   'Paloilmoitin lauennut kerrostalon kellarissa, syy epäselvä.',
    'Automaattinen paloilmoitin liikekiinteistö, kiinteistönomistajaa ei tavoiteta.',
    'Paloilmoitin teollisuushalli, vartija tavoitettu, ei näe savua.',
    'Paloilmoitin hoitolaitos, henkilökunta tavoittamattomissa.',
@@ -951,7 +964,7 @@ const TASKS=[
    'Paloilmoitin kerrostalo, huoltoyhtiö tavoitettu, lähettää huoltomiehen.',
    'Paloilmoitin varasto, kiinteistöltä ei vastausta.',
    'Paloilmoitin kerrostalon yhteistiloissa, asukas ilmoittaa ettei näe savua.']},
- {c:'401',n:'Rakennuspalo: pieni',toimi:'pelastus',w:6,need:{sammutus:1},rew:450,where:'urban',patients:0,sev:'low',esc:.35,escTo:'402',dur:[15,40],info:'Pieni palo tai käry.',variants:[
+ {c:'401',n:'Rakennuspalo: pieni',toimi:'pelastus',w:3,need:{sammutus:1},rew:450,where:'urban',patients:0,sev:'low',esc:.35,escTo:'402',dur:[15,40],info:'Pieni palo tai käry.',variants:[
    'Palovaroitin piippaa asunnossa, soittaja: naapuri, ei näkyvää savua porraskäytävässä.',
    'Kärähtänyt ruoka liedellä, lievää savua, ei avotulta. Soittaja: asukas.',
    'Sauna kuumentunut, käryä, ei avotulta. Soittaja: omistaja.',
@@ -961,7 +974,7 @@ const TASKS=[
    'Sähkölaturi sulanut pistorasiassa, käryä ja kipinöitä. Soittaja: asukas, irrotti johdon.',
    'Pyykinkuivausrumpu savuaa kodinhoitohuoneessa, asukas katkaisi virran.',
    'Liesituulettimen rasva syttyi, asukas tukahdutti kannella, savua keittiössä.']},
- {c:'402',n:'Rakennuspalo: keskisuuri',toimi:'pelastus',w:1.2,need:{sammutus:2,sailio:1,nostolava:1,johto:1,ambulanssi:1},minCrew:10,rew:1800,where:'urban',patients:1,sev:'high',timeCrit:600,esc:.18,escTo:'403',dur:[50,120],info:'Rakennuspalo.',variants:[
+ {c:'402',n:'Rakennuspalo: keskisuuri',toimi:'pelastus',w:0.8,need:{sammutus:2,sailio:1,nostolava:1,johto:1,ambulanssi:1},minCrew:10,rew:1800,where:'urban',patients:1,sev:'high',timeCrit:600,esc:.18,escTo:'403',dur:[50,120],info:'Rakennuspalo.',variants:[
    'Savua ulos huoneiston ikkunasta, asukkaat ulkona, soittaja: naapuri.',
    'Liekkejä parvekkeen ovesta kerrostalossa, asukkaat poistuivat. Soittaja: ohikulkija.',
    'Kerrostalon asunnosta paksua savua, soittaja epävarma onko kaikki ulkona.',
@@ -969,12 +982,12 @@ const TASKS=[
    'Omakotitalo liekeissä, asukkaiden määrä epäselvä. Soittaja: naapuri yli kadun.',
    'Terassi palaa rivitalon päädyssä, soittaja ei tiedä onko levinnyt rakenteisiin.',
    'Asunnosta paksua savua, soittaja kuuli paukauksen, mahdollinen kaasupullo? Ei varmuutta.']},
- {c:'403',n:'Rakennuspalo: suuri',toimi:'pelastus',w:0.4,need:{sammutus:6,sailio:2,nostolava:1,johto:2,ambulanssi:2},minCrew:22,rew:4800,where:'urban',patients:3,sev:'critical',timeCrit:720,esc:0,dur:[120,260],info:'Suuri rakennuspalo.',variants:[
+ {c:'403',n:'Rakennuspalo: suuri',toimi:'pelastus',w:0.25,need:{sammutus:6,sailio:2,nostolava:1,johto:2,ambulanssi:2},minCrew:22,rew:4800,where:'urban',patients:3,sev:'critical',timeCrit:720,esc:0,dur:[120,260],info:'Suuri rakennuspalo.',variants:[
    'Teollisuushalli täydessä liekissä, leviämisvaara naapurirakennuksiin.',
    'Kerrostalon ylin kerros palaa, ihmisiä parvekkeilla, eivät pääse alas.',
    'Laaja rakennuspalo, savupatsas näkyy kauas, evakuointi käynnissä.',
    'Hoitolaitos palaa, sisällä liikuntarajoitteisia. Soittaja: hoitaja.']},
- {c:'411',n:'Liikennevälinepalo: pieni',toimi:'pelastus',w:4,need:{sammutus:1},rew:350,where:'road',patients:0,sev:'low',esc:.12,escTo:'412',dur:[15,35],info:'Ajoneuvopalo.',variants:[
+ {c:'411',n:'Liikennevälinepalo: pieni',toimi:'pelastus',w:2.5,need:{sammutus:1},rew:350,where:'road',patients:0,sev:'low',esc:.12,escTo:'412',dur:[15,35],info:'Ajoneuvopalo.',variants:[
    'Henkilöauto tulessa tien laidassa, kuljettaja ulkona, ei loukkaantumisia.',
    'Auton moottoritilasta savua parkkipaikalla, omistaja paikalla.',
    'Pakettiauto palaa, ohikulkijat pysähtyneet, ei tietoa kuljettajasta.',
@@ -1009,6 +1022,9 @@ const TASKS=[
 
  /* ===== PELASTUS — liikenneonnettomuudet ===== */
  {c:'202',n:'Liikenneonnett.: pieni',toimi:'pelastus',w:7,need:{sammutus:1,ambulanssi:1},rew:450,where:'road',patients:1,sev:'medium',timeCrit:720,esc:.18,escTo:'203',dur:[20,45],info:'Liikenneonnettomuus.',variants:[
+   'Kaksi henkilöautoa kolaroinut risteyksessä, toinen kuljettaja valittaa niskakipua.',
+   'Auto suistunut ojaan, kuljettaja päässyt itse ulos, pyörtynyt. Soittaja: ohikulkija.',
+   'Peräänajo valoissa, kaksi autoa, yksi niskakipuinen. Liikenne ruuhkautuu.',
    'Kahden auton kolari risteyksessä, kuljettajat ulkona, niskakipua.',
    'Auto ojassa, kuljettaja autossa hereillä mutta sekava.',
    'Peräänajo motariin, useita autoja, kukaan ei näytä loukkaantuneen pahasti.',
@@ -1072,7 +1088,10 @@ const TASKS=[
    'Kemikaalisäiliö revennyt tehtaalla, useita altistuneita, oireilevat työntekijät.',
    'Klooripäästö uimahallissa, asiakkaat oireilevat, evakuointi käynnissä.',
    'Ammoniakkivuoto, alue eristettävä laajalti, oireilevia työntekijöitä.']},
- {c:'461',n:'Vahingontorjunta: pieni',toimi:'pelastus',w:3,need:{sammutus:1},altNeed:[{vahinko:1}],rew:250,where:'any',patients:0,sev:'none',esc:.05,dur:[20,60],info:'Vahingontorjunta. Sammutus TAI vahingontorjunta-auto.',variants:[
+ {c:'461',n:'Vahingontorjunta: pieni',toimi:'pelastus',w:4.5,need:{sammutus:1},altNeed:[{vahinko:1}],rew:250,where:'any',patients:0,sev:'none',esc:.05,dur:[20,60],info:'Vahingontorjunta. Sammutus TAI vahingontorjunta-auto.',variants:[
+   'Puu kaatunut ajoradalle, tukkii toisen kaistan. Soittaja: autoilija.',
+   'Tuuli repinyt peltikattoa irti, pellit uhkaavat pudota kadulle.',
+   'Vesivahinko kerrostalossa, vettä valuu alempaan asuntoon. Soittaja: asukas.',
    'Puu kaatunut tielle, tukkii ajoradan. Soittaja: ohikulkija.',
    'Iso oksa nojaa sähkölinjaan myrskyssä.',
    'Mainoskyltti irronnut ja roikkuu vaarallisesti yli kävelytien.',
@@ -1128,12 +1147,12 @@ const TASKS=[
    'Henkilö pudonnut työmaan kaivantoon (n. 4m).',
    'Putkimies juuttunut hormiin, työpari soittaa.',
    'Ikkunanpesijä jäänyt riippumaan, korkeus epäselvä.']},
- {c:'712',n:'Jääminen suljettuun tilaan',toimi:'pelastus',w:3,need:{sammutus:1},rew:400,where:'urban',patients:1,sev:'low',esc:.05,dur:[10,25],info:'Henkilö jumissa.',variants:[
+ {c:'712',n:'Jääminen suljettuun tilaan',toimi:'pelastus',w:1,need:{sammutus:1},rew:400,where:'urban',patients:1,sev:'low',esc:.05,dur:[10,25],info:'Henkilö jumissa.',variants:[
    'Henkilö jumissa hississä, ei vaaraa mutta paniikoi. Soittaja: itse.',
    'Lapsi lukinnut itsensä kylpyhuoneeseen.',
    'Vanhus lukinnut itsensä ulos asunnosta, soittaa naapurin puhelimella.',
    'Henkilö jumissa kellarissa, lukko hajonnut.']},
- {c:'581',n:'Eläimen pelastaminen',toimi:'pelastus',w:2,need:{sammutus:1},altNeed:[{elainp:1}],rew:300,where:'any',patients:0,sev:'none',esc:.05,dur:[20,50],info:'Eläin vaarassa. Sammutusyksikkö TAI eläinpelastusyksikkö.',variants:[
+ {c:'581',n:'Eläimen pelastaminen',toimi:'pelastus',w:1.5,need:{sammutus:1},altNeed:[{elainp:1}],rew:300,where:'any',patients:0,sev:'none',esc:.05,dur:[20,50],info:'Eläin vaarassa. Sammutusyksikkö TAI eläinpelastusyksikkö.',variants:[
    'Hevonen pudonnut ojaan, ei pääse ylös, omistaja soittaa.',
    'Kissa puussa korkealla, omistaja ei saa alas.',
    'Lehmä jäissä lammessa, maanviljelijä paikalla.',
@@ -1172,7 +1191,7 @@ const TASKS=[
    'Asiakas käynyt kassahenkilön kimppuun kaupassa, tekijä yhä paikalla. Soittaja: myymäläpäällikkö.',
    'Naapurit riitautuneet rappukäytävässä, toinen lyönyt. Molemmat yhä paikalla.',
    'Nuorisoporukka käynyt yhden kimppuun puistossa, uhri istuu penkillä, huuli halki.']},
- {c:'361',n:'Kotihälytys: perheväkivalta',toimi:'poliisi',w:4,need:{poliisi:1,ambulanssi:1},rew:280,where:'urban',patients:1,sev:'medium',esc:.08,dur:[20,45],info:'Perheväkivaltaepäily.',variants:[
+ {c:'361',n:'Kotihälytys: perheväkivalta',toimi:'poliisi',w:5,need:{poliisi:1,ambulanssi:1},rew:280,where:'urban',patients:1,sev:'medium',esc:.08,dur:[20,45],info:'Perheväkivaltaepäily.',variants:[
    'Naapuri ilmoittaa: huutoa, paukkeita, itkua naapurista. Toistuva.',
    'Lapsi soittanut hätänumeroon, kuiskaa. Aikuiset tappelevat.',
    'Nainen soittaa hiljaa, mies päihtynyt ja aggressiivinen. Lapsia kotona.',
@@ -1196,7 +1215,7 @@ const TASKS=[
    'Murtojälkiä oven edessä, asunto tyhjä. Soittaja: asukas, soittaa pihalta.',
    'Hälytin yrityksessä, vartija matkalla. Soittaja: vartiointiliike.',
    'Asukas tullut kotiin, ovi murrettu, ei uskalla sisään. Yksin.']},
- {c:'341',n:'Päihtynyt henkilö',toimi:'poliisi',w:5,need:{poliisi:1},rew:160,where:'urban',patients:0,sev:'none',esc:.06,dur:[10,25],info:'Päihtynyt.',variants:[
+ {c:'341',n:'Päihtynyt henkilö',toimi:'poliisi',w:6,need:{poliisi:1},rew:160,where:'urban',patients:0,sev:'none',esc:.06,dur:[10,25],info:'Päihtynyt.',variants:[
    'Päihtynyt makaa kadulla, häiritsee ohikulkijoita. Soittaja: ohikulkija.',
    'Humalainen aggressiivinen kauppakeskuksessa, ei poistu. Soittaja: vartija.',
    'Päihtynyt nukkuu rappukäytävässä, ei tunne ketään asukkaista.',
@@ -1216,7 +1235,10 @@ const TASKS=[
    'Auto ajaa risteilyssä, kuski humalassa? Soittaja: ohikulkija, rekisterinro otettu.',
    'Toistuva kovaa ylinopeutta omakotialueella, asukkaat valittavat.',
    'Mopo kärrää nuoria, kypäriä ei. Soittaja: ohikulkija.']},
- {c:'331',n:'Häiriökäytös',toimi:'poliisi',w:6,need:{poliisi:1},rew:170,where:'urban',patients:0,sev:'none',esc:.06,dur:[10,25],info:'Häiriökäyttäytyminen.',variants:[
+ {c:'331',n:'Häiriökäytös',toimi:'poliisi',w:9,need:{poliisi:1},rew:170,where:'urban',patients:0,sev:'none',esc:.06,dur:[10,25],info:'Häiriökäyttäytyminen.',variants:[
+   'Päihtynyt seurue metelöi pihalla, ei poistu kehotuksesta. Soittaja: asukas.',
+   'Henkilö huutelee ja potkii roska-astioita kadulla. Soittaja: ohikulkija.',
+   'Nuorisojoukko häiriköi ostoskeskuksen edustalla, vartija pyytää partiota.',
    'Useita henkilöitä metelöi pihalla yöllä. Soittaja: naapuri.',
    'Päihtynyt huutaa kadulla, häiritsee, ei tee pahaa. Soittaja: asukas.',
    'Bussin matkustaja häiritsee muita, kuljettaja pyytää apua.',
@@ -1338,7 +1360,6 @@ const TASKS=[
    'Pankki ryöstetty aseilla, tekijä pakeni autolla.',
    'Huoltoasema aseellisessa ryöstössä, kuski ammuttu.',
    'Kuljetus ryöstetty, vartijat sidottu.']},
- {c:'071',n:'Aseellinen uhkaus',toimi:'poliisi',w:0.4,need:{poliisi:3},minCrew:3,rew:900,where:'any',patients:0,sev:'high',timeCrit:480,esc:.08,dur:[30,90],info:'Aseellinen tilanne (replaced existing — same code).',skip:true},
  {c:'072',n:'Uhkaus',toimi:'poliisi',w:3,need:{poliisi:1},rew:200,where:'urban',patients:0,sev:'medium',esc:.05,dur:[15,40],info:'Suusanallinen uhkaus.',variants:[
    'Asiakas uhkaillut kassalla, vartija pyytää apua.',
    'Tuntematon henkilö uhkaillut puhelimitse, soittaja paniikissa.',
@@ -1351,7 +1372,7 @@ const TASKS=[
    'Kioskin lukko murrettu, jäljellä jälkiä.',
    'Yritys: hälytys laukennut, vartija lähestyy.',
    'Tehtaan portti avattu väkisin.']},
- {c:'121',n:'Varkaus',toimi:'poliisi',w:5,need:{poliisi:1},rew:130,where:'urban',patients:0,sev:'none',esc:.03,dur:[15,35],info:'Varkausilmoitus.',variants:[
+ {c:'121',n:'Varkaus',toimi:'poliisi',w:5.5,need:{poliisi:1},rew:130,where:'urban',patients:0,sev:'none',esc:.03,dur:[15,35],info:'Varkausilmoitus.',variants:[
    'Pyörä varastettu kaupungilta, mahdollinen kuvaus.',
    'Lompakko viety puistossa, tekijä tunnistettu.',
    'Auto varastettu parkkihallista, hälytys auki.']},
@@ -1370,7 +1391,7 @@ const TASKS=[
    'Ajaa risteilyssä — kuski humalassa, rekisterinro saatu.',
    'Naapuri näki kuljettajan kaatuilevan ennen lähtöä.',
    'Pysäytetty tullissa — alkometri positiivinen.']},
- {c:'351',n:'Häiriö asuinrakennuksessa',toimi:'poliisi',w:4,need:{poliisi:1},rew:170,where:'urban',patients:0,sev:'none',esc:.04,dur:[15,35],info:'Riitelevä naapuri tai juhlat.',variants:[
+ {c:'351',n:'Häiriö asuinrakennuksessa',toimi:'poliisi',w:5,need:{poliisi:1},rew:170,where:'urban',patients:0,sev:'none',esc:.04,dur:[15,35],info:'Riitelevä naapuri tai juhlat.',variants:[
    'Yötä myöten kovat juhlat, naapurit valittavat.',
    'Naapuri lyö seinään aggressiivisesti.',
    'Asukas huutaa porraskäytävässä — humalassa.']},
@@ -1387,15 +1408,15 @@ const TASKS=[
    'Lapsi pudonnut keinusta, polvi verillä mutta hereillä.',
    'Aikuinen kaatui kerrostalon portaissa, lonkka kipeä.',
    'Liukkaalla kaatuminen, nilkka turvonnut.']},
- {c:'786',n:'Päihtymys / yliannostus',toimi:'ensihoito',w:3,need:{ambulanssi:1,poliisi:1},minCrew:2,rew:280,where:'urban',patients:1,sev:'medium',esc:.07,dur:[15,40],info:'Päihteiden yliannostus.',variants:[
+ {c:'786',n:'Päihtymys / yliannostus',toimi:'ensihoito',w:6,need:{ambulanssi:1,poliisi:1},minCrew:2,rew:280,where:'urban',patients:1,sev:'medium',esc:.07,dur:[15,40],info:'Päihteiden yliannostus.',variants:[
    'Henkilö maassa puistossa, lähellä huumeruiskuja.',
    'Päihtynyt löytynyt yökerhon vessasta, ei reagoi kunnolla.',
    'Lääkkeiden yliannostus, omainen löysi.']},
- {c:'787',n:'Hammasperäisesti vammautunut',toimi:'ensihoito',w:5,need:{ambulanssi:1},rew:170,where:'any',patients:1,sev:'low',esc:.02,dur:[6,15],info:'Hammashuoltovamma.',variants:[
+ {c:'787',n:'Hammasperäisesti vammautunut',toimi:'ensihoito',w:1,need:{ambulanssi:1},rew:170,where:'any',patients:1,sev:'low',esc:.02,dur:[6,15],info:'Hammashuoltovamma.',variants:[
    'Hampaita irti pään iskussa, kova kipu ja vuoto.',
    'Leukaluu murtunut nyrkkitappelussa.',
    'Hammashuolto ei voi auttaa — vamma liian iso.']},
- {c:'795',n:'Kotihoidon tukikäynti',toimi:'ensihoito',w:6,need:{ambulanssi:1},rew:150,where:'any',patients:1,sev:'none',esc:0,dur:[15,30],instCaller:true,info:'Kotihoito pyytää avustusta.',variants:[
+ {c:'795',n:'Kotihoidon tukikäynti',toimi:'ensihoito',w:4,need:{ambulanssi:1},rew:150,where:'any',patients:1,sev:'none',esc:0,dur:[15,30],instCaller:true,info:'Kotihoito pyytää avustusta.',variants:[
    'Vanhus kaatunut, ei vammoja mutta ei pääse ylös. Kotihoitaja paikalla, nostoapua.',
    'Lääkitysvirhe, hoitaja epävarma annoksesta — pyydetään konsultaatio.',
    'Vointi laskenut, kotihoitaja haluaa arvion sairaalaan siirrosta.',
@@ -2216,9 +2237,15 @@ function applyDutyLocation(u){
   const targetSt=G.stations.find(s=>s.id===targetStId);
   if(!targetSt)return;
   u.hx=targetSt.lat;u.hy=targetSt.lng;
-  // Jos asemalla (ei tehtävällä), siirrä myös fyysisesti
+  // EI TELEPORTTIA: jos yksikkö on vapaana väärässä paikassa (esim. päivystyssiirto alkaa/päättyy),
+  // se AJAA kohdeasemalle normaalisti reittiä pitkin.
   if((u.status==='asema'||u.status==='vapaa_valmius')&&!u.taskId){
-    u.lat=targetSt.lat;u.lng=targetSt.lng;refreshUnitMarker(u);
+    const d=Math.hypot((u.lat-targetSt.lat),(u.lng-targetSt.lng));
+    if(d>0.0008){
+      u.status='paluu';u.route=null;u.ri=0;u.target={lat:targetSt.lat,lng:targetSt.lng};
+      try{fetchRoute(u.lat,u.lng,targetSt.lat,targetSt.lng).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});}catch(e){}
+      refreshUnitMarker(u);
+    }
   }
 }
 // Tarkistaa kaikkien yksiköiden duty-tilan tickissä
@@ -2906,7 +2933,7 @@ window.resetStuckUnits=()=>{
     //    tms.) → palauta puhtaaseen asemavalmiuteen efektiiviselle asemalle. (Käyttäjän jumi-ambulanssi.)
     if(!u.taskId){
       const cleanIdle=['asema','vapaa_valmius','paluu','huolto'].includes(u.status);
-      const validMuu=u.status==='muu'&&['partio','kauppa','harjoitus','vpkajo'].includes(u.omamieli);
+      const validMuu=u.status==='muu'&&['partio','kauppa','harjoitus','vpkajo','luovutus'].includes(u.omamieli);
       if(!cleanIdle&&!validMuu){
         u.omamieli=null;u.omamieliBack=null;u._driveTarget=null;u._driveUntil=0;u._vpkFree=false;u.transport=null;u.route=null;u.ri=0;
         u.status=u.atReadyStation?'vapaa_valmius':'asema';u.lat=u.hx;u.lng=u.hy;n++;
@@ -3211,7 +3238,7 @@ function resolveDuplicates(){
     const parent=G.tasks.find(t=>t.id===d._dupOf);
     if(!(!parent||parent.onScene||parent.status==='valmis'||d.onScene))return;
     const wasted=(d.assigned||[]).length>0;
-    (d.assigned||[]).forEach(id=>{const u=G.units.find(x=>x.id===id);if(u){u.taskId=null;u.route=null;u.ri=0;u.status='paluu';u.target={lat:u.hx,lng:u.hy};try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'){u.route=r;u.ri=0;}});}catch(e){}try{refreshUnitMarker(u);}catch(e){}}});
+    (d.assigned||[]).forEach(id=>{const u=G.units.find(x=>x.id===id);if(u){u.taskId=null;u.route=null;u.ri=0;u.status='paluu';u.target={lat:u.hx,lng:u.hy};try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});}catch(e){}try{refreshUnitMarker(u);}catch(e){}}});
     if(d.marker)map.removeLayer(d.marker);
     G.tasks=G.tasks.filter(t=>t.id!==d.id);
     changed=true;
@@ -3251,7 +3278,7 @@ function resolveHTasks(){
   G.tasks.slice().forEach(t=>{
     if(!t.hTask)return;
     if(t.onScene){
-      (t.assigned||[]).forEach(id=>{const u=G.units.find(x=>x.id===id);if(u){u.taskId=null;u.route=null;u.ri=0;u.status='paluu';u.target={lat:u.hx,lng:u.hy};try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'){u.route=r;u.ri=0;}});}catch(e){}try{refreshUnitMarker(u);}catch(e){}}});
+      (t.assigned||[]).forEach(id=>{const u=G.units.find(x=>x.id===id);if(u){u.taskId=null;u.route=null;u.ri=0;u.status='paluu';u.target={lat:u.hx,lng:u.hy};try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});}catch(e){}try{refreshUnitMarker(u);}catch(e){}}});
       if(t.marker)map.removeLayer(t.marker);G.tasks=G.tasks.filter(x=>x.id!==t.id);changed=true;
       G.taskStats.hWasted=(G.taskStats.hWasted||0)+1;
       if(G.settings.showCallouts)toast('📞 '+t.n+': ei hätäkeskustehtävää — turha hälytys, yksiköt vapautettu');
@@ -3696,7 +3723,7 @@ function openUnitInfo(id){const u=G.units.find(x=>x.id===id);if(!u)return;
 }
 window.openUnitInfo=openUnitInfo;
 window.closeUnitInfo=()=>document.getElementById('uinfo').classList.remove('open');
-window.sendHomeNow=(id)=>{const u=G.units.find(x=>x.id===id);if(u){u.status='paluu';u.target={lat:u.hx,lng:u.hy};u.route=null;fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu')u.route=r,u.ri=0;});}};
+window.sendHomeNow=(id)=>{const u=G.units.find(x=>x.id===id);if(u){u.status='paluu';u.target={lat:u.hx,lng:u.hy};u.route=null;fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r)u.route=r.coords,u.ri=0;});}};
 function openDispatch(id){
   const tk=G.tasks.find(t=>t.id===id);if(!tk)return;
   tk.alert=false;refreshTaskAlert(tk);
@@ -4979,7 +5006,7 @@ setInterval(()=>{G.units.forEach(u=>{if(u.taskId)return;if(u.omamieli&&u.omamiel
   if(u.omamieli==='luovutus'){
     u.omamieli=false;u.omamieliBack=null;u.status='paluu';u.target={lat:u.hx,lng:u.hy};
     // EI radioilmoitusta — vapautuminen menee tilatietona, ei puheena.
-    fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'){u.route=r;u.ri=0;}});
+    fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});
     refreshUnitMarker(u);return;
   }
   // Partio: palaa aseman koordinaatteihin
@@ -5802,7 +5829,7 @@ function arriveOrHome(u){
     if(!tk||!tk.assigned.includes(u.id)){
       u.status='paluu';u.route=null;u.ri=0;u.taskId=null;
       u.target={lat:u.hx,lng:u.hy};
-      fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'){u.route=r;u.ri=0;}});
+      fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});
       refreshUnitMarker(u);return;
     }
     u.status='kohde';u.route=null;u.ri=0;
@@ -6520,6 +6547,9 @@ function progressTask(tk,dt){
       try{renderList();updateBadge();}catch(e){}
     }
   }
+  // VAINAJA-TUTKINTA: kun poliisi on kohteessa, tutkinta etenee normaalivauhtia ja tehtävä päättyy
+  // (potilaita 0 → tavallinen hoitoteho olisi ~0 eikä tehtävä valmistuisi koskaan).
+  if(tk._vainaja&&tk.onScene&&onsc.some(u=>u.toimi==='poliisi')){tk.work+=dt;if(tk.work>tk.workNeeded)completeTask(tk);}
 
   // Johtajan ARVIOT vasta kun hän on ehtinyt sizetä tilanteen (johtaja ei tiedä heti):
   if(leadAssessReady(tk)){
@@ -6868,7 +6898,7 @@ function completeTask(tk){tk.status='valmis';
       radio(chFor(u.toimi,'INFO',tk),u.name,u._returningHome?'tehtävä ohi, ajamme kotiasemalle huoltoon':'tehtävä ohi, ajamme huoltoon (paineilmalaitteet/letkut)');
     }
     else u.status='paluu';
-    fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'){u.route=r;u.ri=0;}});refreshUnitMarker(u);}});
+    fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});refreshUnitMarker(u);}});
   tk.lead=null;tk.assigned=[];
   // Ensihoidon X-koodi (tehtävän päättymiskoodi) jos potilastehtävä
   let xtxt='';
@@ -6898,7 +6928,7 @@ function spawnFollowUp(parent){
 }
 
 /* ===== RENDER LISTAT ===== */
-function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};return ((o[a.urg]??4)-(o[b.urg]??4))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${codeConfirmed(t)?pickedName(t):''}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
+function renderList(){const open=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};const al=t=>(t.alert||(t.onScene&&t.reqMsg))?0:1;return ((o[a.urg]??4)-(o[b.urg]??4))||(al(a)-al(b))||(a.created-b.created);});const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${codeConfirmed(t)?pickedName(t):''}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
 function updateBadge(){
   const n=G.tasks.filter(t=>t.status==='avoin').length,b=document.getElementById('navbadge');
   if(n>0){b.style.display='block';b.textContent=n;}else b.style.display='none';
