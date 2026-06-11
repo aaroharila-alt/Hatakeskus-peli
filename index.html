@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v227 (kartan pallo ei laske jonossa olevia; nuoli seuraavaan tehtavaan halytysnakymassa; jonossa olevat ylimmaisena tehtavalistalla) -->
+<!-- HATAKESKUS - dispatch sim v228 (halytysnakyman ylapalkin napit mahtuvat ruudulle: otsikko kutistuu, napit tiiviimmat, X painettavissa) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -426,14 +426,14 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 <div id="uinfo"></div>
 <div id="disp">
   <div class="dhead">
-    <div><span class="mono" id="dcode" style="font-weight:800;font-size:15px"></span>
+    <div style="flex:1;min-width:0;overflow:hidden"><span class="mono" id="dcode" style="font-weight:800;font-size:15px"></span>
       <span style="color:var(--dim);font-size:12px" id="dname"></span><br>
       <span class="smallnote" id="daddr"></span></div>
-    <button class="btn-x" id="dadvice" title="Hoida neuvontana — ei yksikköä (H-tehtävä, portinvartija)" onclick="dismissCurrentAsAdvice()" style="margin-right:4px">📞</button>
-    <button class="btn-x" id="dnext" title="Seuraava tehtävä (ei muutoksia tähän)" onclick="nextTask()" style="margin-right:4px">➡</button>
-    <button class="btn-x" id="dpark" title="Siirrä jonoon odottamaan (esim. D-tehtävä ruuhkassa)" onclick="parkTask()" style="margin-right:4px">⏸</button>
-    <button class="btn-x" id="ddelete" title="Hylkää tehtävä (SAKKO — vain jumittuneeseen)" onclick="removeCurrentTask()" style="margin-right:4px">🗑️</button>
-    <button class="btn-x x" id="dclose">✕</button>
+    <button class="btn-x" id="dadvice" title="Hoida neuvontana — ei yksikköä (H-tehtävä, portinvartija)" onclick="dismissCurrentAsAdvice()" style="margin-right:2px;padding:6px 7px;flex:none">📞</button>
+    <button class="btn-x" id="dnext" title="Seuraava tehtävä (ei muutoksia tähän)" onclick="nextTask()" style="margin-right:2px;padding:6px 7px;flex:none">➡</button>
+    <button class="btn-x" id="dpark" title="Siirrä jonoon odottamaan (esim. D-tehtävä ruuhkassa)" onclick="parkTask()" style="margin-right:2px;padding:6px 7px;flex:none">⏸</button>
+    <button class="btn-x" id="ddelete" title="Hylkää tehtävä (SAKKO — vain jumittuneeseen)" onclick="removeCurrentTask()" style="margin-right:2px;padding:6px 7px;flex:none">🗑️</button>
+    <button class="btn-x x" id="dclose" style="padding:6px 9px;flex:none">✕</button>
   </div>
   <div class="dbody" id="dbody"></div>
   <div class="dfoot">
@@ -506,7 +506,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v227'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v228'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
