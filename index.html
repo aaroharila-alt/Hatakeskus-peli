@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v231 (HAKEn tieliikennekeskus-ilmoitus ei toistu sisaltopohjainen esto 30 min; jos johtaja ottaa peruutuksen kuittaus kertoo kuka johtaa esim otan peruutuksen P401 johtaa) -->
+<!-- HATAKESKUS - dispatch sim v239 (VPK-itsetarjous: vain Asemalla-statuksella ajavat (harjoitus/kalustoajo) tarjoutuvat, vapaa-ajelijat pelaaja halyttaa suoraan; pieni vahvuus 1+1 riittaa, vahvuus ilmoitetaan liittyessa, loput tulevat seiskalla jos asemalla on) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -320,6 +320,17 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 #spawnsel option,select.inp option,.codesel option{background:#161b22;color:#fff}
 </style>
 </head>
+<!-- ============ KEHITTAJAN MUISTIINPANOT (Aaron saannot, ALA RIKO NAITA) ============
+1) KOODIT: nakyva koodi = AINA pelaajan kirjaama pickedCode, EI pelin sisainen. Lahetys: "202; A; osoite; yksikot" jarjestys pelastus-ensihoito-poliisi.
+2) RADIO: tilatiedot (matkalla/kohteessa/vapaa/luovutus) EIVAT mene puheena radioon. Ei tilanneilmoitusta saapuessa, ei paattymiskuittausta, ei valiraportteja. Puhetta vain: lisapyynnot (vain kerran, ei jos apu jo matkalla), suojapyynto heti alussa matkalla, eskalaatio, peruutuskuittaus (johtaja kertoo kuka johtaa: "otan peruutuksen, X johtaa"), X-1+poliisipyynto. Yksikko puhuu OMALLA toimialakanavalla.
+3) VPK: vahvuus nakyy vain liikkeella/halytettyna, asemalla "?". Seiska/peravaunut ei ikina vapaa-ajelulle. Harjoitus = status Asemalla, kesto 1-4h, YHDESSA paikassa, vaativasta radioviesti tyylia "pintapelastusharjoituksessa seuraavat pari tuntia". Asemavalmius (H351/toggle/salama): miehisto ajaa asemalle (aseman lahtoaika) -> vasta sitten vapaa 1min lahdolla; 0+1-autot (sailio/tankki/nostolava/vaihtolava/koura/letku/huolto/johto1+0) heti vapaalle jos jo ajossa. VPK liittyy itse vain ISOMPIIN tehtaviin (sev>=medium tai vaste>=3).
+4) AUTOT: koura=nostolava VAIN materiaalitoissa, henkilonosto+korkeus vain oikealla nostolavalla (need henkilonosto). Koura/vaihtolava/letku/huolto EI kelpaa vesipelastukseen. JVT=vahingontorjunta (oilCapable, myos vahinko/kemikaali-currentLoad). Tankki kelpaa sailiotarpeeseen. Kontit OSTETAAN asemalle (LOAD_PRICE), eivat tule automaattisesti.
+5) EI TELEPORTTEJA koskaan - yksikot ajavat aina (fetchRoute palauttaa OLION: kayta r.coords!).
+6) PELAAJAN VALINTOJA EI POISTETA ilman lupaa. Tehtavan voi laittaa JONOON (parked: ei varoituksia/sakkoa, ei kartan palloon, ylimmaisena listalla).
+7) TASAPAINO: kuormatasapaino (util>75%/90% hidastaa spawnia), vuodenajat kalenterista, myrsky harvinainen savyilmio (syksylla yleisempi, 4-9h). Tavoitteet tasarahoina (500e pyoristys), verbit selkeat.
+8) VASTEAIKA: kello kiertyy keskiyolla -> delta<0 korjataan +86400.
+9) Tyokulku: cp outputs->index, grep VERSION, muokkaa python str.replace, node --check isoin script-lohko, bumppaa VERSION+kommentti, cp outputs, present_files. Testipenkki: stubbaa DOM/Leaflet/OSRM(coords!), flushaa promiset setImmediatella tickien valissa.
+==================================================================================== -->
 <body>
 
 <div id="map"></div>
@@ -506,7 +517,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v231'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v239'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -1144,7 +1155,7 @@ const TASKS=[
    'Työntekijä jäänyt koneen väliin tehtaalla, irrotus tarvitaan.',
    'Henkilö hississä puristuksissa ovien välissä.',
    'Maa-aines romahti kaivannossa työntekijän päälle, soittaja: työpari.']},
- {c:'487',n:'Pelastaminen ylhäältä/alhaalta',toimi:'pelastus',w:1,need:{sammutus:1,nostolava:1,ambulanssi:1},altNeed:[{sammutus:1,koysi:2,ambulanssi:1}],minCrew:7,rew:900,where:'urban',patients:1,sev:'high',timeCrit:600,esc:.1,dur:[30,70],info:'Henkilö korkealla (nostolava ylös) tai syvänteessä (köysipelastus alas).',variants:[
+ {c:'487',n:'Pelastaminen ylhäältä/alhaalta',toimi:'pelastus',w:1,need:{sammutus:1,henkilonosto:1,ambulanssi:1},altNeed:[{sammutus:1,koysi:2,ambulanssi:1}],minCrew:7,rew:900,where:'urban',patients:1,sev:'high',timeCrit:600,esc:.1,dur:[30,70],info:'Henkilö korkealla (nostolava ylös) tai syvänteessä (köysipelastus alas).',variants:[
    'Työntekijä loukkaantunut katolla, ei pääse alas omin voimin.',
    'Henkilö pudonnut työmaan kaivantoon (n. 4m).',
    'Putkimies juuttunut hormiin, työpari soittaa.',
@@ -5476,20 +5487,22 @@ function tickVpkDrive(dt){
       // status PYSYY 'asema' (lähtövalmius asemalta). VAIN vaativa harjoitus ilmoitetaan HÄKElle koska
       // se voi hidastaa lähtöä; tavallinen harjoitus on hiljainen.
       u._drillHard=Math.random()<0.3;
-      if(u._drillHard)radio(reg+' VPK',u.name,'vaativa harjoitus käynnissä — lähtövalmius hetkellisesti tavallista hitaampi');
+      if(u._drillHard){const _ht=['pintapelastusharjoituksessa','savusukellusharjoituksessa','pelastusharjoituksessa','kalustoharjoituksessa maastossa'][Math.floor(Math.random()*4)];radio(reg+' VPK',u.name,_ht+' seuraavat pari tuntia');}
     }
     refreshUnitMarker(u);
   }
   // 2) VAPAANA liikkuvat VPK:t voivat tarjoutua LÄHELLÄ olevalle pelastustehtävälle → liittyvät suoraan.
-  G.units.filter(u=>u.omamieli==='vpkajo'&&u.status==='muu'&&!u.taskId&&u._vpkFree).forEach(u=>{
+  G.units.filter(u=>(u._drill||(u.omamieli==='vpkajo'&&u.status==='muu'))&&!u.taskId&&!u._vpkFree).forEach(u=>{
     if(u._vpkOffered&&G.clock-u._vpkOffered<300)return;
     let tgt=null;
-    for(const t of G.tasks){if(t.status==='valmis'||t.toimi!=='pelastus')continue;if((t.assigned||[]).includes(u.id))continue;if(km(u.lat,u.lng,t.lat,t.lng)>3)continue;const us=t.assigned.map(id=>G.units.find(x=>x.id===id)).filter(Boolean);if(!needMetBy(t,us)&&unitHelpsTask(u,t)){tgt=t;break;}}
+    for(const t of G.tasks){if(t.status==='valmis'||t.toimi!=='pelastus')continue;if(!['medium','high','critical'].includes(t.sev)&&Object.values(t.need||{}).reduce((a,b)=>a+b,0)<3)continue;/* VPK ei tuppaa pikkutehtäviin — vain isompiin */if((t.assigned||[]).includes(u.id))continue;if(km(u.lat,u.lng,t.lat,t.lng)>3)continue;const us=t.assigned.map(id=>G.units.find(x=>x.id===id)).filter(Boolean);if(!needMetBy(t,us)&&unitHelpsTask(u,t)){tgt=t;break;}}
     if(!tgt)return;
     if(Math.random()>0.3)return;
     u._vpkOffered=G.clock;
     const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';
-    radio(reg+' VPK',u.name,'ollaan tässä vieressä, liittäkää meidät tehtävälle '+tgt.c+' '+tgt.addr);
+    const _v=u._vajaaStr||(Math.random()<0.5?'1+1':'1+2');u._vajaaVahvuus=true;u._vajaaStr=_v;
+    const _seiska=G.units.some(x=>x.stationId===u.stationId&&x.vt==='miehisto'&&!x.taskId);
+    radio(reg+' VPK',u.name,'ollaan tässä vieressä vahvuudella '+_v+', liittäkää meidät tehtävälle '+tgt.c+' '+tgt.addr+(_seiska?', loput tulevat seiskalla':''));
     u.omamieli=null;u._driveRoute=null;u._driveRi=0;u._driveHoming=false;u._driveUntil=0;u._vpkFree=false;
     u.status='matka';u.taskId=tgt.id;u.target={lat:tgt.lat,lng:tgt.lng};u.route=null;u.ri=0;u.departAt=G.clock+rnd(20,60);
     if(!tgt.assigned.includes(u.id))tgt.assigned.push(u.id);
@@ -6016,8 +6029,11 @@ function _computeHave(units){
     if(u.off)have.johto=(have.johto||0)+1;
     if(u.canSukellus)have.sukellus=(have.sukellus||0)+1;
     if(u.canNostolava||VTYPES[u.vt]?.canNostolava)have.nostolava=(have.nostolava||0)+1;
+    if(u.vt==='nostolava')have.henkilonosto=(have.henkilonosto||0)+1; // VAIN oikea nostolava: ihmisten nosto + korkeus >15-20 m
     if(canKoysi(u))have.koysi=(have.koysi||0)+1;
     if(['sailio','tankki','nostolava'].includes(u.vt))have.suoja=(have.suoja||0)+1;
+    if(u.vt==='tankki')have.sailio=(have.sailio||0)+1; // iso säiliöyksikkö kelpaa säiliötarpeeseen
+    if(u.vt==='jvt')have.vahinkoauto=(have.vahinkoauto||0)+1;
     // SUURONNETTOMUUSYKSIKKÖ: kenttäsairaala hoitaa monta → laskee usean ambulanssin verran
     if(u.vt==='suro'||u.vt==='suroperv'){const fh=VTYPES[u.vt].fieldHospital||3;have.ambulanssi=(have.ambulanssi||0)+fh;have.suro=(have.suro||0)+1;}
     // VAIHTOLAVA/KOURA: nykyinen lava käyttäytyy kuin omanlainen yksikkö.
@@ -6041,6 +6057,9 @@ const LOAD_PRICE={perus:1500,sammutus:6000,sailio:5000,vahinko:4000,raivaus:4000
 function canKoysi(u){return !!(u&&u.toimi==='pelastus'&&['sammutus','kevytsamm','raivaus','miehisto','nostolava','koura','sukellus','maasto','vahinko'].includes(u.vt));}
 function _needMet(need,have,crew,minCrew){for(const k in need)if((have[k]||0)<need[k])return false;if(minCrew&&crew<minCrew)return false;return true;}
 function needMetBy(tk,units){
+  // VESIPELASTUS: kontti-/kuljetusautot (koura, vaihtolava, letku, huolto) eivät kelpaa
+  // vesipelastustehtävien vasteeseen — ei pintapelastusvarustusta eikä miehistöä siihen.
+  if(tk&&tk.where==='water')units=units.filter(u=>!['koura','vaihtolava','letku','huolto'].includes(u.vt));
   const {have,crew}=_computeHave(units);
   // Päätarve OK → valmis
   if(_needMet(tk.need,have,crew,tk.minCrew))return true;
@@ -6050,7 +6069,7 @@ function needMetBy(tk,units){
   }
   return false;
 }
-const CLS_NAME={sammutus:'sammutusyksikkö (tai raivaus)',sailio:'sammutusyksikkö',nostolava:'nostolava',ambulanssi:'ambulanssi',vene:'vene',maasto:'maastoyksikkö',muu:'miehistöauto',johto:'johtoyksikkö',poliisi:'poliisipartio',laakari:'lääkäriyksikkö (L4)',kj:'kenttäjohtaja (L4)',vaihtolava:'vaihtolava-auto',letku:'letkuauto',sukellus:'sukellusauto',koura:'kouraauto',huolto:'huoltoauto',elainp:'eläinpelastusyksikkö',vahinko:'vahingontorjunta-auto',vakperv:'VAK-perävaunu',otyperv:'öljyntorjunta-perävaunu',letkperv:'letkuperävaunu',metsperv:'maastopalo-perävaunu',vahinkoperv:'vahingontorjunta-perävaunu',suoja:'suojauto (säiliö tai nostolava)',suro:'suuronnettomuusyksikkö',koysi:'köysipelastuskykyinen yksikkö'};
+const CLS_NAME={sammutus:'sammutusyksikkö (tai raivaus)',sailio:'sammutusyksikkö',nostolava:'nostolava',henkilonosto:'nostolavayksikkö (henkilönosto)',ambulanssi:'ambulanssi',vene:'vene',maasto:'maastoyksikkö',muu:'miehistöauto',johto:'johtoyksikkö',poliisi:'poliisipartio',laakari:'lääkäriyksikkö (L4)',kj:'kenttäjohtaja (L4)',vaihtolava:'vaihtolava-auto',letku:'letkuauto',sukellus:'sukellusauto',koura:'kouraauto',huolto:'huoltoauto',elainp:'eläinpelastusyksikkö',vahinko:'vahingontorjunta-auto',vakperv:'VAK-perävaunu',otyperv:'öljyntorjunta-perävaunu',letkperv:'letkuperävaunu',metsperv:'maastopalo-perävaunu',vahinkoperv:'vahingontorjunta-perävaunu',suoja:'suojauto (säiliö tai nostolava)',suro:'suuronnettomuusyksikkö',koysi:'köysipelastuskykyinen yksikkö'};
 // Yksiköt joita tehtävä TARVITSEE (näitä EI saa peruuttaa automaattisesti). Laskee kaikki
 // johdannaiset tarpeet samoin kuin needMetBy: suoja (säiliö/tankki/nostolava), sukellus, nostolava.
 // Lisäksi pidetään tarpeeksi miehistöä minCrew-vaatimukseen.
@@ -6088,7 +6107,7 @@ function missingNeed(tk){
   return miss;
 }
 // Lyhyet radionimet puuttuville yksiköille (selkeät, ei kieliopillisia kömpelyyksiä)
-const REQ_NAME={sammutus:'sammutusyksikkö',sailio:'säiliöauto',nostolava:'nostolava',ambulanssi:'ambulanssi',johto:'johtoyksikkö',poliisi:'partio',vene:'vene',sukellus:'sukeltajat',suoja:'suojayksikkö',kj:'kenttäjohtaja',laakari:'lääkäriyksikkö',vahinko:'vahingontorjunta-auto',koura:'kouraauto',vaihtolava:'vaihtolava-auto',letku:'letkuauto',maasto:'maastoyksikkö',elainp:'eläinpelastusyksikkö',suro:'lääkintäryhmä',tankki:'tankkiauto',koysi:'köysipelastusyksikkö'};
+const REQ_NAME={sammutus:'sammutusyksikkö',sailio:'säiliöauto',nostolava:'nostolava',henkilonosto:'nostolavayksikkö (henkilönosto)',ambulanssi:'ambulanssi',johto:'johtoyksikkö',poliisi:'partio',vene:'vene',sukellus:'sukeltajat',suoja:'suojayksikkö',kj:'kenttäjohtaja',laakari:'lääkäriyksikkö',vahinko:'vahingontorjunta-auto',koura:'kouraauto',vaihtolava:'vaihtolava-auto',letku:'letkuauto',maasto:'maastoyksikkö',elainp:'eläinpelastusyksikkö',suro:'lääkintäryhmä',tankki:'tankkiauto',koysi:'köysipelastusyksikkö'};
 // Luonnollinen pyyntölause puuttuvasta vasteesta. Sama teksti menee RADIOON ja näkyy myös
 // tehtäväpaneelissa → ei "kuuntele radiota" -ohjeita joita ei löydy. null jos vaste riittää.
 function missingRequestPhrase(tk){
@@ -6462,7 +6481,7 @@ function leadAssessReady(tk){
 function isTankerUnit(u){return ['sailio','tankki'].includes(u.vt)||((u.vt==='vaihtolava'||u.vt==='koura')&&u.currentLoad==='sailio');}
 function isLetkuUnit(u){return u.vt==='letku'||u.vt==='letkperv'||((u.vt==='vaihtolava'||u.vt==='koura')&&u.currentLoad==='letku');}
 // Imeytysainetta kantavat yksiköt. oty/otyperv kantaa paljon; tavalliset autot vähän (loppuu).
-function oilCapable(u){return !!(u&&u.toimi==='pelastus'&&['sammutus','kevytsamm','raivaus','vahinko','vahinkoperv','oty','otyperv'].includes(u.vt));}
+function oilCapable(u){return !!(u&&u.toimi==='pelastus'&&(['sammutus','kevytsamm','raivaus','vahinko','vahinkoperv','oty','otyperv','jvt'].includes(u.vt)||u.currentLoad==='vahinko'||u.currentLoad==='kemikaali'));} // JVT = sama kuin vahingontorjunta-auto; myös vahinko-/kemikaalilavaa kantava kelpaa
 function isFireTask(tk){return !!(tk&&tk.toimi==='pelastus'&&/palo/i.test(tk.n||''));} // tunnistus NIMESTÄ, ei koodista
 // Vedentarve PALON KOON mukaan (per tehtävä, EI koodista). Asetetaan tehtävää luotaessa (assignFireWater).
 // Osa paloista ei pala juuri mitään (autom. paloilmoitin, kytöpalo, jo sammunut) -> ei vedentarvetta.
@@ -7311,7 +7330,8 @@ function generateRandomGoal(){
   const n=Math.round(t.range[0]+Math.random()*(t.range[1]-t.range[0]));
   const baseValue=_currentValueForCat(t.cat); // SEURAA muutosta luontihetkestä
   const id='rnd_'+t.cat+'_'+(G.dayCount||0)+'_'+Math.floor(Math.random()*9999);
-  return {id,t:t.icon+' Suorita '+n+' '+t.name+' (haastetavoite)',cat:t.cat,n,baseValue,rew:Math.round(n*t.rewMul),isRandom:true};
+  const verb={tasks:'Suorita',saved:'Pelasta',transported:'Kuljeta',stations:'Rakenna',units:'Osta'}[t.cat]||'Suorita';
+  return {id,t:t.icon+' '+verb+' '+n+' '+t.name+' (haaste)',cat:t.cat,n,baseValue,rew:Math.round(n*t.rewMul),isRandom:true};
 }
 // Lisää YKSI uusi haastetavoite (eri kategoriasta kuin nykyiset jos mahdollista)
 function addRandomGoal(){
