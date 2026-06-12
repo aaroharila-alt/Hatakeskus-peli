@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v239 (VPK-itsetarjous: vain Asemalla-statuksella ajavat (harjoitus/kalustoajo) tarjoutuvat, vapaa-ajelijat pelaaja halyttaa suoraan; pieni vahvuus 1+1 riittaa, vahvuus ilmoitetaan liittyessa, loput tulevat seiskalla jos asemalla on) -->
+<!-- HATAKESKUS - dispatch sim v244 (Ensihoito tietokanta -sivu uudistettu: osiot korteiksi joissa aksenttiraita, siisti avausnuoli, paremmat valit) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
 <!-- HÄTÄKESKUS - dispatch sim v89 (1) Tehtäväalueet eivät poistu vahingossa: alueen klikkaus kysyy varmistuksen ennen poistoa. (2) Tartunta (magneetti) parempi: uusi piste napsahtaa myös alueen REUNAVIIVAAN, ei vain kulmiin -> ei rakoja alueiden väliin (kynnys 0.45->0.6 km). (3) Versionumero näkyy nyt Asetuksissa (VERSION-vakio). Muuten kuten v88) -->
@@ -318,6 +318,43 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 @media(max-width:760px){#uinfo{left:8px;right:8px;top:calc(54px + env(safe-area-inset-top));border-radius:12px;max-height:70%}}
 @media(min-width:761px){#uinfo{top:56px;left:12px;width:320px;border-radius:12px;box-shadow:0 12px 40px #000b;max-height:70%}}
 #spawnsel option,select.inp option,.codesel option{background:#161b22;color:#fff}
+
+/* ===== UI-VIIMEISTELY v240: pehmeämpi, selkeämpi, vähemmän kulmikas ===== */
+.btn-x{border-radius:10px;transition:background .12s,transform .05s}
+.btn-x:active{transform:scale(.97)}
+.buy{border-radius:10px;transition:filter .12s,transform .05s}
+.buy:active{transform:scale(.97)}
+.inp{border-radius:10px}
+.toggle{border-radius:10px;padding:10px 12px;margin:4px 0;background:var(--bg2)}
+.rmsg{border-radius:8px;padding:6px 8px;margin:2px 0}
+.cli:active{background:var(--bg3)}
+.smallnote{line-height:1.45}
+#disp .sec,#smod .sec{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+#disp .sec h4,#smod .sec h4{margin:0 0 6px;font-size:12px;letter-spacing:.6px;color:var(--dim)}
+.tag{border-radius:7px;font-weight:800}
+#navbadge{box-shadow:0 2px 8px rgba(0,0,0,.5)}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px}
+
+/* ===== ASEMANÄKYMÄN UUDISTUS v241 ===== */
+#smod .urow{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin:6px 0;display:flex;align-items:center;gap:10px;transition:background .12s}
+#smod .urow:active{background:var(--bg3)}
+#smod .urow .sq{width:14px;height:14px;border-radius:5px;border:2px solid;flex:none}
+#smod .uname{font-size:14px;font-weight:700}
+#smod .umeta{font-size:11px;color:var(--dim);margin-top:2px}
+#smod h4,#smod h3{letter-spacing:.5px}
+#smod .toggle{border:1px solid var(--line)}
+#smod button.buy{width:100%;margin-top:6px}
+
+/* ===== ENSIHOITO TIETOKANTA -SIVUN UUDISTUS v244 ===== */
+#p-ensh details.sm{background:var(--bg2);border:1px solid var(--line);border-radius:12px;margin:8px 0;overflow:hidden}
+#p-ensh details.sm summary{padding:12px 14px;font-weight:800;font-size:14px;cursor:pointer;list-style:none;border-left:4px solid var(--ens,#e0457b)}
+#p-ensh details.sm summary::-webkit-details-marker{display:none}
+#p-ensh details.sm summary:after{content:'▸';float:right;color:var(--dim);transition:transform .15s}
+#p-ensh details[open].sm summary:after{transform:rotate(90deg)}
+#p-ensh .smbox{padding:10px 14px 12px;border-top:1px solid var(--line)}
+#p-ensh .smbox>div[style*='border-bottom']{border-radius:8px}
+#p-ensh .tag{min-width:22px;text-align:center;display:inline-block}
 </style>
 </head>
 <!-- ============ KEHITTAJAN MUISTIINPANOT (Aaron saannot, ALA RIKO NAITA) ============
@@ -423,7 +460,7 @@ details.sm summary .tag{margin-left:auto;font-size:9.5px}
 <div class="panel" id="p-radio"><div class="head">📻 Radio <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body"><div class="rtab" id="rtabs"></div><div id="rfeed"></div></div></div>
 <div class="panel" id="p-build"><div class="head">🏢 Asemat & yksiköt <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="buildbody"></div></div>
 <div class="panel" id="p-miss"><div class="head">🎯 Tavoitteet <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="missbody"></div></div>
-<div class="panel" id="p-ensh"><div class="head">🩺 Ensihoito-tietopankki <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="enshbody"></div></div>
+<div class="panel" id="p-ensh"><div class="head">🩺 Ensihoito tietokanta <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="enshbody"></div></div>
 <div class="panel" id="p-set"><div class="head">⚙️ Asetukset <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="setbody"></div></div>
 <div class="panel" id="p-pkg"><div class="head">📦 Vastepaketit <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="pkgbody"></div></div>
 <div class="panel" id="p-prof"><div class="head">👤 Profiili <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="profbody"></div></div>
@@ -517,7 +554,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v239'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v244'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3003,7 +3040,7 @@ function refreshUnitMarker(u){
   }
   const plat=drilling?u._drillLat:u.lat, plng=drilling?u._drillLng:u.lng;
   if(!u.marker){
-    u.marker=L.marker([plat,plng],{icon:L.divIcon({html:`<div class="umk"><span class="b ${u.off?'off':''}">${u.name}</span></div>`,className:'',iconSize:[50,14],iconAnchor:[25,7]})}).addTo(map);
+    u.marker=L.marker([plat,plng],{icon:L.divIcon({html:`<div class="umk"><span class="b ${u.off&&VTYPES[u.vt]?.cls!=='johto'?'off':''}">${u.name}</span></div>`,className:'',iconSize:[50,14],iconAnchor:[25,7]})}).addTo(map);
     u.marker.on('click',()=>openUnitInfo(u.id));
   }
   u.marker.setLatLng([plat,plng]);
