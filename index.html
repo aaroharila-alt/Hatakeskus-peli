@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HATAKESKUS - dispatch sim v255 (ULKOASU 9: syottokentat himmennetty pehmeaan harmaaseen (#c9c9c9) - eivat enaa liian kirkkaat; poistettu Hatakeskuspeli-ylaotsikko ja tiivistetty ylaosa sen tilalta. Vain CSS, ei toimintamuutoksia.) -->
+<!-- HATAKESKUS - dispatch sim v254 (ULKOASU 8: aseman rakennuslomake (#buildbody) siistitty hatakeskuspeli.com-tyyliin - korttien tummat otsikkopalkit, hinta vihreana lappuna, valkoiset selkeat syottokentat, iso vihrea Aseta kartalle -nappi. Vain CSS, ei toimintamuutoksia.) -->
+<!-- HATAKESKUS - dispatch sim v253 (ULKOASU 7: Asemat-paneelin asemakortit hatakeskuspeli.com-tyylisiksi - tumma otsikkopalkki ikonilla+nimella+Lisatiedot-napilla, yksikkorivit tahtain-ikoni+varikoodattu tilamerkki+harmaa nimilaatta. Vain yhden rivin markup-ulkoasumuutos + CSS, ei toimintamuutoksia.) -->
+<!-- HATAKESKUS - dispatch sim v252 (ULKOASU 6: palautettu alanavin vanhat emoji-ikonit (kartta/lista/radio/rakennus) - SVG-maskit pois paalta, koska ne nakyivat neliyina. EI toimintamuutoksia.) -->
+<!-- HATAKESKUS - dispatch sim v251 (ULKOASU 5: ylapalkki silmaystavallisemmaksi - pehmea liukuvari, ylahighlight ja alavarjo, lasimaiset pehmeat pillit; alanaviin taytetyt selkeat ikonit (kartta/liekki/radio/rakennukset). EI toimintamuutoksia.) -->
+<!-- HATAKESKUS - dispatch sim v250 (ULKOASU 4: ylaosa tiiviimmaksi - turha tyhja pois, koko safe-area-inset-top kaytossa (Dynamic Island ei peita otsikkoa, selaimessa ei ylimaaraista valia), alanaviin ikonien alle pienet tekstit ja isompi osumapinta -> helpompi navigoida. EI toimintamuutoksia.) -->
+<!-- HATAKESKUS - dispatch sim v249 (ULKOASU 3: Hatakeskuspeli-otsikko punaisen ylapalkin keskelle + korkeampi 2-rivinen ylaosa kukkavesileimalla, alanaviin omat selkeat SVG-viivaikonit (kartta/liekki/radio/rakennukset), tehtavakortin koodiin tahti-etuliite, kelluvien nappien ja paneelien sijainnit uusiin mittoihin. EI toimintamuutoksia.) -->
+<!-- HATAKESKUS - dispatch sim v248 (ULKOASU 2: kelluva pyoristetty alanavi pelkilla valkoisilla ikoneilla, ylapalkin pillit yhtenaisen tummiksi (myos inline-varitetyt !important), valkoiset syottokentat, punaiset sulkunapit. EI toimintamuutoksia.) -->
+<!-- HATAKESKUS - dispatch sim v247 (ULKOASU: hataikeskus.com Hatakeskuspeli -tyylinen teema CSS-ylikirjoituksena: punainen ylapalkki, harmaa tausta, vihreat napit, pyoristetyt liukuvaritehtavakortit, punaruskeat suodattimet, oranssit varoitusbannerit. EI toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v246 (jonossa olevat selkeasti omassa katkoviivalaatikossa listan ylla; nuoli kiertaa vain uusia avoimia tehtavia kun ollaan uudessa tehtavassa) -->
 <!-- HÄTÄKESKUS - dispatch sim v91 (Monikulmio-piirto korjattu + parempi UI. (1) Tartunta (magneetti) ei enää nappaa pistettä OMAAN piirtoon, vain valmiisiin viereisiin alueisiin (kynnys 0.6->0.2 km) -> pisteet menevät mihin klikkaat. Sama korjaus partioalueen piirtoon (snapPatrolPoint). (2) Haamupiste-ongelma korjattu: piirtopisteet ei-klikattavia (interactive:false) -> klikkaus menee aina kartalle eikä pistemerkki syö sitä. (3) Selkeämpi piirto: numeroidut pisteet, sulkeva esikatseluviiva, elävä pistelaskuri ja Sulje alue -napin tila. Koskee sekä tehtäväalueita että partioalueita. Muuten kuten v90) -->
 <!-- HÄTÄKESKUS - dispatch sim v90 (Vahvistettu + näkyväksi tehty: poissaolon aikana (max 7 vrk) tehtävät etenevät loppuun asti — yksiköt ajavat, työ valmistuu, kuljetukset sairaalaan ja paluut/huollot suoritetaan (simulateOffline ajaa progressTask + moveUnit joka askel). Esim. 200 min tehtävä on valmis kun olet ollut poissa sen verran peliaikaa. Poissaolo-yhteenveto kertoo nyt montako tehtävää valmistui. Muuten kuten v89) -->
@@ -355,6 +364,275 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 #p-ensh .smbox{padding:10px 14px 12px;border-top:1px solid var(--line)}
 #p-ensh .smbox>div[style*='border-bottom']{border-radius:8px}
 #p-ensh .tag{min-width:22px;text-align:center;display:inline-block}
+
+/* ===== v247 TEEMA: hätäkeskus.com (Hätäkeskuspeli) -ulkoasu — VAIN visuaalinen ylikirjoitus, ei toimintamuutoksia ===== */
+:root{
+  --bg:#4f4f4f; --bg2:#3d3d3d; --bg3:#5a5a5a; --bg4:#6a6a6a;
+  --line:#6e6e6e; --line2:#8a8a8a;
+  --txt:#ffffff; --dim:#e2e2e2; --dim2:#bdbdbd;
+  --acc:#5cb85c; --acc2:#5cb85c; --acc-ink:#ffffff;
+  --A:#d9534f; --B:#f0ad4e; --C:#ffd43b; --D:#5cb85c; --N:#9a9a9a;
+  --fdisp:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --fui:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --fmono:"Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+html,body{font-size:15px;letter-spacing:0}
+/* Yläpalkki: kirkkaan punainen */
+#top{background:linear-gradient(180deg,#f0392b,#dc2f22);border-bottom:0;box-shadow:0 2px 6px #0006}
+#top .logo{color:#fff;font-weight:700}
+#top .pill{background:#3d3d3d;border:1px solid #2c2c2c;border-radius:10px;color:#fff;box-shadow:0 1px 2px #0007}
+#top .pill b{color:#fff}
+#hambtn{background:#5cb85c;border:1px solid #3f8f3f;border-radius:10px;color:#fff;font-weight:800}
+#hambtn:active{background:#449d44}
+#menupop{background:#b7392b;border:1px solid #8c2b20;border-radius:10px}
+#menupop button{color:#fff;border-bottom:1px solid #ffffff33}
+#menupop button:active{background:#9e3024}
+/* Alanavigaatio: tumma palkki, aktiivinen valkoinen */
+#nav{background:#2e2e2e;border-top:1px solid #1c1c1c}
+#nav button{color:#cfcfcf;text-transform:none}
+#nav button.on{color:#fff}
+#nav button:before{background:#fff}
+#nav button.on .ic,#nav button .ic{filter:none}
+/* Paneelit: harmaa tausta + punainen otsikkopalkki */
+.panel{background:#4f4f4f}
+.panel .head{background:linear-gradient(180deg,#e0382b,#c52f23);border-bottom:1px solid #9e2519;color:#fff;text-transform:none;letter-spacing:.3px}
+.panel .head .pclose{background:#00000033;border:1px solid #ffffff55;color:#fff;border-radius:8px}
+#disp,#smod,#uinfo{background:#4f4f4f;border-color:#2e2e2e}
+#disp .dhead,#smod .dhead,#uinfo .dhead{background:linear-gradient(180deg,#e0382b,#c52f23);border-bottom:1px solid #9e2519;color:#fff}
+#disp .dfoot{background:#3a3a3a;border-top:1px solid #2a2a2a}
+/* Tehtäväkortit: pyöristetyt, liukuväri kuten hätäkeskuspelissä */
+.trow{background:linear-gradient(180deg,#3c3c3c 0%,#161616 100%);border:1px solid #1f1f1f;border-left-width:7px;border-radius:7px;box-shadow:0 1px 3px #0007}
+.trow:hover{border-color:#1f1f1f}
+.trow:active{filter:brightness(1.15);background:linear-gradient(180deg,#3c3c3c 0%,#161616 100%)}
+.trow .desc{color:#dedede}
+.trow .st{color:#cfcfcf;text-transform:none}
+.trow.u-D{background:linear-gradient(180deg,#37a035 0%,#0f3a10 55%,#101010 100%)}
+.trow.u-C{background:linear-gradient(180deg,#46421a 0%,#161616 100%)}
+/* Suodatinnapit: tummanharmaa + vaalea reunus, valittu punaruskea */
+.fb,.rch,.pkgbtn{background:#3f3f3f;border:1px solid #d8d8d8;border-radius:7px;color:#fff}
+.fb.on,.rch.on{background:#a8423d;border-color:#d8d8d8;color:#fff}
+.chip{background:#3f3f3f;border:1px solid #bfbfbf;border-radius:7px;color:#fff}
+.chip:active{background:#a8423d;color:#fff;border-color:#d8d8d8}
+.pkgbtn:active{background:#a8423d;color:#fff;border-color:#d8d8d8}
+/* Vihreät toimintonapit (Lähetä yms.) */
+.btn-go{background:linear-gradient(180deg,#6cc06c,#4cae4c);color:#fff;border:1px solid #3f8f3f;border-radius:10px;box-shadow:0 1px 3px #0006;text-shadow:0 1px 1px #0005;text-transform:none;letter-spacing:.5px}
+.btn-go:disabled{box-shadow:none}
+.buy{background:linear-gradient(180deg,#6cc06c,#4cae4c);color:#fff;border:1px solid #3f8f3f;text-shadow:0 1px 1px #0005}
+.btn-next,.btn-x{background:#5a5a5a;border:1px solid #8a8a8a;color:#fff;border-radius:8px}
+/* Yksikkörivit */
+.urow,#smod .urow{background:#3a3a3a;border:1px solid #262626;border-radius:7px}
+.urow.sel{border-color:#5cb85c;background:#27381f;box-shadow:0 0 0 1px #5cb85c inset}
+.selbox{border-color:#bfbfbf;border-radius:6px;background:#efefef;color:#2e7d32}
+.urow.sel .selbox{background:#5cb85c;border-color:#5cb85c;color:#fff}
+/* Badget */
+.tag{border-radius:6px}
+.tag-D{background:#5cb85c;color:#fff}
+/* Kortit, asetukset, lomakkeet */
+.card{background:#3d3d3d;border:1px solid #2a2a2a;border-radius:8px}
+details.setgrp,details.sm{background:#3d3d3d;border-color:#2a2a2a}
+details.sm>summary{background:#4a4a4a}
+.toggle{background:#3d3d3d}
+.sw{background:#2c2c2c;border-color:#777}
+.sw.on{background:#5cb85c}
+.inp,.codesel,#spawnsel{background:#3a3a3a;border-color:#8a8a8a;color:#fff}
+#spawnsel option,select.inp option,.codesel option{background:#3a3a3a;color:#fff}
+/* Ohje-/varoituslaatikko: oranssi banneri kuten "Näytettäviä ajoneuvoja rajattu" */
+.help{background:linear-gradient(180deg,#f5ab3f,#e3921f);border:1px solid #c97f15;border-radius:8px;color:#3a2400;text-align:center;font-weight:700}
+/* Radiot ja popupit harmaiksi, punainen otsikko */
+.radiowin,#chanpick,#taskpop{background:#3a3a3af5;border-color:#262626}
+.radiowin .rh,#taskpop .th{background:linear-gradient(180deg,#e0382b,#c52f23);color:#fff;border-bottom:1px solid #9e2519;text-transform:none}
+.radiowin .rh [data-close],#taskpop .th [onclick]{background:#00000033;border:1px solid #ffffff55;color:#fff}
+.rmsg.new{background:rgba(92,184,92,.22);border-left-color:#5cb85c}
+.rmsg .ru{color:#8fdc8f}
+.radiobtn,.taskbtn{background:#2e2e2e;border:1px solid #5cb85c;color:#fff;border-radius:8px}
+.fab{background:#5cb85c;color:#fff;box-shadow:0 4px 16px #0009}
+.placebar{background:#f0ad4e;color:#3a2400}
+.tmsg{border-left-color:#5cb85c;background:#2e2e2eee}
+.dsum{border-color:#5cb85c;background:#3d3d3d}
+.dsum-h{color:#8fdc8f}
+.dsum-eta{color:#8fdc8f}
+.sec h4{color:#cfcfcf}
+#disp .sec,#smod .sec{background:#3d3d3d;border-color:#2a2a2a}
+#chanpick .ci{background:#4a4a4a}
+#chanpick .ci:active{background:#5cb85c;color:#fff}
+#taskpop .ti:active{background:#4a4a4a}
+
+
+/* ===== v248: tarkempi hätäkeskus.com-jäljitelmä (vain ulkoasu) ===== */
+/* Yläpalkin pillit KAIKKI samaan tummaan tyyliin, myös inline-väritetyt */
+#top{background:#d8342a}
+#top .pill,#top #savebtn.pill,#top #rushhour.pill,#top #eventpill.pill{background:#3a3a3a!important;border:1px solid #262626!important;color:#fff!important;border-radius:12px}
+#top .pill b{color:#fff!important}
+/* Alanavi: kelluva pyöristetty tumma palkki, VAIN valkoiset ikonit kuten kohteessa */
+@media(max-width:899px){:root{--nav-h:76px}}
+@media(min-width:900px){:root{--nav-h:68px}}
+#nav{left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom,0));height:58px;border-radius:16px;border:1px solid #1a1a1a;background:#2b2b2bf2;box-shadow:0 6px 20px #000a;padding-bottom:0}
+#nav button{font-size:0;gap:0;padding:0;border-radius:13px;margin:5px 3px;min-height:0;transition:background .12s}
+#nav button .ic{font-size:25px;filter:grayscale(1) brightness(0) invert(1);opacity:.72;transition:opacity .12s}
+#nav button.on{background:#000}
+#nav button.on .ic{opacity:1;filter:grayscale(1) brightness(0) invert(1)}
+#nav button:before{display:none}
+#nav button .badge{font-size:9px;top:4px}
+/* Valkoiset syöttökentät kuten kohteen hakukentät */
+.inp{background:#fff;color:#1d1d1d;border:1px solid #9a9a9a}
+.inp::placeholder{color:#8a8a8a}
+.codesel,#spawnsel{background:#fff;color:#1d1d1d;border:1px solid #9a9a9a}
+#spawnsel option,select.inp option,.codesel option{background:#fff;color:#1d1d1d}
+/* Sulkunappi: punainen laatta valkoisella ruksilla */
+.panel .head .pclose{background:#a8231a;border:1px solid #7e1810;color:#fff}
+.radiowin .rh [data-close],#taskpop .th [onclick]{background:#a8231a;border:1px solid #7e1810;color:#fff}
+/* Hieman vaaleampi sisältötausta */
+.panel,.panel .body{background:#4f4f4f}
+#disp .dbody,#smod .dbody,#uinfo .dbody{background:#4f4f4f}
+
+
+/* ===== v249: viimeistely kohti hätäkeskus.com-ulkoasua (vain visuaalinen) ===== */
+/* Korkeampi punainen yläosa: otsikko keskellä + pillirivi alla, kukkavesileima */
+:root{--top-h:calc(env(safe-area-inset-top) / 2 + 92px)}
+#top{padding:calc(env(safe-area-inset-top) / 2 + 58px) 10px 0;background:#d8342a url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cg%20fill='rgba%28255,255,255,0.10%29'%3E%3Cellipse%20cx='50'%20cy='26'%20rx='11'%20ry='21'/%3E%3Cellipse%20cx='50'%20cy='74'%20rx='11'%20ry='21'/%3E%3Cellipse%20cx='26'%20cy='50'%20rx='21'%20ry='11'/%3E%3Cellipse%20cx='74'%20cy='50'%20rx='21'%20ry='11'/%3E%3Cellipse%20cx='33'%20cy='33'%20rx='15'%20ry='8'%20transform='rotate%2845%2033%2033%29'/%3E%3Cellipse%20cx='67'%20cy='67'%20rx='15'%20ry='8'%20transform='rotate%2845%2067%2067%29'/%3E%3Cellipse%20cx='67'%20cy='33'%20rx='15'%20ry='8'%20transform='rotate%28-45%2067%2033%29'/%3E%3Cellipse%20cx='33'%20cy='67'%20rx='15'%20ry='8'%20transform='rotate%28-45%2033%2067%29'/%3E%3Ccircle%20cx='50'%20cy='50'%20r='9'/%3E%3C/g%3E%3C/svg%3E') right -16px center/150px no-repeat}
+#top .logo{position:fixed;top:calc(env(safe-area-inset-top) / 2 + 18px);left:0;right:0;display:block;text-align:center;font-size:20px!important;font-weight:800;color:#fff;letter-spacing:.3px;z-index:601;pointer-events:none}
+/* Alanavin ikonit: omat selkeät viivaikonit (kartta, liekki, radio, rakennukset) */
+#nav button .ic{font-size:0;width:27px;height:27px;background:#fff;filter:none;opacity:.7;-webkit-mask:var(--mi) center/contain no-repeat;mask:var(--mi) center/contain no-repeat}
+#nav button.on .ic{opacity:1;filter:none}
+#nav button[data-p="map"] .ic{--mi:url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linejoin='round'%3E%3Cpath%20d='M9%204%203%206v14l6-2%206%202%206-2V4l-6%202-6-2z'/%3E%3Cpath%20d='M9%204v14M15%206v14'/%3E%3C/svg%3E')}
+#nav button[data-p="list"] .ic{--mi:url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='black'%3E%3Cpath%20d='M12%2022c-4.4%200-7.5-3-7.5-7.2%200-3%201.7-5.3%203.3-7C9%209.4%2010%2010.4%2011%2010.4%2010.2%207.6%2011%204.3%2013.6%202c-.2%202.8%201.2%204.3%202.6%205.8%201.6%201.7%203.3%203.6%203.3%206.9C19.5%2019%2016.4%2022%2012%2022z'/%3E%3C/svg%3E')}
+#nav button[data-p="radio"] .ic{--mi:url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M4%209%2018%204'/%3E%3Crect%20x='3'%20y='9'%20width='18'%20height='11'%20rx='2'/%3E%3Ccircle%20cx='8'%20cy='14.5'%20r='2.5'/%3E%3Cpath%20d='M14%2012.5h4M14%2016.5h4'/%3E%3C/svg%3E')}
+#nav button[data-p="build"] .ic{--mi:url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='2'%20stroke-linejoin='round'%3E%3Cpath%20d='M3%2021h18'/%3E%3Cpath%20d='M5%2021V8h7v13'/%3E%3Cpath%20d='M12%2021V3h7v18'/%3E%3Cpath%20d='M7.5%2011h2M7.5%2014h2M14.5%207h2M14.5%2011h2M14.5%2015h2'/%3E%3C/svg%3E')}
+/* Tehtäväkortin otsikko kuten kohteessa: ✱ + isompi lihavoitu */
+.trow .code{font-size:16px}
+.trow .code:before{content:"✱ ";font-weight:400}
+/* Tummat pikkunapit (Lisätiedot-tyyli) */
+.btn-x{background:#1f1f1f;border-color:#000}
+/* Kelluvien elementtien paikat uusiin mittoihin */
+.placebar{top:calc(var(--top-h) + 6px)}
+#spawnEditBar{top:calc(var(--top-h) + 4px)!important}
+@media(min-width:761px){
+  #disp,#smod{top:calc(var(--top-h) + 8px);max-height:calc(100% - var(--top-h) - 100px)}
+  #uinfo{top:calc(var(--top-h) + 8px)}
+}
+.fab,.radiobtn,.taskbtn{bottom:calc(82px + env(safe-area-inset-bottom,0))}
+#taskpop{bottom:calc(82px + env(safe-area-inset-bottom,0))}
+#chanpick{bottom:calc(128px + env(safe-area-inset-bottom,0))}
+#toast{bottom:calc(88px + env(safe-area-inset-bottom,0))}
+.leaflet-top.leaflet-left{margin-top:calc(var(--top-h) + 8px)}
+
+
+/* ===== v250: tiiviimpi yläosa (Dynamic Island huomioitu) + selkeämpi alanavi tekstillä ===== */
+/* Yläosa: ei ylimääräistä tyhjää — koko safe-area käytössä, otsikko heti sen alle */
+:root{--top-h:calc(env(safe-area-inset-top,0px) + 62px)}
+#top{padding:calc(env(safe-area-inset-top,0px) + 30px) 10px 0}
+#top .logo{top:calc(env(safe-area-inset-top,0px) + 5px);font-size:17px!important}
+#top .pill{padding:4px 8px;font-size:12px}
+/* Alanavi: ikoni + pieni teksti alla → helpompi navigoida, isompi osumapinta */
+#nav{height:60px}
+@media(max-width:899px){:root{--nav-h:78px}}
+@media(min-width:900px){:root{--nav-h:70px}}
+#nav button{font-size:10px;gap:3px;padding:5px 2px 4px;font-weight:700;letter-spacing:.2px;margin:4px 3px;color:#cfcfcf}
+#nav button .ic{width:24px;height:24px}
+#nav button.on{background:#000;color:#fff}
+#nav button .badge{font-size:9px;top:2px}
+.fab,.radiobtn,.taskbtn{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+#taskpop{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+#chanpick{bottom:calc(132px + env(safe-area-inset-bottom,0px))}
+#toast{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+
+
+/* ===== v251: silmäystävällisempi yläpalkki + täytetyt alanavi-ikonit ===== */
+/* Pehmeämpi syvyys yläpalkkiin: hienovarainen liukuväri + ylä-highlight + alavarjo */
+#top{
+  background:linear-gradient(180deg,#e84436 0%,#d6362a 48%,#c62f24 100%);
+  box-shadow:0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18);
+}
+#top:after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:rgba(0,0,0,.25)}
+#top .logo{text-shadow:0 1px 2px rgba(0,0,0,.35);letter-spacing:.4px}
+/* Pillit: pehmeä lasimainen tumma, kevyt reuna ja sisävalo → rauhallisempi silmälle */
+#top .pill,#top #savebtn.pill,#top #rushhour.pill,#top #eventpill.pill{
+  background:linear-gradient(180deg,#454545,#363636)!important;
+  border:1px solid rgba(0,0,0,.45)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 1px 2px rgba(0,0,0,.35)!important;
+  color:#f4f4f4!important;border-radius:11px;
+}
+#top .pill:active{filter:brightness(1.12)}
+/* Hampurilaisnappi sointuu vihreään mutta pehmeämpi */
+#hambtn{background:linear-gradient(180deg,#62bb62,#4cae4c);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 1px 3px rgba(0,0,0,.3)}
+/* Alanavi: täytetyt, tunnistettavat ikonit */
+#nav button .ic{opacity:.66}
+#nav button.on .ic{opacity:1}
+#nav button[data-p="map"] .ic{--mi:url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='black'%3E%3Cpath%20d='M14.5%204%209%206%203.7%204.2c-.6-.2-1.2.2-1.2.9v13c0%20.4.3.8.7.9L9%2021l5.5-2%205.3%201.8c.6.2%201.2-.2%201.2-.9v-13c0-.4-.3-.8-.7-.9L15%203.2%2014.5%204zM9%206.3l5-1.8v13.2l-5%201.8V6.3z'/%3E%3C/svg%3E')}
+#nav button[data-p="list"] .ic{--mi:url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='black'%3E%3Cpath%20d='M12%2023c-4.5%200-7.7-3.1-7.7-7.4%200-3.1%201.8-5.5%203.4-7.2C9.1%209.6%2010%2010.6%2011%2010.6%2010.1%207.7%2011%204.3%2013.7%202c-.2%202.9%201.3%204.4%202.7%206%201.7%201.8%203.4%203.7%203.4%207.1C19.7%2019.9%2016.5%2023%2012%2023zm0-3.2c1.7%200%203-1.2%203-2.9%200-1.2-.7-2.1-1.4-2.8-.6-.6-1.1-1.2-1.2-2.1-1%20.9-2.4%202.3-2.4%204.3%200%201.8%201.3%203.5%202%203.5z'/%3E%3C/svg%3E')}
+#nav button[data-p="radio"] .ic{--mi:url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='black'%3E%3Cpath%20d='M20.5%207H9.3l8.4-2.9c.5-.2.8-.8.6-1.3-.2-.5-.8-.8-1.3-.6L4.4%206.7C3.6%207%203%207.8%203%208.7V19c0%201.1.9%202%202%202h15.5c.8%200%201.5-.7%201.5-1.5v-11C22%207.7%2021.3%207%2020.5%207zM8%2018.5A3.5%203.5%200%201%201%208%2011.5a3.5%203.5%200%200%201%200%207zM18.5%2017h-3a1%201%200%201%201%200-2h3a1%201%200%201%201%200%202zm0-4h-3a1%201%200%201%201%200-2h3a1%201%200%201%201%200%202z'/%3E%3C/svg%3E')}
+#nav button[data-p="build"] .ic{--mi:url('data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='black'%3E%3Cpath%20d='M13%203a1%201%200%200%201%201%201v3h6a1%201%200%200%201%201%201v12a1%201%200%200%201-1%201H4a1%201%200%200%201-1-1V8a1%201%200%200%201%201-1h2V4a1%201%200%200%201%201-1h6zM7%209.5h-2v2h2v-2zm0%204h-2v2h2v-2zm0%204h-2v2h2v-2zm4-12H9v2h2v-2zm0%204H9v2h2v-2zm0%204H9v2h2v-2zm0%204H9v2h2v-2zm8-4h-2v2h2v-2zm0%204h-2v2h2v-2z'/%3E%3C/svg%3E')}
+
+
+/* ===== v252: palauta alanaviin vanhat emoji-kuvat (pois SVG-neliöt) ===== */
+#nav button .ic{
+  -webkit-mask:none!important;mask:none!important;
+  background:none!important;width:auto!important;height:auto!important;
+  font-size:23px!important;line-height:1;filter:none!important;opacity:1!important;
+}
+#nav button.on .ic{filter:none!important;opacity:1!important}
+
+
+/* ===== v253: asemakortit hätäkeskuspeli.com-tyylisiksi (vain ulkoasu) ===== */
+.hkstn-card{background:#3a3a3a;border:1px solid #2a2a2a;border-radius:9px;margin:8px 0;overflow:hidden;box-shadow:0 1px 3px #0006}
+/* Otsikkopalkki: tumma liukuväri, ikoni + nimi vasemmalla, Lisätiedot oikealla */
+.hkstn-head{display:flex;align-items:center;gap:9px;padding:11px 12px;background:linear-gradient(180deg,#4a4a4a,#3c3c3c);border-bottom:1px solid #2a2a2a;cursor:pointer}
+.hkstn-head:active{filter:brightness(1.12)}
+.hkstn-ico{font-size:19px;line-height:1;filter:drop-shadow(0 1px 1px #0007)}
+.hkstn-name{font-weight:700;color:#fff;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hkstn-meta{font-size:10.5px;color:#bdbdbd;white-space:nowrap}
+.hkstn-info{background:#1f1f1f;border:1px solid #000;color:#e8e8e8;font-size:12px;font-weight:600;padding:5px 11px;border-radius:7px;white-space:nowrap}
+/* Yksikkörivit: tähtäin + vihreä tilamerkki + harmaa nimilaatta */
+.hkstn-units{padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+.hkstn-unit{display:flex;align-items:center;gap:8px;cursor:pointer}
+.hkstn-unit:active{filter:brightness(1.15)}
+.hkstn-x{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;font-size:17px;color:#cfcfcf;background:#efefef0d;border:1px solid #5a5a5a;border-radius:7px}
+.hkstn-x{color:#dcdcdc}
+.hkstn-badge{min-width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#0c2a0c;border-radius:7px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.hkstn-pill{flex:1;min-width:0;background:#5d5d5d;border:1px solid #6e6e6e;color:#fff;font-weight:600;font-size:13px;padding:7px 11px;border-radius:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--fmono)}
+.hkstn-manage{padding:9px 12px;border-top:1px solid #2a2a2a;color:#8fdc8f;font-size:12px;font-weight:600;cursor:pointer;background:#333}
+.hkstn-manage:active{background:#2c2c2c}
+
+
+/* ===== v254: aseman rakennuslomake hätäkeskuspeli.com-tyyliin (vain CSS) ===== */
+/* Lomakkeen kortit yhtenäisiksi uusien asemakorttien kanssa */
+#buildbody .card{background:#3a3a3a;border:1px solid #2a2a2a;border-radius:9px;padding:12px;box-shadow:0 1px 3px #0006}
+/* Kortin otsikko = tumma palkki (rakennustyyppi + sammutus/pelastus -teksti) */
+#buildbody .card>h3{margin:-12px -12px 10px;padding:11px 12px;background:linear-gradient(180deg,#4a4a4a,#3c3c3c);border-bottom:1px solid #2a2a2a;border-radius:9px 9px 0 0;font-size:15px;color:#fff;display:flex;align-items:center;gap:8px}
+#buildbody .card>.smallnote:first-of-type{margin-top:-2px}
+/* Hinta korostuu vihreänä lappuna */
+#buildbody .card>.smallnote b{background:#2e5d2e;border:1px solid #3f8f3f;color:#cdeccd;padding:2px 8px;border-radius:6px;font-size:12px;display:inline-block;margin-left:2px}
+/* Rakennustyypin valintaruudut: pyöristetyt, valittu vihreällä kehyksellä */
+#buildbody .btn-x,#buildbody .buy{border-radius:8px}
+#buildbody .btn-x{background:#444;border:1px solid #5a5a5a;color:#eee}
+#buildbody .btn-x:active{background:#4f4f4f}
+/* Otsikkorivit (🚉 Asemat / 🏥 Terveydenhuolto) selkeämmiksi */
+#buildbody .card>div[style*="text-transform:uppercase"]{color:#bdbdbd!important;font-size:11px!important;border-bottom:1px solid #4a4a4a;padding-bottom:4px}
+/* Syöttökentät: valkoiset, selkeät, hyvä väli */
+#buildbody .inp{background:#fff;color:#1d1d1d;border:1px solid #9a9a9a;border-radius:8px;padding:11px 12px;margin:7px 0;font-size:14px}
+#buildbody .inp::placeholder{color:#9a9a9a}
+#buildbody select.inp{background:#fff;color:#1d1d1d}
+#buildbody select.inp option{background:#fff;color:#1d1d1d}
+/* Lähtöaika-kentät pienemmiksi rinnakkain */
+#buildbody #st_tmin,#buildbody #st_tsec{max-width:84px;text-align:center}
+/* Iso vihreä toimintonappi (Aseta kartalle) */
+#buildbody .buy{background:linear-gradient(180deg,#6cc06c,#4cae4c);border:1px solid #3f8f3f;color:#fff;font-weight:800;font-size:15px;padding:13px;border-radius:10px;margin-top:10px;width:100%;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 5px rgba(0,0,0,.3);text-shadow:0 1px 1px #0005}
+#buildbody .buy:active{filter:brightness(1.08)}
+#buildbody .buy:disabled{filter:grayscale(.5) brightness(.7);box-shadow:none}
+
+
+/* ===== v255: himmeämmät syöttökentät + poista yläotsikko ===== */
+/* Poista "Hätäkeskuspeli"-teksti ja tiivistä yläosa sen tilalta */
+#top .logo{display:none!important}
+:root{--top-h:calc(env(safe-area-inset-top,0px) + 50px)}
+#top{padding:calc(env(safe-area-inset-top,0px) + 9px) 10px 0!important}
+/* Syöttökentät: pehmeä harmaa, ei kirkasta valkoista */
+.inp,#buildbody .inp,.codesel,#spawnsel,#buildbody select.inp{
+  background:#c9c9c9!important;color:#1c1c1c!important;border:1px solid #8f8f8f!important;
+}
+.inp::placeholder,#buildbody .inp::placeholder{color:#6a6a6a!important}
+.codesel option,#spawnsel option,select.inp option,#buildbody select.inp option{background:#c9c9c9!important;color:#1c1c1c!important}
+
 </style>
 </head>
 <!-- ============ KEHITTAJAN MUISTIINPANOT (Aaron saannot, ALA RIKO NAITA) ============
@@ -554,7 +832,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v246'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v255'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -7175,9 +7453,10 @@ function renderBuild(){
     myStations.forEach(s=>{
       const us=unitsAtStation(s.id);
       const icon=STATION_ICON[s.t]||'🏢';
-      h+=`<div class="card"><h3 style="cursor:pointer" onclick="openStation('${s.id}')">${icon} ${s.n} ›</h3><div class="meta">${s.t}${s.muoto?' · '+s.muoto:''} · ${s.reg||''}${s.num||''} · ${us.length} yksikköä</div>
-        ${us.map(u=>`<div class="mono" style="font-size:12px;padding:3px 0;cursor:pointer;display:flex;align-items:center;gap:6px" onclick="openStation('${s.id}')"><span style="width:8px;height:8px;border-radius:50%;background:${unitColor(u)}"></span>${u.name}</div>`).join('')||'<div class="smallnote">Ei yksiköitä. Avaa asema lisätäksesi.</div>'}
-        <div class="smallnote" style="margin-top:6px;color:var(--acc);cursor:pointer" onclick="openStation('${s.id}')">+ Hallitse asemaa ja osta yksiköitä</div></div>`;
+      h+=`<div class="hkstn-card">
+        <div class="hkstn-head" onclick="openStation('${s.id}')"><span class="hkstn-ico">${icon}</span><span class="hkstn-name">${s.n}</span><span class="hkstn-meta">${(s.reg||'')+(s.num||'')} · ${us.length} yks.</span><span class="hkstn-info">Lisätiedot</span></div>
+        <div class="hkstn-units">${us.map(u=>`<div class="hkstn-unit" onclick="openStation('${s.id}')"><span class="hkstn-x">⌖</span><span class="hkstn-badge" style="background:${unitColor(u)}">${(u.crew||u.vahvuus||2)}</span><span class="hkstn-pill">${u.name}</span></div>`).join('')||'<div class="smallnote" style="padding:8px 10px">Ei yksiköitä. Avaa asema lisätäksesi.</div>'}</div>
+        <div class="hkstn-manage" onclick="openStation('${s.id}')">+ Hallitse asemaa ja osta yksiköitä</div></div>`;
     });
   }
   const allHosp=allHospitals();
