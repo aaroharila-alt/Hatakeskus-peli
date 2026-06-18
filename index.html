@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v260 (REALISMI: VPK miehistovaje-ilmoitukset korjattu. (1) Joutilas VPK-puhe ei enaa ilmoita miehistovajeesta eika pyyda vara-autoa ilman syyta - vara-auto ei tuo miehistoa (uuden auton miehisto tulee asemalta). Nyt ilmoitus tulee VAIN harvinaisessa tapauksessa jossa miehistoa ei saada ja auto jaa hetkeksi pois kaytosta. (2) Peravaunut/0-miehistoiset (unitNoCrew) eivat enaa ilmoita miehistovajeesta eivatka osallistu vajaa-vahvuus-arvontaan halytyksessa - perävaunulla ei ole omaa miehistoa.) -->\n<!-- HATAKESKUS - dispatch sim v259 (KORJAUS: offline catch-up - sairaalan luovutusviive (omamieli=luovutus/omamieliBack) vapautettiin vain reaaliaikaisessa setInterval-ajastimessa jota offline-simulaatio ei aja -> kaikki sairaalaan ajaneet ambulanssit jaivat luovutus-tilaan koko poissaolon ajaksi ja vapautuivat samalla hetkella palatessa ("ryppaana ulos sairaalasta"). Nyt simulateOffline vapauttaa luovutuksen (+ muut ajastetut omamieli-tilat) porrastetusti offline-aikana, joten yksikot ajavat kotiin jo taustalla. Live ennallaan.) -->\n<!-- HATAKESKUS - dispatch sim v258 (VASTEPAKETIT korjaus: poistettu vaahto iskuyksikkoryhmasta (eri ominaisuudet) ja eriytetty palomestari (johto) ja palopaallikko (paallikko) - eivat enaa korvaa toisiaan paketin paikalla. Muuten kuten v257.) -->\n<!-- HATAKESKUS - dispatch sim v257 (VASTEPAKETIT: A) ROOLIVASTAAVUUS - paketin paikka tayttyy roolikaverilla jos tasmatyyppia ei vapaana: sammutus=raivaus=sailiosammutus=kevyt=vaahto ("hooki"), ambH=ambP, veneet keskenaan, johto=paallikko, vahinko=jvt, poliisi=k9. Tasmatyyppi yritetaan aina ensin. B) Pakettinapeissa lahetysikkunassa keskiarvo-ETA + viimeisen yksikon saapumisaika (=kauanko kunnes KAIKKI kohteessa), varoitusmerkki jos paketti ei tayty. Jaettu valintalogiikka applyPkg + ETA. EI muita toimintamuutoksia.) -->\n<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
+<!-- HATAKESKUS - dispatch sim v263b (lisatty EXTRA_VARIANTS4: lisaa kuvateksteja, jokainen mitoitettu koodin vakavuuden/vasteen mukaan; korjattu 751-kuvaus vastaamaan yhden ambulanssin vastetta. -->\n<!-- HATAKESKUS - dispatch sim v263 (KORJAUS oikeaan vikaan: puuttuvan yksikon (esim. nostolava) radiopyynto EI koskaan tullut jos kukaan OMAN ALAN yksikko ei ollut viela kohteessa (incidentCommander vaati kohde-tilan) - esim. ambulanssi ehti ensin ja paloyksikot olivat matkalla. Nyt puhujaksi kelpaa myos MATKALLA oleva oman alan yksikko (requestSpeaker), joten pyynto laukeaa luotettavasti. Lisaksi PERUTTU v262:n tihea toisto: ilmoitus tulee taas KERRAN per puuttuva kokoonpano (ei ramputusta).) -->\n<!-- HATAKESKUS - dispatch sim v262 (1) Peruttu v261:n nostolava-lauseen erikoiskalustomuotoilu (palattu vanhaan formationWord-pyyntoon). (2) KORJAUS oikeaan vikaan: kun yksi yksikko (esim. nostolava) puuttui, kartan ! ja tehtavapaneeli nayttivat "yksi nostolava lisaa" mutta radioon ei tullut mitaan, koska requestMissing ilmoitti saman puutteen vain KERRAN (tk._reqAnnounced esti toiston pysyvasti). Nyt radio muistuttaa puutteesta uudelleen n. 3,5 min valein niin kauan kuin se yha puuttuu. EXTRA_VARIANTS3-skenaariot jaavat voimaan.) -->\n<!-- HATAKESKUS - dispatch sim v261 (1) NOSTOLAVA-RADIO: johtajan iso lisapyynto nimeaa nyt erikoiskaluston (nostolava, VAK, OTY, vene, sukeltajat, laakintaryhma) AINA erikseen - peruslahto ei sisalla niita, joten ennen nostolavan puuttuessa ei tullut radioilmoitusta. (2) Vasteet kayty lapi - paaosin realistiset, rakennuspalot 402/403/433 sisaltavat nostolavan jne. (3) LISAA SKENAARIOITA: EXTRA_VARIANTS3 ~50 koodille uusia realistisia tehtavakuvauksia (yhdistyy TASKS.variants-listoihin dedupilla, ei muokkaa maarittelyja).) -->\n<!-- HATAKESKUS - dispatch sim v260 (REALISMI: VPK miehistovaje-ilmoitukset korjattu. (1) Joutilas VPK-puhe ei enaa ilmoita miehistovajeesta eika pyyda vara-autoa ilman syyta - vara-auto ei tuo miehistoa (uuden auton miehisto tulee asemalta). Nyt ilmoitus tulee VAIN harvinaisessa tapauksessa jossa miehistoa ei saada ja auto jaa hetkeksi pois kaytosta. (2) Peravaunut/0-miehistoiset (unitNoCrew) eivat enaa ilmoita miehistovajeesta eivatka osallistu vajaa-vahvuus-arvontaan halytyksessa - perävaunulla ei ole omaa miehistoa.) -->\n<!-- HATAKESKUS - dispatch sim v259 (KORJAUS: offline catch-up - sairaalan luovutusviive (omamieli=luovutus/omamieliBack) vapautettiin vain reaaliaikaisessa setInterval-ajastimessa jota offline-simulaatio ei aja -> kaikki sairaalaan ajaneet ambulanssit jaivat luovutus-tilaan koko poissaolon ajaksi ja vapautuivat samalla hetkella palatessa ("ryppaana ulos sairaalasta"). Nyt simulateOffline vapauttaa luovutuksen (+ muut ajastetut omamieli-tilat) porrastetusti offline-aikana, joten yksikot ajavat kotiin jo taustalla. Live ennallaan.) -->\n<!-- HATAKESKUS - dispatch sim v258 (VASTEPAKETIT korjaus: poistettu vaahto iskuyksikkoryhmasta (eri ominaisuudet) ja eriytetty palomestari (johto) ja palopaallikko (paallikko) - eivat enaa korvaa toisiaan paketin paikalla. Muuten kuten v257.) -->\n<!-- HATAKESKUS - dispatch sim v257 (VASTEPAKETIT: A) ROOLIVASTAAVUUS - paketin paikka tayttyy roolikaverilla jos tasmatyyppia ei vapaana: sammutus=raivaus=sailiosammutus=kevyt=vaahto ("hooki"), ambH=ambP, veneet keskenaan, johto=paallikko, vahinko=jvt, poliisi=k9. Tasmatyyppi yritetaan aina ensin. B) Pakettinapeissa lahetysikkunassa keskiarvo-ETA + viimeisen yksikon saapumisaika (=kauanko kunnes KAIKKI kohteessa), varoitusmerkki jos paketti ei tayty. Jaettu valintalogiikka applyPkg + ETA. EI muita toimintamuutoksia.) -->\n<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
 <!-- HATAKESKUS - dispatch sim v255 (ULKOASU 9: syottokentat himmennetty pehmeaan harmaaseen (#c9c9c9) - eivat enaa liian kirkkaat; poistettu Hatakeskuspeli-ylaotsikko ja tiivistetty ylaosa sen tilalta. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v254 (ULKOASU 8: aseman rakennuslomake (#buildbody) siistitty hatakeskuspeli.com-tyyliin - korttien tummat otsikkopalkit, hinta vihreana lappuna, valkoiset selkeat syottokentat, iso vihrea Aseta kartalle -nappi. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v253 (ULKOASU 7: Asemat-paneelin asemakortit hatakeskuspeli.com-tyylisiksi - tumma otsikkopalkki ikonilla+nimella+Lisatiedot-napilla, yksikkorivit tahtain-ikoni+varikoodattu tilamerkki+harmaa nimilaatta. Vain yhden rivin markup-ulkoasumuutos + CSS, ei toimintamuutoksia.) -->
@@ -833,7 +833,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v260'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v263'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -1887,6 +1887,150 @@ const EXTRA_VARIANTS2={
   '361':['Naapurista kuuluu huutoa ja sarkymisen aania, lapsia asunnossa. Soittaja: naapuri.']
 };
 (function(){try{Object.entries(EXTRA_VARIANTS2).forEach(([c,arr])=>{const t=TASKS.find(x=>x.c===c);if(t){const ex=t.variants||[];t.variants=ex.concat(arr.filter(v=>!ex.includes(v)));}});}catch(e){}})();
+/* ============================================================================
+   EXTRA_VARIANTS3 — lisää tehtäväskenaarioita (yhdistyy TASKS.variants[]:iin
+   samalla dedup-logiikalla kuin EXTRA_VARIANTS/2; ei muokkaa TASKS-määrittelyä).
+   ============================================================================ */
+const EXTRA_VARIANTS3={
+  // PELASTUS — rakennus- ja muut palot
+  '402':['Kerrostalon parvekkeelta nousee mustaa savua, asukkaita ulkona pihalla.','Liikehuoneiston takaosa tulessa, savua leviää porraskäytävään.','Omakotitalon yläkerta savuaa, asukkaat ulkona, naapuri soitti.'],
+  '403':['Hallirakennus täydessä liekissä, katto sortumassa, työntekijät evakuoitu.','Vanha puutalo ilmiliekeissä, leviämisvaara viereiseen rakennukseen.'],
+  '433':['Suuri jätekasa palaa kierrätysasemalla, voimakas savunmuodostus.','Varastokontti tulessa satama-alueella, leviää vierellä oleviin.'],
+  '401':['Mikroaaltouuni syttyi keittiössä, asukas sammuttanut, savua sisällä.','Kynttilä sytytti verhot, pieni palo asunnossa, asukas ulkona.'],
+  '411':['Mopo palaa kevyen liikenteen väylällä, kuljettaja sivussa.','Peräkärry tulessa levähdysalueella, vetoauto irrotettu.'],
+  '412':['Linja-auto savuaa moottoritilasta, matkustajat poistuneet kyydistä.','Pakettiauto tulessa pysäköintihallissa, savua kertyy tilaan.'],
+  '413':['Rekka tulessa moottoritiellä, kuljettaja ulkona, liikenne pysähtynyt.'],
+  '421':['Pieni ruohikkopalo radan varressa, leviää tuulessa.','Kulotuksen karkaaminen pellon reunassa.'],
+  '422':['Metsänreunan maastopalo leviää nuoreen taimikkoon, tuulista.'],
+  '431':['Roskakatos palaa taloyhtiön pihalla, lähellä autoja.','Ulkovarasto savuaa, ei henkilövaaraa.'],
+  // PELASTUS — liikenne ja pelastaminen
+  '202':['Henkilöauto suistunut ojaan, kuljettaja autossa, valittaa niskakipua.','Kaksi autoa kolaroinut risteyksessä, toinen kuljettaja sekava.'],
+  '203':['Henkilöauto törmännyt valopylvääseen, kuljettaja puristuksissa.','Kaksi autoa nokkakolarissa, useampi loukkaantunut, tie tukossa.'],
+  '204':['Usean auton ketjukolari sumussa moottoritiellä, monta loukkaantunutta.'],
+  '211':['Henkilö jäänyt junan ja laiturin väliin asemalla.'],
+  '486':['Työntekijä jäänyt kaivinkoneen ja seinän väliin, ei pääse irti.','Käsi jäänyt teollisuuskoneeseen, vapautus käynnissä.'],
+  '487':['Henkilö kiivennyt nosturiin eikä pääse alas, korkealla.','Työntekijä jäänyt katolle, telineet pettäneet, roikkuu valjaissa.'],
+  '488':['Henkilö juuttunut hissin ja kerroksen väliin, ahdistaa.'],
+  '485':['Marjastaja eksynyt suolle, jalka kipeä, ei pääse omin avuin.'],
+  '712':['Lapsi lukittunut wc:hen eikä saa ovea auki, itkee.','Vanhus jäänyt parvekkeelle oven lukkiuduttua, kylmä.'],
+  '483':['Henkilö pudonnut laiturilta veteen, ei nouse itse, pää pinnalla.'],
+  '484':['Uimari uupunut kauas rannasta, huutaa apua.'],
+  '581':['Kissa jumissa viemäriputkessa, ei pääse pois.','Joutsen takertunut siimaan rannassa, ei pääse irti.','Lehmä pudonnut lietekuiluun, ei nouse.'],
+  // PELASTUS — vaaralliset aineet ja öljy
+  '451':['Tunnistamaton kemikaalivuoto teollisuushallin lattialla, haju voimakas.'],
+  '452':['Ammoniakkivuoto kylmälaitoksesta, työntekijät evakuoitu, haju leviää.'],
+  '453':['Säiliöauto kaatunut, vaarallista ainetta valuu ojaan, tie suljettu.'],
+  '471':['Polttoainetta vuotaa työkoneesta sorakuopalle.'],
+  '472':['Öljyä levinnyt huoltoaseman pihaan, valuu sadevesikaivoon.'],
+  '474':['Veneestä vuotaa polttoainetta satama-altaaseen, lautta levialueella.'],
+  // ENSIHOITO
+  '705':['Mies ~70v, sydän hakkaa epätasaisesti ja huimaa, kalpea. Soittaja: puoliso.'],
+  '711':['Lapsi tukehtumassa ruokapalaan, ei saa henkeä kunnolla. Soittaja: vanhempi.'],
+  '713':['Henkilö löytynyt kuristusvälineestä, omainen irrottanut. Soittaja: omainen.'],
+  '746':['Mies ~30v, isku päähän tappelussa, sekava ja oksentaa. Soittaja: ohikulkija.'],
+  '747':['Nainen ~40v, putosi tikkailta, kylkikipua ja hengittää pinnallisesti. Soittaja: puoliso.'],
+  '751':['Autotallissa työskennellyt henkilö, häkämittari hälyttänyt, päänsärkyä ja huimausta. Soittaja: omainen.'],
+  '752':['Nuori löytynyt sekavana, tyhjiä lääkepurkkeja vieressä. Soittaja: kaveri.'],
+  '753':['Sähköasentaja saanut iskun, tajuissaan mutta sydän tykyttää. Soittaja: työkaveri.'],
+  '754':['Mies ~50v, palovammoja käsiin grillin leimahdettua. Soittaja: itse.'],
+  '756':['Vanhus löytynyt ulkoa kylmästä, sekava ja hytisee. Soittaja: naapuri.'],
+  '761':['Nainen ~45v, runsasta verenvuotoa nenästä, ei tyrehdy. Soittaja: itse.'],
+  '772':['Lapsi kouristaa kuumeessa, ei reagoi kunnolla. Soittaja: vanhempi.','Mies ~40v, ensimmäinen kouristuskohtaus, jälkeenpäin sekava. Soittaja: puoliso.'],
+  '773':['Nainen ~35v, allerginen reaktio pistokselle, kasvot turpoavat. Soittaja: itse.'],
+  '785':['Henkilö ahdistunut ja uhkaa vahingoittaa itseään, omainen huolissaan. Soittaja: omainen.'],
+  '790':['Soittaja menetti tajuntansa kesken puhelun, linja auki.'],
+  '791':['Supistukset 3 min välein, ensisynnyttäjä, matka sairaalaan pitkä. Soittaja: puoliso.'],
+  // POLIISI
+  '033':['Kaksi henkilöä käsirysyssä torilla, toinen verissä päin. Soittaja: ohikulkija.'],
+  '051':['Kioskiin ryöstö, tekijä paennut jalan, myyjä järkyttynyt. Soittaja: myyjä.'],
+  '071':['Mies uhkaa terävällä esineellä baarin edessä, asiakkaat sisällä. Soittaja: henkilökunta.'],
+  '101':['Liikkeen takaovea yritetty murtaa, vahinkoa lukossa. Soittaja: vartija.'],
+  '112':['Kioskin ikkuna rikottu yöllä, tavaraa kadonnut. Soittaja: omistaja.'],
+  '121':['Polkupyörä varastettu aseman telineestä, näkö havainto tekijästä. Soittaja: omistaja.'],
+  '141':['Seinään töhritty graffiteja, tekijä paikalla. Soittaja: kiinteistöhuolto.'],
+  '321':['Auto ajaa mutkitellen tiellä, epäilty rattijuopumus. Soittaja: toinen kuljettaja.'],
+  '351':['Yläkerran asunnosta kovaa meteliä yöllä, toistuvaa. Soittaja: naapuri.'],
+  '381':['5-vuotias kadonnut leikkipuistosta, etsitty puoli tuntia. Soittaja: vanhempi.'],
+  '391':['Henkilö seisoo sillan kaiteella, uhkaa hypätä. Soittaja: ohikulkija.'],
+  '511':['Muistisairas vanhus kadonnut hoivakodista, ulkona kylmä. Soittaja: hoitaja.'],
+  '611':['Epäilty paennut pysäytyksestä jalan metsään, etsintä käynnissä.'],
+  '011':['Henkilö löytynyt asunnosta menehtyneenä, epäily rikoksesta. Soittaja: omainen.'],
+  '022':['Henkilö hakattu tajuttomaksi kujalla, tekijöitä useampi. Soittaja: ohikulkija.'],
+  '034':['Iso tappelu ravintolan edessä, useita osallisia. Soittaja: vartija.']
+};
+(function(){try{Object.entries(EXTRA_VARIANTS3).forEach(([c,arr])=>{const t=TASKS.find(x=>x.c===c);if(t){const ex=t.variants||[];t.variants=ex.concat(arr.filter(v=>!ex.includes(v)));}});}catch(e){}})();
+/* ============================================================================
+   EXTRA_VARIANTS4 — lisää tehtäväskenaarioita. Jokainen kuvateksti on mitoitettu
+   koodin vakavuuden/vasteen mukaan (esim. yksi potilas = yksi ambulanssi -koodi,
+   suuri palo = iso vaste). Yhdistyy TASKS.variants[]:iin dedupilla.
+   ============================================================================ */
+const EXTRA_VARIANTS4={
+  // PELASTUS — palot
+  '103':['Paloilmoitin lauennut hotellissa, ei näkyvää savua, vastaanotto tarkistaa. Soittaja: vahti.','Automaattihälytys koulusta, ei merkkejä palosta, vahtimestari paikalla.'],
+  '401':['Kuivauskaappi savuaa pyykkituvassa, asukas katkaissut virran.','Grilli syttyi parvekkeella, asukas sammuttanut, käryä sisällä.'],
+  '402':['Päiväkodin keittiöstä tulee savua, lapset ulkona, henkilökunta evakuoi.','Autokorjaamossa palo öljyastiassa, työntekijät ulkona, savua hallissa.'],
+  '403':['Kerrostalon kellarikerros täynnä savua, asukkaita ikkunoissa, evakuointi käynnissä.','Maatilan navetta tulessa, eläimiä sisällä, leviää konehalliin.'],
+  '411':['Sähköauto savuaa latauksessa, akkupalon epäily, kuljettaja sivussa.','Traktori palaa pellon laidalla, kuljettaja poistunut.'],
+  '412':['Jakeluauto tulessa kadulla, savua nousee ohjaamosta, kuljettaja ulkona.'],
+  '421':['Pellonreunan kulotus levinnyt ojan yli heinikkoon.','Tienvarsipalo nurmikolla, savuaa, tuulista.'],
+  '422':['Hakkuualueen maastopalo etenee, kuiva kangasmaasto, leviämisvaara.'],
+  '431':['Jätekatos tulessa kerrostalon takana, savua rappuun.','Pihavaja palaa, lähellä polttoainekanistereita.'],
+  '432':['Rivitalon ulkovarasto tulessa, leviää seinärakenteeseen, asukkaat ulkona.'],
+  '433':['Lajitteluhallin jätepaali syttynyt, voimakas savu, työntekijät evakuoitu.'],
+  // PELASTUS — liikenne / pelastaminen
+  '200':['Auto törmännyt kaiteeseen, kuljettaja autossa mutta puhuu, ei pääse ulos.'],
+  '202':['Mopoauto kaatunut risteyksessä, nuori kuljettaja, polvi kipeä mutta hereillä.'],
+  '203':['Henkilöauto ojassa katollaan, kuljettaja sisällä, ei pääse irti, hereillä.'],
+  '204':['Linja-auto suistunut tieltä, useita matkustajia loukkaantunut, osa ulkona.'],
+  '486':['Maanrakennustyömaalla henkilö jäänyt putken alle, ei pääse irti, hereillä.'],
+  '487':['Ikkunanpesijä jäänyt riippumaan kerrostalon seinustalle, valjaat pitävät.'],
+  '488':['Henkilö lukittunut kylmävarastoon, alkaa palella, ei saa ovea auki.'],
+  '581':['Hirvi pudonnut uima-altaaseen, ei pääse pois, uupuu.','Kissanpentu jumissa auton konepellin alla.'],
+  '712':['Pieni lapsi lukinnut itsensä autoon kuumalla kelillä, avaimet sisällä.'],
+  // PELASTUS — vesi / vaaralliset aineet / öljy
+  '221':['Soutuvene kaatunut lähellä rantaa, kaksi vedessä, pelastusliivit yllä.'],
+  '483':['Pilkkijä pudonnut avantoon järvellä, pää pinnalla, huutaa apua.'],
+  '484':['Sup-lautailija ajautunut tuulella ulapalle, ei pääse rantaan.'],
+  '451':['Viemäristä nousee voimakasta kemikaalin hajua, asukkaat oireilevat.'],
+  '452':['Uima-allaslaitoksen kloorivuoto, tila evakuoitu, haju leviää ulos.'],
+  '471':['Hydrauliöljyä vuotanut työmaalle, valuu kohti ojaa.'],
+  '472':['Polttoainesäiliö vuotaa varikolla, öljyä levinnyt laajalle pihalle.'],
+  // ENSIHOITO — yksi potilas
+  '702':['Mies ~60v, löytyi tajuttomana autotallista, hengittää raskaasti. Soittaja: omainen.'],
+  '703':['Nainen ~70v, hengenahdistus paheni yöllä, ei jaksa maata. Soittaja: puoliso.'],
+  '704':['Mies ~62v, kova rintakipu kesken työn, hikoilee. Soittaja: työkaveri.'],
+  '705':['Nainen ~68v, sydämen tykytystä ja huimausta, kalpea. Soittaja: omainen.'],
+  '706':['Mies ~72v, äkillinen toispuolihalvaus ja puheen puuroutuminen. Soittaja: puoliso.'],
+  '741':['Työntekijä pudonnut telineiltä ~3 m, selkäkipua, hereillä. Soittaja: työnjohtaja.'],
+  '744':['Nuori mies, syvä haava reidessä lasinsirpaleesta, vuotaa. Soittaja: kaveri.'],
+  '746':['Mies ~25v, lyöty päähän baarissa, sekava ja huimaa. Soittaja: vartija.'],
+  '752':['Nainen ~50v, ottanut liikaa unilääkkeitä, uneliaisuus ja sekavuus. Soittaja: omainen.'],
+  '754':['Kokki saanut kuumaa öljyä käsivarrelle, palovamma, kovaa kipua. Soittaja: työkaveri.'],
+  '761':['Mies ~55v, runsasta verenvuotoa, oksensi verta, kalpea. Soittaja: puoliso.'],
+  '770':['Vanhus äkillinen huono olo ja rintatuntemus, hikinen. Soittaja: kotihoitaja.'],
+  '772':['Nuori nainen kouristanut bussipysäkillä, nyt jälkiunessa. Soittaja: ohikulkija.'],
+  '773':['Lapsi saanut voimakkaan allergisen reaktion pähkinästä, huulet turpoavat. Soittaja: vanhempi.'],
+  '781':['Nainen ~28v, kova alavatsakipu, pahoinvointia, ei kuumetta. Soittaja: itse.'],
+  '785':['Nuori ahdistunut ja itsetuhoinen, omainen pyytää apua paikalle. Soittaja: omainen.'],
+  '790':['Soittaja valittaa kovaa rintakipua, puhe katkeaa kesken — yhteys hatara.'],
+  '791':['Synnyttäjä, supistukset tihenevät, vauva tulossa, ei ehditä sairaalaan. Soittaja: puoliso.'],
+  // POLIISI
+  '033':['Nuori mies lyöty maahan kauppakeskuksessa, tekijä paennut. Soittaja: vartija.'],
+  '034':['Useita henkilöitä tappelee festarialueella, väkijoukko ympärillä. Soittaja: järjestyksenvalvoja.'],
+  '051':['Huoltoasemalle ryöstö, tekijä uhkasi henkilökuntaa, paennut autolla. Soittaja: kassa.'],
+  '071':['Mies uhkailee asiakkaita aseella muistuttavalla esineellä kaupassa. Soittaja: myyjä.'],
+  '101':['Liiketilan takaovea kammettu auki yöllä, hälytin soi. Soittaja: vartiointiliike.'],
+  '121':['Pyörävarkaus käynnissä parkkihallissa, tekijä yhä paikalla. Soittaja: silminnäkijä.'],
+  '321':['Auto ajaa holtittomasti valtatiellä, epäilty rattijuopumus, rekisteri tiedossa. Soittaja: toinen kuljettaja.'],
+  '331':['Päihtynyt häiriköi linja-autoasemalla, pelottelee matkustajia. Soittaja: kuljettaja.'],
+  '351':['Naapurissa toistuvaa meteliä ja riitelyä yöllä, lapsia asunnossa. Soittaja: naapuri.'],
+  '391':['Henkilö lähettänyt hyvästelyviestejä, ei vastaa puhelimeen, omainen huolissaan. Soittaja: omainen.'],
+  '511':['Dementoitunut vanhus lähtenyt yöllä ulos, pakkasta, ei löydy lähistöltä. Soittaja: omainen.'],
+  '611':['Pysäytyksestä paennut kuljettaja jättänyt auton ja juossut metsään. Soittaja: partio.']
+};
+(function(){try{Object.entries(EXTRA_VARIANTS4).forEach(([c,arr])=>{const t=TASKS.find(x=>x.c===c);if(t){const ex=t.variants||[];t.variants=ex.concat(arr.filter(v=>!ex.includes(v)));}});}catch(e){}})();
+
+
 function seasonAdjust(t){if(G.season==='talvi'){if(t.c==='745')return {...t,w:t.w*1.6};if(t.c==='202')return {...t,w:t.w*1.5};}if(G.season==='syksy'&&(t.c==='461'||t.c==='462'))return {...t,w:t.w*1.6};if(G.season==='kevät'&&t.c==='421')return {...t,w:t.w*1.5};if(G.season==='myrsky'&&t.c==='461')return {...t,w:t.w*6};return t;}
 
 /* ===== APU ===== */
@@ -6502,17 +6646,31 @@ function missingRequestPhrase(tk){
   }
   return {phrase,reqKey};
 }
+// Puhuja lisäpyynnölle: ENSISIJAISESTI kohteessa oleva oman alan korkein johto; jos ketään oman alan
+// yksikköä ei vielä ole kohteessa, MATKALLA oleva oman alan yksikkö (jotta pyyntö ei jää tulematta);
+// viime kädessä mikä tahansa tehtävälle hälytetty yksikkö. null jos tehtävällä ei ole ketään.
+function requestSpeaker(tk){
+  const assigned=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean);
+  if(!assigned.length)return null;
+  const sameOnScene=assigned.filter(u=>u.toimi===tk.toimi&&u.status==='kohde');
+  const sameEnRoute=assigned.filter(u=>u.toimi===tk.toimi&&(u.status==='matka'||u.status==='otettu'));
+  const pool=sameOnScene.length?sameOnScene:(sameEnRoute.length?sameEnRoute:assigned);
+  return pool.slice().sort((a,b)=>leadLevel(b)-leadLevel(a))[0];
+}
 function requestMissing(tk,leadName){
   // REALISMI: lisäpyyntö tulee VAIN oman toimialan johtajalta joka on OIKEASTI kohteessa
-  // arvioimassa (incidentCommander). Ei geneeristä "tilannepaikan johtaja" -haamua, eikä pyyntöä
-  // jo päättyneelle tehtävälle. Dedup _reqAnnounced + ~5 min throttle estävät spämmin/toiston.
+  // jo päättyneelle tehtävälle ei pyydetä. Ilmoitus tulee KERRAN per puuttuva kokoonpano (ei rämpytystä);
+  // jos puute MUUTTUU, uusi kokoonpano ilmoitetaan. Puhujaksi kelpaa kohteessa oleva oman alan johtaja TAI,
+  // jos ketään ei vielä kohteessa, matkalla oleva oman alan yksikkö — näin pyyntö ei jää KOKONAAN tulematta
+  // silloin kun esim. ambulanssi ehti ensin kohteeseen ja paloyksiköt ovat vielä matkalla.
   if(tk.status==='valmis')return false;
-  const cmd=incidentCommander(tk);
-  if(!cmd)return false; // ei oman alan johtajaa kohteessa → ei kukaan vielä arvioi → ei radiopyyntöä
+  const cmd=requestSpeaker(tk);
+  if(!cmd)return false; // ei yhtään oman alan yksikköä tehtävällä → ei puhujaa
   const r=missingRequestPhrase(tk);
   if(!r){tk._reqAnnounced=null;tk.reqMsg=null;return false;}
-  if(tk._reqAnnounced===r.reqKey)return true; // tämä puuttuva kokoonpano jo ilmoitettu
-  if(tk._reqLastAt&&G.clock-tk._reqLastAt<300)return true; // throttle: korkeintaan ~5 min välein
+  if(tk._reqAnnounced===r.reqKey)return true; // tämä puuttuva kokoonpano jo ilmoitettu — EI toisteta
+  const _since=(tk._reqLastAt!=null)?(G.clock-tk._reqLastAt):Infinity;
+  if(_since>=0 && _since<90)return true; // lyhyt throttle: ei kahta eri ilmoitusta heti peräkkäin
   tk._reqAnnounced=r.reqKey;tk._reqLastAt=G.clock;tk.requestedOnInfo=true;
   const speaker=cmd.name;
   const ch=chFor(tk.toimi,'INFO',tk);
