@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
+<!-- HATAKESKUS - dispatch sim v258 (VASTEPAKETIT korjaus: poistettu vaahto iskuyksikkoryhmasta (eri ominaisuudet) ja eriytetty palomestari (johto) ja palopaallikko (paallikko) - eivat enaa korvaa toisiaan paketin paikalla. Muuten kuten v257.) -->\n<!-- HATAKESKUS - dispatch sim v257 (VASTEPAKETIT: A) ROOLIVASTAAVUUS - paketin paikka tayttyy roolikaverilla jos tasmatyyppia ei vapaana: sammutus=raivaus=sailiosammutus=kevyt=vaahto ("hooki"), ambH=ambP, veneet keskenaan, johto=paallikko, vahinko=jvt, poliisi=k9. Tasmatyyppi yritetaan aina ensin. B) Pakettinapeissa lahetysikkunassa keskiarvo-ETA + viimeisen yksikon saapumisaika (=kauanko kunnes KAIKKI kohteessa), varoitusmerkki jos paketti ei tayty. Jaettu valintalogiikka applyPkg + ETA. EI muita toimintamuutoksia.) -->\n<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
 <!-- HATAKESKUS - dispatch sim v255 (ULKOASU 9: syottokentat himmennetty pehmeaan harmaaseen (#c9c9c9) - eivat enaa liian kirkkaat; poistettu Hatakeskuspeli-ylaotsikko ja tiivistetty ylaosa sen tilalta. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v254 (ULKOASU 8: aseman rakennuslomake (#buildbody) siistitty hatakeskuspeli.com-tyyliin - korttien tummat otsikkopalkit, hinta vihreana lappuna, valkoiset selkeat syottokentat, iso vihrea Aseta kartalle -nappi. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v253 (ULKOASU 7: Asemat-paneelin asemakortit hatakeskuspeli.com-tyylisiksi - tumma otsikkopalkki ikonilla+nimella+Lisatiedot-napilla, yksikkorivit tahtain-ikoni+varikoodattu tilamerkki+harmaa nimilaatta. Vain yhden rivin markup-ulkoasumuutos + CSS, ei toimintamuutoksia.) -->
@@ -833,7 +833,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v256'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v258'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3819,6 +3819,38 @@ function classFilter(u,f){if(f==='kaikki')return true;const vt=u.vt;
   return true;
 }
 function packagesFor(tk){const P=[];(G.packages||[]).forEach(cp=>{const pick=[];cp.items.forEach(it=>{for(let i=0;i<it.n;i++)pick.push(it.cls);});P.push({label:'★ '+cp.name,pick});});return P;}
+// ===== VASTEPAKETTIEN ROOLIVASTAAVUUS =====
+// Saman roolin yksiköt tekevät käytännössä saman työn ja voivat täyttää saman paketin paikan.
+// Esim. "hööki"/iskuyksikkö: sammutus = raivaus = säiliösammutus = kevyt = vaahto. Paketissa
+// valittu täsmätyyppi yritetään ensin; jos vapaata ei ole, otetaan lähin saman roolin yksikkö.
+const PKG_EQUIV=[
+  ['sammutus','raivaus','sailio','kevytsamm'], // iskuyksikkö / sammutus ("hööki") — EI vaahto (eri kalusto/ominaisuudet)
+  ['ambH','ambP'],                              // ambulanssi (hoito- ja perustaso)
+  ['vene','vene_pieni','vene_iso'],             // pelastusvene
+  ['vahinko','jvt'],                            // vahingontorjunta
+  ['poliisi','poliisi_k9'],                     // partio
+  // Palomestari (johto) ja palopäällikkö (paallikko) PIDETÄÄN ERILLÄÄN — eri johtotaso, eivät korvaa toisiaan.
+];
+const PKG_EQ_OF={};PKG_EQUIV.forEach(g=>g.forEach(v=>{PKG_EQ_OF[v]=g;}));
+function pkgEquivList(cl){return PKG_EQ_OF[cl]||[cl];}
+// Etsii paketin paikalle parhaan vapaan yksikön kandidaateista: ENSIN täsmätyyppi (lähin), sitten
+// lähin saman roolin yksikkö. used = jo varatut id:t (ettei samaa yksikköä lasketa kahdesti).
+function pkgFindCand(near,cl,used){
+  if(cl==='ANY')return near.find(x=>!used.has(x.u.id));
+  if(cl==='johto')return near.find(x=>x.u.off&&!used.has(x.u.id));
+  const eq=pkgEquivList(cl);
+  return near.find(x=>x.u.vt===cl&&!used.has(x.u.id)) || near.find(x=>eq.includes(x.u.vt)&&!used.has(x.u.id));
+}
+// Arvioi montako minuuttia paketin yksiköiltä menee kohteeseen: keskiarvo + viimeisen saapuminen
+// (= kauanko kestää että KAIKKI ovat kohteessa). Käyttää samaa valintalogiikkaa kuin applyPkg.
+function pkgEtaInfo(tk,pick){
+  let near;try{near=nearestUnits(tk);}catch(e){return null;}
+  const used=new Set();const ts=[];let miss=0;
+  pick.forEach(cl=>{const c=pkgFindCand(near,cl,used);if(c){used.add(c.u.id);ts.push(c.t);}else miss++;});
+  if(!ts.length)return null;
+  const avg=ts.reduce((a,b)=>a+b,0)/ts.length, max=Math.max(...ts);
+  return {avg,max,n:ts.length,miss};
+}
 // Muoto-pohjaiset oletuslähtöajat (sekunneissa). Yksikkö voi olla eri muoto kuin asemansa.
 // Lähtöajat sekunneissa — perustuvat Suomen pelastuslaitosten käytäntöön:
 // vakituinen 24/7 miehitetty asema ~1 min · puolivakituinen päivisin ~2 min, öisin VPK-tyylinen ~5 min
@@ -4161,7 +4193,7 @@ function renderDispatch(){
    <div class="sec"><h4>Koodi <span style="font-weight:400;color:var(--dim);font-size:11px">— valitse koodi, hae numerolla</span></h4>
     <input id="codesearch" class="codesel" placeholder="Hae koodia numerolla tai nimellä…" oninput="filterCodes(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box">
     <div id="codelist" style="max-height:170px;overflow:auto;margin-top:4px;border:1px solid #1c242c;border-radius:6px">${codeListHtml(tk.toimi,'')}</div></div>
-   <div class="sec"><h4>Vastepaketit</h4>${packagesFor(tk).length?`<div class="pkgbar">${packagesFor(tk).map((p,i)=>`<button class="pkgbtn star" onclick="applyPkg(${i})">${p.label}</button>`).join('')}</div>`:`<div class="smallnote">Ei omia vastepaketteja. Tee niitä ☰-valikon <b>📦 Vastepaketit</b> -kohdasta.</div>`}</div>
+   <div class="sec"><h4>Vastepaketit</h4>${packagesFor(tk).length?`<div class="pkgbar">${packagesFor(tk).map((p,i)=>{const _e=pkgEtaInfo(tk,p.pick);const _et=_e?` <span style=\"opacity:.82;font-weight:500;font-size:11px\">· ⌀${Math.max(1,Math.round(_e.avg))} min${_e.n>1?` (viim. ${Math.max(1,Math.round(_e.max))})`:''}${_e.miss?' ⚠':''}</span>`:'';return `<button class="pkgbtn star" onclick="applyPkg(${i})">${p.label}${_et}</button>`;}).join('')}</div>`:`<div class="smallnote">Ei omia vastepaketteja. Tee niitä ☰-valikon <b>📦 Vastepaketit</b> -kohdasta.</div>`}</div>
    ${dSelSummary(tk)}
    <div class="sec"><h4>Lähimmät yksiköt${dSel.size?` — valittu ${dSel.size}`:''}</h4>
      <div class="filterbar">${([['kaikki','Kaikki'],['paloautot','Paloautot'],['sailio','Säiliö'],['muupel','Muu pelastus'],tk.toimi==='ensihoito'?['ambulanssi','Ambulanssi+EV']:['ambulanssi','Ambulanssi'],['poliisi','Poliisi']]).map(f=>`<div class="fb ${dFilter===f[0]?'on':''}" onclick="dFilter='${f[0]}';renderDispatch()">${f[1]}</div>`).join('')}</div>
@@ -4313,7 +4345,7 @@ window.toggleSel=id=>{
 };
 window.applyPkg=i=>{
   const p=packagesFor(dCur)[i],near=nearestUnits(dCur);let added=0;const missing={};
-  p.pick.forEach(cl=>{let c;if(cl==='ANY')c=near.find(x=>!dSel.has(x.u.id));else if(cl==='johto')c=near.find(x=>x.u.off&&!dSel.has(x.u.id));else c=near.find(x=>(x.u.cls===cl||x.u.vt===cl)&&!dSel.has(x.u.id));if(c){dSel.add(c.u.id);added++;}else{const lab=cl==='ANY'?'yksikkö':((VTYPES[cl]&&VTYPES[cl].label)||cl);missing[lab]=(missing[lab]||0)+1;}});
+  p.pick.forEach(cl=>{const c=pkgFindCand(near,cl,dSel);if(c){dSel.add(c.u.id);added++;}else{const lab=cl==='ANY'?'yksikkö':((VTYPES[cl]&&VTYPES[cl].label)||cl);missing[lab]=(missing[lab]||0)+1;}});
   // PERÄVAUNU / MAA-ASEMAN VENE -> vetoauto (suosi SAMAN ASEMAN autoa). VENELAITURIN VENE -> veneenkuljettaja (suosi LINKATTUA asemaa).
   const _isTowU=u=>u&&u.toimi==='pelastus'&&!(VTYPES[u.vt]&&VTYPES[u.vt].trailer)&&!['vene','vene_pieni','vene_iso','hems'].includes(u.vt);
   const _landBoatU=u=>{if(!isBoatUnit(u))return false;const st=G.stations.find(s=>s.id===u.stationId);return !!(st&&st.t!=='venelaituri');};
