@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
+<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
 <!-- HATAKESKUS - dispatch sim v255 (ULKOASU 9: syottokentat himmennetty pehmeaan harmaaseen (#c9c9c9) - eivat enaa liian kirkkaat; poistettu Hatakeskuspeli-ylaotsikko ja tiivistetty ylaosa sen tilalta. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v254 (ULKOASU 8: aseman rakennuslomake (#buildbody) siistitty hatakeskuspeli.com-tyyliin - korttien tummat otsikkopalkit, hinta vihreana lappuna, valkoiset selkeat syottokentat, iso vihrea Aseta kartalle -nappi. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v253 (ULKOASU 7: Asemat-paneelin asemakortit hatakeskuspeli.com-tyylisiksi - tumma otsikkopalkki ikonilla+nimella+Lisatiedot-napilla, yksikkorivit tahtain-ikoni+varikoodattu tilamerkki+harmaa nimilaatta. Vain yhden rivin markup-ulkoasumuutos + CSS, ei toimintamuutoksia.) -->
@@ -832,7 +833,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v255'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v256'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -6151,12 +6152,18 @@ function moveUnit(u,dt){
     // ja ODOTA. Vain usean epäonnistuneen yrityksen jälkeen liiku suoraan (ettei jää ikuisesti jumiin).
     const dkey=dest.lat.toFixed(4)+','+dest.lng.toFixed(4);
     if(u._routeTriesFor!==dkey){u._routeTries=0;u._routeTriesFor=dkey;u._routeRetryAt=null;} // uusi kohde -> nollaa
-    if(!u._routePending && (u._routeRetryAt==null||G.clock>=u._routeRetryAt)){
-      u._routeRetryAt=G.clock+8; u._routeTries=(u._routeTries||0)+1; u._routePending=true;
-      fetchRoute(u.lat,u.lng,dest.lat,dest.lng).then(r=>{u._routePending=false;if(r&&r.coords&&r.coords.length&&(u.status==='matka'||u.status==='paluu'||u.status==='kuljetus')){u.route=r.coords;u.ri=0;}}).catch(()=>{u._routePending=false;});
+    // OFFLINE-SIMULAATIO: fetchRoute on async eikä ehdi valmistua synkronisen catch-up-silmukan aikana,
+    // joten reittiä EI voi jäädä odottamaan — muuten yksiköt jumiutuvat eivätkä saavu kohteeseen, jolloin
+    // myöskään tehtävät eivät etene poissaolon aikana. Offline-tilassa maayksikkö ajaa suoraan kohti
+    // kohdetta (eteneminen ei näy kartalla, joten suora linja riittää saapumiseen + tehtävän etenemiseen).
+    if(!G._offlineSim){
+      if(!u._routePending && (u._routeRetryAt==null||G.clock>=u._routeRetryAt)){
+        u._routeRetryAt=G.clock+8; u._routeTries=(u._routeTries||0)+1; u._routePending=true;
+        fetchRoute(u.lat,u.lng,dest.lat,dest.lng).then(r=>{u._routePending=false;if(r&&r.coords&&r.coords.length&&(u.status==='matka'||u.status==='paluu'||u.status==='kuljetus')){u.route=r.coords;u.ri=0;}}).catch(()=>{u._routePending=false;});
+      }
+      if((u._routeTries||0)<4){refreshUnitMarker(u);return;}   // odota reittiä — ei suoraan veden yli
     }
-    if((u._routeTries||0)<4){refreshUnitMarker(u);return;}   // odota reittiä — ei suoraan veden yli
-    tx=dest.lat;ty=dest.lng;                                  // viimeinen keino (OSRM ei vastaa)
+    tx=dest.lat;ty=dest.lng;                                  // offline TAI viimeinen keino: suora linja kohteeseen
   }
 
   const tk=u.status==='matka'?G.tasks.find(t=>t.id===u.taskId):null;
