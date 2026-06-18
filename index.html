@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v263b (lisatty EXTRA_VARIANTS4: lisaa kuvateksteja, jokainen mitoitettu koodin vakavuuden/vasteen mukaan; korjattu 751-kuvaus vastaamaan yhden ambulanssin vastetta. -->\n<!-- HATAKESKUS - dispatch sim v263 (KORJAUS oikeaan vikaan: puuttuvan yksikon (esim. nostolava) radiopyynto EI koskaan tullut jos kukaan OMAN ALAN yksikko ei ollut viela kohteessa (incidentCommander vaati kohde-tilan) - esim. ambulanssi ehti ensin ja paloyksikot olivat matkalla. Nyt puhujaksi kelpaa myos MATKALLA oleva oman alan yksikko (requestSpeaker), joten pyynto laukeaa luotettavasti. Lisaksi PERUTTU v262:n tihea toisto: ilmoitus tulee taas KERRAN per puuttuva kokoonpano (ei ramputusta).) -->\n<!-- HATAKESKUS - dispatch sim v262 (1) Peruttu v261:n nostolava-lauseen erikoiskalustomuotoilu (palattu vanhaan formationWord-pyyntoon). (2) KORJAUS oikeaan vikaan: kun yksi yksikko (esim. nostolava) puuttui, kartan ! ja tehtavapaneeli nayttivat "yksi nostolava lisaa" mutta radioon ei tullut mitaan, koska requestMissing ilmoitti saman puutteen vain KERRAN (tk._reqAnnounced esti toiston pysyvasti). Nyt radio muistuttaa puutteesta uudelleen n. 3,5 min valein niin kauan kuin se yha puuttuu. EXTRA_VARIANTS3-skenaariot jaavat voimaan.) -->\n<!-- HATAKESKUS - dispatch sim v261 (1) NOSTOLAVA-RADIO: johtajan iso lisapyynto nimeaa nyt erikoiskaluston (nostolava, VAK, OTY, vene, sukeltajat, laakintaryhma) AINA erikseen - peruslahto ei sisalla niita, joten ennen nostolavan puuttuessa ei tullut radioilmoitusta. (2) Vasteet kayty lapi - paaosin realistiset, rakennuspalot 402/403/433 sisaltavat nostolavan jne. (3) LISAA SKENAARIOITA: EXTRA_VARIANTS3 ~50 koodille uusia realistisia tehtavakuvauksia (yhdistyy TASKS.variants-listoihin dedupilla, ei muokkaa maarittelyja).) -->\n<!-- HATAKESKUS - dispatch sim v260 (REALISMI: VPK miehistovaje-ilmoitukset korjattu. (1) Joutilas VPK-puhe ei enaa ilmoita miehistovajeesta eika pyyda vara-autoa ilman syyta - vara-auto ei tuo miehistoa (uuden auton miehisto tulee asemalta). Nyt ilmoitus tulee VAIN harvinaisessa tapauksessa jossa miehistoa ei saada ja auto jaa hetkeksi pois kaytosta. (2) Peravaunut/0-miehistoiset (unitNoCrew) eivat enaa ilmoita miehistovajeesta eivatka osallistu vajaa-vahvuus-arvontaan halytyksessa - perävaunulla ei ole omaa miehistoa.) -->\n<!-- HATAKESKUS - dispatch sim v259 (KORJAUS: offline catch-up - sairaalan luovutusviive (omamieli=luovutus/omamieliBack) vapautettiin vain reaaliaikaisessa setInterval-ajastimessa jota offline-simulaatio ei aja -> kaikki sairaalaan ajaneet ambulanssit jaivat luovutus-tilaan koko poissaolon ajaksi ja vapautuivat samalla hetkella palatessa ("ryppaana ulos sairaalasta"). Nyt simulateOffline vapauttaa luovutuksen (+ muut ajastetut omamieli-tilat) porrastetusti offline-aikana, joten yksikot ajavat kotiin jo taustalla. Live ennallaan.) -->\n<!-- HATAKESKUS - dispatch sim v258 (VASTEPAKETIT korjaus: poistettu vaahto iskuyksikkoryhmasta (eri ominaisuudet) ja eriytetty palomestari (johto) ja palopaallikko (paallikko) - eivat enaa korvaa toisiaan paketin paikalla. Muuten kuten v257.) -->\n<!-- HATAKESKUS - dispatch sim v257 (VASTEPAKETIT: A) ROOLIVASTAAVUUS - paketin paikka tayttyy roolikaverilla jos tasmatyyppia ei vapaana: sammutus=raivaus=sailiosammutus=kevyt=vaahto ("hooki"), ambH=ambP, veneet keskenaan, johto=paallikko, vahinko=jvt, poliisi=k9. Tasmatyyppi yritetaan aina ensin. B) Pakettinapeissa lahetysikkunassa keskiarvo-ETA + viimeisen yksikon saapumisaika (=kauanko kunnes KAIKKI kohteessa), varoitusmerkki jos paketti ei tayty. Jaettu valintalogiikka applyPkg + ETA. EI muita toimintamuutoksia.) -->\n<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
+<!-- HATAKESKUS - dispatch sim v265 (Peruttu valmiit sisaanrakennetut sairaalat (SAIRAALAT=[]) - pelaaja sijoittaa itse. Sairaaloista realistisemmat: paikkamaarat tier-kohtaisesti suuremmat ja eriytetyt (yliopisto 16, alue 8, terveys 3) + sairaalakohtainen vaihtelu (cap arvotaan luonnissa, samankaan tason sairaalat eivat identtisia), ja potilaan hoitoaika hoitopaikalla vakavuuden mukaan (kriittinen vie paikan pidempaan kuin lieva). -->\n<!-- HATAKESKUS - dispatch sim v264 (1) TEHTAVAN LAATUA EI PALJASTETA: H-tehtavien "Uusi ilmoitus: <nimi>" -toast korjattu pelkaksi "Uusi tehtava" (esim. ei enaa "Tiedustelu"). (2) LAHETA & SEURAAVA: valitsee nyt seuraavan hoidettavan AVOIMEN tehtavan kiireellisyyden mukaan ja tasapelissa UUSIN ensin -> juuri saapunut uusi tehtava nousee esiin (ennen palautti vanhimman). (3) KOKONAYTTO: 100dvh-korjaus (ei mustaa palkkia alhaalla mobiilissa). (4) REALISTISET SAIRAALAT: lisatty oikeat paakaupunkiseudun/Uudenmaan sairaalat sisaanrakennettuina (Meilahti, Toolo, Jorvi, Peijas, Haartman, Malmi, Hyvinkaa, Lohja, Porvoo + terveysasemia); poistettavissa Asetuksista.) -->\n<!-- HATAKESKUS - dispatch sim v263b (lisatty EXTRA_VARIANTS4: lisaa kuvateksteja, jokainen mitoitettu koodin vakavuuden/vasteen mukaan; korjattu 751-kuvaus vastaamaan yhden ambulanssin vastetta. -->\n<!-- HATAKESKUS - dispatch sim v263 (KORJAUS oikeaan vikaan: puuttuvan yksikon (esim. nostolava) radiopyynto EI koskaan tullut jos kukaan OMAN ALAN yksikko ei ollut viela kohteessa (incidentCommander vaati kohde-tilan) - esim. ambulanssi ehti ensin ja paloyksikot olivat matkalla. Nyt puhujaksi kelpaa myos MATKALLA oleva oman alan yksikko (requestSpeaker), joten pyynto laukeaa luotettavasti. Lisaksi PERUTTU v262:n tihea toisto: ilmoitus tulee taas KERRAN per puuttuva kokoonpano (ei ramputusta).) -->\n<!-- HATAKESKUS - dispatch sim v262 (1) Peruttu v261:n nostolava-lauseen erikoiskalustomuotoilu (palattu vanhaan formationWord-pyyntoon). (2) KORJAUS oikeaan vikaan: kun yksi yksikko (esim. nostolava) puuttui, kartan ! ja tehtavapaneeli nayttivat "yksi nostolava lisaa" mutta radioon ei tullut mitaan, koska requestMissing ilmoitti saman puutteen vain KERRAN (tk._reqAnnounced esti toiston pysyvasti). Nyt radio muistuttaa puutteesta uudelleen n. 3,5 min valein niin kauan kuin se yha puuttuu. EXTRA_VARIANTS3-skenaariot jaavat voimaan.) -->\n<!-- HATAKESKUS - dispatch sim v261 (1) NOSTOLAVA-RADIO: johtajan iso lisapyynto nimeaa nyt erikoiskaluston (nostolava, VAK, OTY, vene, sukeltajat, laakintaryhma) AINA erikseen - peruslahto ei sisalla niita, joten ennen nostolavan puuttuessa ei tullut radioilmoitusta. (2) Vasteet kayty lapi - paaosin realistiset, rakennuspalot 402/403/433 sisaltavat nostolavan jne. (3) LISAA SKENAARIOITA: EXTRA_VARIANTS3 ~50 koodille uusia realistisia tehtavakuvauksia (yhdistyy TASKS.variants-listoihin dedupilla, ei muokkaa maarittelyja).) -->\n<!-- HATAKESKUS - dispatch sim v260 (REALISMI: VPK miehistovaje-ilmoitukset korjattu. (1) Joutilas VPK-puhe ei enaa ilmoita miehistovajeesta eika pyyda vara-autoa ilman syyta - vara-auto ei tuo miehistoa (uuden auton miehisto tulee asemalta). Nyt ilmoitus tulee VAIN harvinaisessa tapauksessa jossa miehistoa ei saada ja auto jaa hetkeksi pois kaytosta. (2) Peravaunut/0-miehistoiset (unitNoCrew) eivat enaa ilmoita miehistovajeesta eivatka osallistu vajaa-vahvuus-arvontaan halytyksessa - perävaunulla ei ole omaa miehistoa.) -->\n<!-- HATAKESKUS - dispatch sim v259 (KORJAUS: offline catch-up - sairaalan luovutusviive (omamieli=luovutus/omamieliBack) vapautettiin vain reaaliaikaisessa setInterval-ajastimessa jota offline-simulaatio ei aja -> kaikki sairaalaan ajaneet ambulanssit jaivat luovutus-tilaan koko poissaolon ajaksi ja vapautuivat samalla hetkella palatessa ("ryppaana ulos sairaalasta"). Nyt simulateOffline vapauttaa luovutuksen (+ muut ajastetut omamieli-tilat) porrastetusti offline-aikana, joten yksikot ajavat kotiin jo taustalla. Live ennallaan.) -->\n<!-- HATAKESKUS - dispatch sim v258 (VASTEPAKETIT korjaus: poistettu vaahto iskuyksikkoryhmasta (eri ominaisuudet) ja eriytetty palomestari (johto) ja palopaallikko (paallikko) - eivat enaa korvaa toisiaan paketin paikalla. Muuten kuten v257.) -->\n<!-- HATAKESKUS - dispatch sim v257 (VASTEPAKETIT: A) ROOLIVASTAAVUUS - paketin paikka tayttyy roolikaverilla jos tasmatyyppia ei vapaana: sammutus=raivaus=sailiosammutus=kevyt=vaahto ("hooki"), ambH=ambP, veneet keskenaan, johto=paallikko, vahinko=jvt, poliisi=k9. Tasmatyyppi yritetaan aina ensin. B) Pakettinapeissa lahetysikkunassa keskiarvo-ETA + viimeisen yksikon saapumisaika (=kauanko kunnes KAIKKI kohteessa), varoitusmerkki jos paketti ei tayty. Jaettu valintalogiikka applyPkg + ETA. EI muita toimintamuutoksia.) -->\n<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
 <!-- HATAKESKUS - dispatch sim v255 (ULKOASU 9: syottokentat himmennetty pehmeaan harmaaseen (#c9c9c9) - eivat enaa liian kirkkaat; poistettu Hatakeskuspeli-ylaotsikko ja tiivistetty ylaosa sen tilalta. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v254 (ULKOASU 8: aseman rakennuslomake (#buildbody) siistitty hatakeskuspeli.com-tyyliin - korttien tummat otsikkopalkit, hinta vihreana lappuna, valkoiset selkeat syottokentat, iso vihrea Aseta kartalle -nappi. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v253 (ULKOASU 7: Asemat-paneelin asemakortit hatakeskuspeli.com-tyylisiksi - tumma otsikkopalkki ikonilla+nimella+Lisatiedot-napilla, yksikkorivit tahtain-ikoni+varikoodattu tilamerkki+harmaa nimilaatta. Vain yhden rivin markup-ulkoasumuutos + CSS, ei toimintamuutoksia.) -->
@@ -634,6 +634,12 @@ details.sm>summary{background:#4a4a4a}
 .inp::placeholder,#buildbody .inp::placeholder{color:#6a6a6a!important}
 .codesel option,#spawnsel option,select.inp option,#buildbody select.inp option{background:#c9c9c9!important;color:#1c1c1c!important}
 
+
+/* ===== v264: KOKONÄYTTÖ — käytä dynaamista viewport-korkeutta (huomioi mobiiliselaimen palkit/safe-area),
+   jottei alas jää mustaa palkkia. 100% jää fallbackiksi vanhoille selaimille. ===== */
+html,body{height:100vh;height:100dvh;min-height:100vh;min-height:-webkit-fill-available}
+#map{position:fixed;inset:0;height:100vh;height:100dvh}
+
 </style>
 </head>
 <!-- ============ KEHITTAJAN MUISTIINPANOT (Aaron saannot, ALA RIKO NAITA) ============
@@ -833,7 +839,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v263'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v265'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -847,7 +853,7 @@ const HAKEKESKUKSET=[
 // Sairaalat: ambulanssit kuljettavat potilaat näihin. taso: 'keskus' (kaikki),
 // 'alue' (perus + kiireellinen), 'terveys' (vain kiireettömät/perus).
 // Aloitussairaalat tyhjät — pelaaja lisää itse kartalle (Asetukset → Sairaalat).
-const SAIRAALAT=[];
+const SAIRAALAT=[]; // Ei valmiita sairaaloita — pelaaja sijoittaa itse kartalle (Asetukset → Sairaalat).
 // Kaikki käytössä olevat sairaalat = sisäänrakennetut (joita ei ole poistettu) + omat
 function allHospitals(){
   const removed=G.removedSairaalat||[];
@@ -3260,7 +3266,7 @@ map.on('click',e=>{
   if(editingHospitals){
     G.customSairaalat=G.customSairaalat||[];
     const nimet={yliopisto:'Oma yliopistosairaala',alue:'Oma aluesairaala',terveys:'Oma terveysasema'};
-    const h={id:'HC'+(G.uidc++),n:nimet[newHospitalTaso]||'Oma sairaala',lat:e.latlng.lat,lng:e.latlng.lng,taso:newHospitalTaso};
+    const h={id:'HC'+(G.uidc++),n:nimet[newHospitalTaso]||'Oma sairaala',lat:e.latlng.lat,lng:e.latlng.lng,taso:newHospitalTaso,cap:hospAssignCap(newHospitalTaso)};
     G.customSairaalat.push(h);
     renderHospitals();
     toast('Sairaala lisätty: '+(TASO_TXT[newHospitalTaso]||newHospitalTaso));
@@ -3288,7 +3294,7 @@ map.on('click',e=>{
   G.money-=placing.cost;updateMoney();
   if(placing.kind==='sairaala'){
     G.customSairaalat=G.customSairaalat||[];
-    const hp={id:'HC'+(G.uidc++),n:placing.name,lat:e.latlng.lat,lng:e.latlng.lng,taso:placing.taso};
+    const hp={id:'HC'+(G.uidc++),n:placing.name,lat:e.latlng.lat,lng:e.latlng.lng,taso:placing.taso,cap:hospAssignCap(placing.taso)};
     G.customSairaalat.push(hp);renderHospitals();
     toast('Sairaala rakennettu: '+placing.name);
   } else {
@@ -3794,7 +3800,7 @@ async function spawnHTask(){
     }catch(e){}
   }
   G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
-  if(G.settings.showCallouts)toast('Uusi ilmoitus: '+tk.n);
+  if(G.settings.showCallouts)toast('Uusi tehtävä'); // EI paljasteta tehtävän laatua/nimeä — pelaaja päättelee kuvauksesta (sama teksti kuin oikeilla tehtävillä, ettei H-tehtäviä erota ilmoituksesta)
 }
 // H-tehtävien ratkaisu: jos pelaaja hälytti yksikön -> turha (vapauta); jos jätettiin -> soittaja ohjautuu eteenpäin (vanhenee).
 function resolveHTasks(){
@@ -4862,7 +4868,17 @@ async function sendDispatch(next){
   // (Äänimerkki siirretty hälytyksestä UUDEN TEHTÄVÄN ilmestymiseen — ks. spawnTask.)
   // Lisähälytysviesti vain uusille yksiköille (ei koko annolle uudelleen jos vain yksi)
   refreshTaskLabel(tk);dSel=new Set();renderList();updateBadge();
-  if(next){const nx=G.tasks.find(t=>t.status==='avoin');document.getElementById('disp').classList.remove('open');if(nx)openDispatch(nx.id);else toast('Ei muita avoimia tehtäviä');}
+  if(next){
+    document.getElementById('disp').classList.remove('open');
+    // Seuraava HOIDETTAVA tehtävä: kaikki ilman yksiköitä olevat (avoin), EI juuri lähetettyä.
+    // Priorisoi kiireellisyyden mukaan ja tasapelissä UUSIN ensin → juuri saapunut uusi tehtävä nousee
+    // esiin (ennen 'find' palautti vanhimman taulukkojärjestyksessä, jolloin uutta tehtävää ei näytetty).
+    const _o={A:0,B:1,C:2,D:3};
+    const _cand=G.tasks.filter(t=>t.status==='avoin'&&!t.parked&&t.id!==tk.id)
+      .sort((a,b)=>((_o[a.urg]??4)-(_o[b.urg]??4))||((b.created||0)-(a.created||0)));
+    const nx=_cand[0];
+    if(nx)openDispatch(nx.id);else toast('Ei muita avoimia tehtäviä');
+  }
   else{document.getElementById('disp').classList.remove('open');toast(names.length?('Hälytetty: '+names.map(u=>u.name).join(', ')):'⚠ Yksiköt eivät saaneet vahvuutta — hälytä toinen yksikkö');}
   saveGame(false); // tallenna heti hälytyksen jälkeen — yksiköiden lähtö ei katoa peli sulkiessa
 }
@@ -6417,7 +6433,7 @@ function arriveOrHome(u){
     const tr=u.transport||{};
     if(tr.reward)G.money+=tr.reward,updateMoney();
     // SAIRAALAN KUORMITUS: potilas vie hoitopaikan 20-45 min ajaksi (sitten paikka vapautuu).
-    if(tr.hospId){G.hospAdmits=G.hospAdmits||[];G.hospAdmits.push({id:tr.hospId,until:G.clock+rnd(20,45)*60});try{renderHospitals();}catch(e){}}
+    if(tr.hospId){G.hospAdmits=G.hospAdmits||[];G.hospAdmits.push({id:tr.hospId,until:G.clock+hospHoldSec(tr.sev)});try{renderHospitals();}catch(e){}}
     G.taskStats=G.taskStats||{};G.taskStats.transported=(G.taskStats.transported||0)+1;
     if(tr.hake){G.hakeStats=G.hakeStats||{};const hs=G.hakeStats[tr.hake]=G.hakeStats[tr.hake]||{total:0,saved:0,severe:0,dead:0,transported:0,respSum:0,respCount:0,byCode:{},respByUrg:{}};hs.transported++;}
     u.transport=null;u.taskId=null;u.route=null;u.ri=0;
@@ -7367,7 +7383,16 @@ function taskNeedsTransport(tk){
 }
 // Mihin sairaalaan? Vakavuus määrää VÄHIMMÄISTASON; korkeampi taso kelpaa AINA
 // (yliopistosairaala hoitaa kaiken) → ei pakoteta ajamaan ohi lähimmän sopivan sairaalan.
-function hospCapacity(h){return {yliopisto:8,alue:5,terveys:3}[h.taso]||5;}
+// REALISTISET PAIKKAMÄÄRÄT (akuutit hoitopaikat pelin kuormitusmallissa): yliopistosairaala hoitaa
+// selvästi enemmän yhtäaikaisia potilaita kuin aluesairaala, terveysasema vain muutaman. Jokaiselle
+// sairaalalle arvotaan luonnissa hieman vaihteleva paikkamäärä (cap), joten samankaan tason sairaalat
+// eivät ole identtisiä. Vanhat tallennukset (ei cap) käyttävät tason perusarvoa.
+function hospBaseCap(taso){return {yliopisto:16,alue:8,terveys:3}[taso]||8;}
+function hospAssignCap(taso){const b=hospBaseCap(taso);const v={yliopisto:3,alue:2,terveys:1}[taso]||2;return Math.max(2,b+Math.round(rnd(-v,v)));}
+function hospCapacity(h){return (h&&h.cap)?h.cap:hospBaseCap(h&&h.taso);}
+// Potilaan VIEMÄ AIKA hoitopaikalla vakavuuden mukaan: kriittinen (elvytys/vakautus) vie paikan
+// pidempään kuin lievä tapaus → realistisempi kuormitus.
+function hospHoldSec(sev){const r={critical:[35,60],high:[25,45],medium:[18,32],low:[12,22],none:[10,18]}[sev]||[20,45];return rnd(r[0],r[1])*60;}
 function hospLoad(id){return (G.hospAdmits||[]).filter(a=>a.id===id&&a.until>G.clock).length;}
 function hospFull(h){return hospLoad(h.id)>=hospCapacity(h);}
 // Keskitetyt/aikakriittiset hoidot eivat onnistu terveysasemalla -> vahimmaistaso keskussairaala (alue).
