@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-<!-- HATAKESKUS - dispatch sim v259 (KORJAUS: offline catch-up - sairaalan luovutusviive (omamieli=luovutus/omamieliBack) vapautettiin vain reaaliaikaisessa setInterval-ajastimessa jota offline-simulaatio ei aja -> kaikki sairaalaan ajaneet ambulanssit jaivat luovutus-tilaan koko poissaolon ajaksi ja vapautuivat samalla hetkella palatessa ("ryppaana ulos sairaalasta"). Nyt simulateOffline vapauttaa luovutuksen (+ muut ajastetut omamieli-tilat) porrastetusti offline-aikana, joten yksikot ajavat kotiin jo taustalla. Live ennallaan.) -->\n<!-- HATAKESKUS - dispatch sim v258 (VASTEPAKETIT korjaus: poistettu vaahto iskuyksikkoryhmasta (eri ominaisuudet) ja eriytetty palomestari (johto) ja palopaallikko (paallikko) - eivat enaa korvaa toisiaan paketin paikalla. Muuten kuten v257.) -->\n<!-- HATAKESKUS - dispatch sim v257 (VASTEPAKETIT: A) ROOLIVASTAAVUUS - paketin paikka tayttyy roolikaverilla jos tasmatyyppia ei vapaana: sammutus=raivaus=sailiosammutus=kevyt=vaahto ("hooki"), ambH=ambP, veneet keskenaan, johto=paallikko, vahinko=jvt, poliisi=k9. Tasmatyyppi yritetaan aina ensin. B) Pakettinapeissa lahetysikkunassa keskiarvo-ETA + viimeisen yksikon saapumisaika (=kauanko kunnes KAIKKI kohteessa), varoitusmerkki jos paketti ei tayty. Jaettu valintalogiikka applyPkg + ETA. EI muita toimintamuutoksia.) -->\n<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
+<!-- HATAKESKUS - dispatch sim v260 (REALISMI: VPK miehistovaje-ilmoitukset korjattu. (1) Joutilas VPK-puhe ei enaa ilmoita miehistovajeesta eika pyyda vara-autoa ilman syyta - vara-auto ei tuo miehistoa (uuden auton miehisto tulee asemalta). Nyt ilmoitus tulee VAIN harvinaisessa tapauksessa jossa miehistoa ei saada ja auto jaa hetkeksi pois kaytosta. (2) Peravaunut/0-miehistoiset (unitNoCrew) eivat enaa ilmoita miehistovajeesta eivatka osallistu vajaa-vahvuus-arvontaan halytyksessa - perävaunulla ei ole omaa miehistoa.) -->\n<!-- HATAKESKUS - dispatch sim v259 (KORJAUS: offline catch-up - sairaalan luovutusviive (omamieli=luovutus/omamieliBack) vapautettiin vain reaaliaikaisessa setInterval-ajastimessa jota offline-simulaatio ei aja -> kaikki sairaalaan ajaneet ambulanssit jaivat luovutus-tilaan koko poissaolon ajaksi ja vapautuivat samalla hetkella palatessa ("ryppaana ulos sairaalasta"). Nyt simulateOffline vapauttaa luovutuksen (+ muut ajastetut omamieli-tilat) porrastetusti offline-aikana, joten yksikot ajavat kotiin jo taustalla. Live ennallaan.) -->\n<!-- HATAKESKUS - dispatch sim v258 (VASTEPAKETIT korjaus: poistettu vaahto iskuyksikkoryhmasta (eri ominaisuudet) ja eriytetty palomestari (johto) ja palopaallikko (paallikko) - eivat enaa korvaa toisiaan paketin paikalla. Muuten kuten v257.) -->\n<!-- HATAKESKUS - dispatch sim v257 (VASTEPAKETIT: A) ROOLIVASTAAVUUS - paketin paikka tayttyy roolikaverilla jos tasmatyyppia ei vapaana: sammutus=raivaus=sailiosammutus=kevyt=vaahto ("hooki"), ambH=ambP, veneet keskenaan, johto=paallikko, vahinko=jvt, poliisi=k9. Tasmatyyppi yritetaan aina ensin. B) Pakettinapeissa lahetysikkunassa keskiarvo-ETA + viimeisen yksikon saapumisaika (=kauanko kunnes KAIKKI kohteessa), varoitusmerkki jos paketti ei tayty. Jaettu valintalogiikka applyPkg + ETA. EI muita toimintamuutoksia.) -->\n<!-- HATAKESKUS - dispatch sim v256 (KORJAUS: offline catch-up - maayksikot jaivat odottamaan async OSRM-reittia jota synkroninen simulateOffline-silmukka ei voi flushata -> yksikot eivat liikkuneet eivatka tehtavat edenneet poissaolon aikana, jolloin tehtavat kasaantuivat. Nyt G._offlineSim-tilassa maayksikko ajaa suoraan kohteeseen (ei jaa odottamaan reittia), joten yksikot saapuvat ja tehtavat etenevat/valmistuvat normaalisti taustalla. Live-peli ennallaan.) -->
 <!-- HATAKESKUS - dispatch sim v255 (ULKOASU 9: syottokentat himmennetty pehmeaan harmaaseen (#c9c9c9) - eivat enaa liian kirkkaat; poistettu Hatakeskuspeli-ylaotsikko ja tiivistetty ylaosa sen tilalta. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v254 (ULKOASU 8: aseman rakennuslomake (#buildbody) siistitty hatakeskuspeli.com-tyyliin - korttien tummat otsikkopalkit, hinta vihreana lappuna, valkoiset selkeat syottokentat, iso vihrea Aseta kartalle -nappi. Vain CSS, ei toimintamuutoksia.) -->
 <!-- HATAKESKUS - dispatch sim v253 (ULKOASU 7: Asemat-paneelin asemakortit hatakeskuspeli.com-tyylisiksi - tumma otsikkopalkki ikonilla+nimella+Lisatiedot-napilla, yksikkorivit tahtain-ikoni+varikoodattu tilamerkki+harmaa nimilaatta. Vain yhden rivin markup-ulkoasumuutos + CSS, ei toimintamuutoksia.) -->
@@ -833,7 +833,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v259'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v260'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -4594,7 +4594,7 @@ async function sendDispatch(next){
     // Valmiudessa/vapaana yksiköllä on AINA vähintään sopimusvahvuus → ei arvontaa.
     const _isTankki=(u.vt==='sailio'||u.vt==='tankki');   // säiliöauto: vesihuolto, riittää kuljettaja
     let _vpkRoll='full';
-    if(u.muoto==='vpk' && atStation && !wasValmius && !u.atReadyStation && !u._isAutoTow){
+    if(u.muoto==='vpk' && atStation && !wasValmius && !u.atReadyStation && !u._isAutoTow && !unitNoCrew(u)){
       const _r=Math.random();
       if(_isTankki) _vpkRoll = _r<0.95 ? 'tankki' : 'eiLahde';   // lähtee lähes aina heti pienellä vahvuudella
       else _vpkRoll = _r<0.85 ? 'full' : (_r<0.96 ? 'vajaa' : 'eiLahde');
@@ -5428,12 +5428,16 @@ function tickOmamieli(dt){
       // EI radioilmoitusta — vähemmän kohinaa. Pelaaja näkee statuksen yksikön infonäkymästä.
     }
   }
-  // VPK: miehistöpula — joskus auto lähtee vajaalla tai ei lainkaan
-  if(roll>0.97&&st&&unitMuoto(u)==='vpk'&&u.toimi==='pelastus'){
-    const vpkCh=reg+' VPK';
-    const crews=['miehistö vajaa, lähtisimme 1+1','miehistö ei saatu kasaan, auto ei käytettävissä tällä hetkellä','ajoneuvon miehistö vajaa — saammeko ottaa vara-auto käyttöön?'];
-    radio(vpkCh,u.name,crews[Math.floor(Math.random()*crews.length)]);
-    if(Math.random()<0.4){u.status='huolto';u.huoltoUntil=G.clock+rnd(30,90)*60;radio(vpkCh,u.name,'auto tilapäisesti pois käytettävissä (miehistö)');}
+  // VPK: miehistöpula — TODELLA HARVINAISTA. Vain jos miehistöä ei saada kasaan, auto jää hetkeksi POIS
+  // KÄYTÖSTÄ ja VASTA SILLOIN siitä ilmoitetaan. EI vara-autopyyntöä: vara-auto ei tuo lisää miehistöä —
+  // uuden auton miehistö tulisi joka tapauksessa asemalta. Perävaunut/0-miehistöiset eivät ilmoita
+  // (ei omaa miehistöä). Vain jouten asemalla oleva yksikkö (ei tehtävällä).
+  if(roll>0.97&&st&&unitMuoto(u)==='vpk'&&u.toimi==='pelastus'&&!unitNoCrew(u)&&!u.taskId&&u.status==='asema'){
+    if(Math.random()<0.20){
+      const vpkCh=reg+' VPK';
+      u.status='huolto';u.huoltoUntil=G.clock+rnd(30,90)*60;
+      radio(vpkCh,u.name,'miehistöä ei saada kasaan — auto tilapäisesti pois käytöstä');
+    }
   }
 }
 setInterval(()=>{G.units.forEach(u=>{if(u.taskId)return;if(u.omamieli&&u.omamieliBack&&G.clock>u.omamieliBack){
