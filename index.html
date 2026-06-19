@@ -638,7 +638,7 @@ details.sm>summary{background:#4a4a4a}
 /* ===== v264: KOKONÄYTTÖ — käytä dynaamista viewport-korkeutta (huomioi mobiiliselaimen palkit/safe-area),
    jottei alas jää mustaa palkkia. 100% jää fallbackiksi vanhoille selaimille. ===== */
 html,body{height:100vh;height:100svh;height:100dvh;min-height:100vh;min-height:-webkit-fill-available;background:#9fb0bd;overscroll-behavior:none}
-#map{position:fixed;inset:0;height:100vh;height:100dvh}
+#map{position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%}
 /* Karttapohjan väri taustalle, jottei mahdollinen safe-area-/palkkialue näy mustana palkkina */
 
 </style>
@@ -669,6 +669,7 @@ html,body{height:100vh;height:100svh;height:100dvh;min-height:100vh;min-height:-
   <button id="hambtn" onclick="toggleMenu(event)" title="Valikko" aria-label="Valikko">☰<span class="badge" id="missbadge" style="display:none">0</span></button>
 </div>
 <div id="menupop">
+  <button onclick="toggleFullscreen();closeMenu()"><span class="ic">⛶</span> Koko näyttö</button>
   <button onclick="openPanel('miss');closeMenu()"><span class="ic">🎯</span> Tavoitteet</button>
   <button onclick="openPanel('pkg');closeMenu()"><span class="ic">📦</span> Vastepaketit</button>
   <button onclick="openPanel('ensh');closeMenu()"><span class="ic">🩺</span> Ensihoito-tietopankki</button>
@@ -840,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v284'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v287'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -4450,10 +4451,12 @@ function dStatusInner(tk){
         // Lisää yksiköitä on jo matkalla → EI radiopyyntöä, ei kehoteta kuuntelemaan radiota.
         prog=`<div class="smallnote" style="margin-top:7px;color:var(--dim)">🚗 Lisää yksiköitä matkalla kohteeseen…</div>`;
       } else {
-        // Vaste alimitoitettu → näytä SAMA pyyntö jonka johtaja sanoi radiolla.
+        // Vaste alimitoitettu → näytä SAMA pyyntö jonka johtaja sanoi radiolla, JA selkeä konkretia
+        // siitä mitä vielä pitää lähettää (jotta ei tarvitse arvata radion perusteella).
         const r=missingRequestPhrase(tk);
         const phrase=r?r.phrase:'pyydän lisää yksiköitä';
-        prog=`<div class="smallnote" style="margin-top:7px;color:var(--dim)">📻 ${phrase.charAt(0).toUpperCase()+phrase.slice(1)}</div>`;
+        const _missList=missingNeed(tk);
+        prog=`<div class="smallnote" style="margin-top:7px;color:var(--dim)">📻 ${phrase.charAt(0).toUpperCase()+phrase.slice(1)}</div>`+(_missList.length?`<div class="smallnote" style="margin-top:4px;color:var(--A);font-weight:700">➕ Lähetä vielä: ${_missList.join(', ')}</div>`:'');
       }
     }}
   else prog=`<div class="smallnote" style="margin-top:7px">🚗 Yksiköt matkalla kohteeseen…</div>`;
@@ -7610,9 +7613,13 @@ function progressTask(tk,dt){
     try{maybeDeescalate(tk);}catch(e){}
     // 2) Vapauta ylimääräiset matkalla olevat (neededKeep suojaa tarvitut)
     maybeReleaseExtras(tk);
-    // 3) Pyydä lisää radiolla jos koko vaste (myös matkalla) ei riitä — dedup _reqAnnounced
+    // 3) Pyydä lisää radiolla jos koko vaste (myös matkalla) ei riitä — dedup _reqAnnounced.
+    //    Sidotaan KARTAN "!" suoraan elävään tarpeeseen: ! näkyy aina kun vaste on alimitoitettu (myös
+    //    matkalla olevat huomioiden) ja katoaa heti kun riittää. Näin ! ja "lisäapua" eivät jää roikkumaan
+    //    sen jälkeen kun radioviesti on jo sanottu kerran (eivätkä puutu kokonaan).
     const all=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(Boolean);
-    if(!needMetBy(tk,all))requestMissing(tk,tk.lead);
+    if(!needMetBy(tk,all)){ if(!tk.alert){tk.alert=true;try{refreshTaskAlert(tk);}catch(e){}} requestMissing(tk,tk.lead); }
+    else { if(tk.alert){tk.alert=false;try{refreshTaskAlert(tk);}catch(e){}} }
   }
 }
 function _joinNames(arr){return arr.length<=1?(arr[0]||''):(arr.length===2?arr.join(' ja '):arr.slice(0,-1).join(', ')+' ja '+arr[arr.length-1]);}
@@ -8003,7 +8010,7 @@ function spawnFollowUp(parent){
 }
 
 /* ===== RENDER LISTAT ===== */
-function renderList(){const _all=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};const al=t=>(t.alert||(t.onScene&&t.reqMsg))?0:1;return ((o[a.urg]??4)-(o[b.urg]??4))||(al(a)-al(b))||(a.created-b.created);});const parked=_all.filter(t=>t.parked);const open=_all.filter(t=>!t.parked);const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>`<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${t.alert?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${codeConfirmed(t)?pickedName(t):''}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${(t.onScene&&t.reqMsg)?' · ⏳ '+t.reqMsg:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':(t.onScene&&t.reqMsg)?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');if(parked.length){h='<div style="border:1px dashed var(--line2);border-radius:12px;padding:8px 10px;margin:2px 0 12px;background:rgba(255,255,255,.02)"><div style="font-size:11px;letter-spacing:1px;color:var(--acc);font-weight:800;margin:0 0 6px">⏸ JONOSSA — odottavat ('+parked.length+')</div>'+parked.map(row).join('')+'</div>'+h;}document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
+function renderList(){const _all=G.tasks.filter(t=>t.status!=='valmis').sort((a,b)=>{const o={A:0,B:1,C:2,D:3};const al=t=>(t.alert||(t.onScene&&t.reqMsg))?0:1;return ((o[a.urg]??4)-(o[b.urg]??4))||(al(a)-al(b))||(a.created-b.created);});const parked=_all.filter(t=>t.parked);const open=_all.filter(t=>!t.parked);const noUnits=open.filter(t=>t.status==='avoin');document.getElementById('listcount').textContent=open.length+' kpl'+(noUnits.length?' · '+noUnits.length+' ilman yksiköitä':'');const row=t=>{const _miss=(t.status!=='avoin')?missingNeed(t):[];const _ms=_miss.length?_miss.join(', '):'';return `<div class="trow u-${t.urg||'N'}" onclick="openDispatch('${t.id}')"><span class="dot" style="background:${TOIMI_COL[t.toimi]}"></span><div class="mid"><div class="code mono">${(t.alert||_miss.length)?'❗':''}${codeConfirmed(t)?(t.pickedCode||t.c):'—'} ${t.urg?`<span class="tag tag-${t.urg}">${t.urg}</span>`:'<span class="tag tag-none">määrittele</span>'} <span style="color:var(--dim);font-weight:400">${codeConfirmed(t)?pickedName(t):''}</span></div><div class="desc">${t.addr} · ${t.status==='avoin'?'ei yksiköitä':assignedStr(t)||'odottaa'}${_ms?' · ⏳ puuttuu: '+_ms:''}</div></div><div class="st">${t.status==='avoin'?'🔴 AVOIN':_miss.length?'⏳ lisäapua':t.onScene?'🟠 kohteessa':'🟡 ajossa'}</div></div>`;};let h='';if(noUnits.length){h+='<div style="font-size:11px;letter-spacing:1px;color:var(--A);font-weight:700;margin:2px 0 6px">⚠️ ODOTTAA YKSIKÖITÄ ('+noUnits.length+')</div>'+noUnits.map(row).join('');const others=open.filter(t=>t.status!=='avoin');if(others.length)h+='<div style="font-size:11px;letter-spacing:1px;color:var(--dim);font-weight:700;margin:12px 0 6px">KÄYNNISSÄ</div>'+others.map(row).join('');}else h=open.map(row).join('');if(parked.length){h='<div style="border:1px dashed var(--line2);border-radius:12px;padding:8px 10px;margin:2px 0 12px;background:rgba(255,255,255,.02)"><div style="font-size:11px;letter-spacing:1px;color:var(--acc);font-weight:800;margin:0 0 6px">⏸ JONOSSA — odottavat ('+parked.length+')</div>'+parked.map(row).join('')+'</div>'+h;}document.getElementById('listbody').innerHTML=h||'<div class="smallnote">Ei tehtäviä. Rakenna ensin asema Asemat-välilehdeltä, niin tehtäviä alkaa tulla.</div>';renderTaskPop();}
 function updateBadge(){
   const n=G.tasks.filter(t=>t.status==='avoin'&&!t.parked).length,b=document.getElementById('navbadge');
   if(n>0){b.style.display='block';b.textContent=n;}else b.style.display='none';
@@ -8579,6 +8586,42 @@ function closePanels(){document.querySelectorAll('.panel').forEach(p=>p.classLis
 function isOpen(id){return document.getElementById(id).classList.contains('open');}
 window.toggleMenu=(e)=>{if(e)e.stopPropagation();const m=document.getElementById('menupop');if(m)m.classList.toggle('open');};
 window.closeMenu=()=>{const m=document.getElementById('menupop');if(m)m.classList.remove('open');};
+// KOKO NÄYTTÖ. Androidilla/desktopilla oikea Fullscreen API. iPhonen/iPadin Safari EI tue sitä
+// (Applen rajoitus) → näytetään ohje "Lisää Koti-valikkoon", joka on ainoa tapa saada peli täysin
+// ilman selainpalkkeja iOS:llä. Jos jo kotinäyttö-sovelluksessa → ollaan jo koko näytöllä.
+window.toggleFullscreen=()=>{
+  const isStandalone=(window.navigator&&window.navigator.standalone===true)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+  if(isStandalone){toast('Olet jo koko näytöllä 👍');return;}
+  const el=document.documentElement;
+  const req=el.requestFullscreen||el.webkitRequestFullscreen||el.webkitRequestFullScreen||el.mozRequestFullScreen||el.msRequestFullscreen;
+  const exit=document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen||document.msExitFullscreen;
+  const fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement;
+  if(req){
+    try{
+      if(fsEl&&exit){exit.call(document);}
+      else{const p=req.call(el);if(p&&p.catch)p.catch(()=>showFsHelp());}
+    }catch(e){showFsHelp();}
+    return;
+  }
+  showFsHelp(); // iOS Safari iPhone: ei Fullscreen-API:a
+};
+function showFsHelp(){
+  if(document.getElementById('fshelp'))return;
+  const ios=/iP(hone|od|ad)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const d=document.createElement('div');d.id='fshelp';
+  d.style.cssText='position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:22px';
+  d.innerHTML='<div style="max-width:340px;background:#11151a;border:1px solid #2a3540;border-radius:16px;padding:18px 18px 14px;color:#e8eef3;font-size:14px;line-height:1.55">'
+    +'<div style="font-weight:800;font-size:16px;margin-bottom:8px">⛶ Koko näyttö</div>'
+    +(ios
+      ? 'iPhonen ja iPadin Safari ei salli verkkosivun piilottaa selainpalkkeja (Applen rajoitus). Saat pelin <b>koko ruudulle ilman palkkeja</b> näin:<br><br>1. Paina Safarin <b>jaa-painiketta</b> (neliö, jossa nuoli ylös).<br>2. Valitse <b>"Lisää Koti-valikkoon"</b>.<br>3. Avaa peli <b>kotinäytön kuvakkeesta</b> — silloin se aukeaa omana sovelluksena koko ruudulla.'
+      : 'Selain ei sallinut koko näyttöä automaattisesti. Kokeile selaimen omaa koko näyttö -tilaa (F11), tai lisää sivu kotinäytölle/sovellukseksi.')
+    +'<div style="text-align:right;margin-top:14px"><button onclick="document.getElementById(\'fshelp\').remove()" style="background:#39c06a;color:#06210f;border:none;border-radius:9px;padding:9px 16px;font-weight:800;cursor:pointer">Selvä</button></div>'
+    +'</div>';
+  d.addEventListener('click',e=>{if(e.target===d)d.remove();});
+  document.body.appendChild(d);
+}
+// Kun koko näyttö vaihtuu (Android/desktop), päivitä kartan koko ettei jää harmaata rakoa.
+['fullscreenchange','webkitfullscreenchange','mozfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{setTimeout(()=>{try{map.invalidateSize();}catch(e){}},250);}));
 document.addEventListener('click',(e)=>{const m=document.getElementById('menupop'),h=document.getElementById('hambtn');if(m&&m.classList.contains('open')&&!m.contains(e.target)&&h&&!h.contains(e.target))m.classList.remove('open');});
 function setNav(p){currentNav=p;document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));}
 // Palaa kartalle (sulkee paneelit). Käytetään ✕-napeissa.
