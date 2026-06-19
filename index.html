@@ -840,7 +840,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v282'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v284'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -4182,19 +4182,31 @@ async function spawnTask(){
       const mid=near?{lat:loc.lat+(near.lat-loc.lat)*0.55,lng:loc.lng+(near.lng-loc.lng)*0.55}:{lat:loc.lat,lng:loc.lng};
       try{const sh2=await snapToRoad(mid.lat,mid.lng);tk.shore={lat:sh2.lat,lng:sh2.lng};}catch(e2){tk.shore=mid;}
     }
-    // ETÄISYYS RANNASTA: lähellä (≤200 m, esim. uimari) → PINTAPELASTAJA riittää, vene ei pakollinen.
-    // Avomeri (>200 m) TAI monta potilasta / ALUSonnettomuus (221/222) → vene tarpeen (boatOnly).
-    const _boatOnly=(tk.patients||0)>=3||['221','222'].includes(String(tk.c));
-    tk.boatOnly=_boatOnly;
-    const _hasBoat=G.units.some(u=>((VTYPES[u.vt]&&VTYPES[u.vt].cls==='vene')||u.cls==='vene')&&u.status!=='lopetettu');
-    let _dShore=tk.shore?km(tk.lat,tk.lng,tk.shore.lat,tk.shore.lng):0;
-    let _offshore=_boatOnly||_dShore>0.2;
-    if(!_boatOnly&&!_hasBoat)_offshore=false; // ei venettä → pidä lähellä rantaa, pintapelastus uskottava
-    if(!_offshore&&tk.shore&&_dShore>0.2){ // siirrä vesipiste ~150 m rannasta
-      const f=0.15/_dShore; tk.lat=tk.shore.lat+(tk.lat-tk.shore.lat)*f; tk.lng=tk.shore.lng+(tk.lng-tk.shore.lng)*f;
+    // POTILAS JO MAISSA: jos KUVAUS kertoo että uhri on jo nostettu/vedetty vedestä (rannalla), tämä EI ole
+    // avomeri-/venetehtävä — potilas on rannalla ja maayksikkö (ambulanssi) hoitaa. Tehtävä siirretään
+    // RANTAAN, vene poistetaan tarpeesta, ei offshorea. (Korjaa: teksti "juuri nostettu rannalle" mutta
+    // tehtävä syntyi syvälle veteen.) Vedessä yhä olevat variantit pysyvät venetehtävinä (else-haara).
+    const _ashore=/juuri nostettu|nostettu (rannalle|maihin|kuiville|pois vedest|ylös)|vedetty (rantaan|maihin|kuiville)|saatu (rantaan|maihin|kuiville|ylös)|sai (ylös|hänet ylös|lapsen ylös|rantaan)|vetää vedest|nostettu, ei reagoi/i.test(desc||'');
+    if(_ashore){
+      if(tk.shore){tk.lat=tk.shore.lat;tk.lng=tk.shore.lng;} // tehtävä RANNALLE (maalle), missä potilas on
+      tk.where='any'; tk.offshore=false; tk.boatOnly=false;
+      if(tk.need&&tk.need.vene){const nn=Object.assign({},tk.need);delete nn.vene;tk.need=nn;tk.minCrew=Math.max(2,(tk.minCrew||0)-2);}
       try{refreshTaskLabel(tk);}catch(e){}
+    } else {
+      // ETÄISYYS RANNASTA: lähellä (≤200 m, esim. uimari) → PINTAPELASTAJA riittää, vene ei pakollinen.
+      // Avomeri (>200 m) TAI monta potilasta / ALUSonnettomuus (221/222) → vene tarpeen (boatOnly).
+      const _boatOnly=(tk.patients||0)>=3||['221','222'].includes(String(tk.c));
+      tk.boatOnly=_boatOnly;
+      const _hasBoat=G.units.some(u=>((VTYPES[u.vt]&&VTYPES[u.vt].cls==='vene')||u.cls==='vene')&&u.status!=='lopetettu');
+      let _dShore=tk.shore?km(tk.lat,tk.lng,tk.shore.lat,tk.shore.lng):0;
+      let _offshore=_boatOnly||_dShore>0.2;
+      if(!_boatOnly&&!_hasBoat)_offshore=false; // ei venettä → pidä lähellä rantaa, pintapelastus uskottava
+      if(!_offshore&&tk.shore&&_dShore>0.2){ // siirrä vesipiste ~150 m rannasta
+        const f=0.15/_dShore; tk.lat=tk.shore.lat+(tk.lat-tk.shore.lat)*f; tk.lng=tk.shore.lng+(tk.lng-tk.shore.lng)*f;
+        try{refreshTaskLabel(tk);}catch(e){}
+      }
+      tk.offshore=_offshore;
     }
-    tk.offshore=_offshore;
   }
   // TIEN TYYPPI: road-tehtävät voivat olla nopealla tiellä (motari/valtatie) → suojaa tarvitaan
   // myös PIENISSÄ keikoissa. Kaukana asemasta todennäköisemmin maantie/motari.
@@ -4728,7 +4740,7 @@ window.pullToHere=(uid,tid)=>{
   //  1) yksikkö ei jää orvoksi jos käyttäjä navigoi pois ennen sendiä
   //  2) yksikkö ei näy "busy"-tilassa listalla → toggleSel toimii normaalisti
   u.taskId=tk.id;
-  u.target={lat:tk.lat,lng:tk.lng};
+  { const _g=(tk.where==='water'&&!isBoatUnit(u))?taskShore(tk):{lat:tk.lat,lng:tk.lng}; u.target={lat:_g.lat,lng:_g.lng}; } // vesitehtävä: maayksikkö/HEMS rantaan, vene vesipisteeseen
   u.route=null;u.ri=0;u.routeEta=null;u.routeDistance=null;u._guessedFor=null;
   // Pidä matka-status jos oli liikkeellä
   if(u.status!=='otettu'&&u.status!=='matka'&&u.status!=='kohde'){u.status='matka';}
@@ -5056,7 +5068,7 @@ async function sendDispatch(next){
       if(_isTankki) _vpkRoll = _r<0.95 ? 'tankki' : 'eiLahde';   // lähtee lähes aina heti pienellä vahvuudella
       else _vpkRoll = _r<0.85 ? 'full' : (_r<0.96 ? 'vajaa' : 'eiLahde');
     }
-    const _dest=(tk.where==='water'&&!goesStraight(u))?taskShore(tk):{lat:tk.lat,lng:tk.lng};
+    const _dest=(tk.where==='water'&&!isBoatUnit(u))?taskShore(tk):{lat:tk.lat,lng:tk.lng}; // vesitehtävässä VAIN vene vesipisteeseen; maayksiköt JA HEMS rantaan (HEMS ei laskeudu mereen)
     u.status=atStation?'otettu':'matka';u.taskId=tk.id;u.target={lat:_dest.lat,lng:_dest.lng};u.route=null;u.ri=0;u.omamieli=u.omamieli==='partio'?null:u.omamieli;
     const stt=G.stations.find(s=>s.id===u.stationId);
     // Käytä yksikön EFEKTIIVISTÄ lähtöaikaa (huomioi yksikön muodon, ei aseman) — sama kuin ETA-arvio.
@@ -9193,7 +9205,7 @@ function applyLoaded(d){
     // Kohteessa oleva yksikkö: pysyy paikallaan, EI hae reittiä (on jo perillä)
     if(u.status==='kohde'&&u.taskId){
       const tk=G.tasks.find(t=>t.id===u.taskId);
-      if(tk){nu.target={lat:tk.lat,lng:tk.lng};nu.route=null;nu.ri=0;}
+      if(tk){const _g=(tk.where==='water'&&!isBoatUnit(nu))?taskShore(tk):{lat:tk.lat,lng:tk.lng};nu.target={lat:_g.lat,lng:_g.lng};nu.route=null;nu.ri=0;}
       else{nu.status='paluu';nu.taskId=null;nu.target={lat:nu.hx,lng:nu.hy};fetchRoute(nu.lat,nu.lng,nu.hx,nu.hy).then(r=>{if(nu.status==='paluu'){nu.route=r;nu.ri=0;}});}
     }
     // Matkalla/otettu: aseta target ja hae reitti uudelleen (jatkaa nykysijainnista)
@@ -9201,6 +9213,7 @@ function applyLoaded(d){
       const tk=G.tasks.find(t=>t.id===u.taskId);
       if(tk){
         if(isBoatUnit(nu)&&nu._isLandBoat&&!nu._boatLaunched&&tk.shore){nu.target={lat:tk.shore.lat,lng:tk.shore.lng};} // vene trailerilla -> matkalla rantaan
+        else if(tk.where==='water'&&!isBoatUnit(nu)){const _g=taskShore(tk);nu.target={lat:_g.lat,lng:_g.lng};} // maayksikkö/HEMS vesitehtävässä -> rantaan
         else{nu.target={lat:tk.lat,lng:tk.lng};}
       }
       else{nu.status='asema';nu.taskId=null;nu.lat=nu.hx;nu.lng=nu.hy;}
