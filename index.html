@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v295'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v296'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -4390,8 +4390,12 @@ function unitBaseTurnoutSec(u){
   }
   const ready=unitOnReady(u);
   if(ready.ready)base=Math.min(base,60);
-  // Käyttäjän käsin asettama lähtöaika (u.turnout) voittaa kaiken
+  // Käyttäjän käsin asettama lähtöaika (u.turnout) voittaa muodon/aseman oletuksen
   let out=u.turnout!=null?u.turnout:base;
+  // ASEMAVALMIUS voittaa MYÖS käsin asetetun lähtöajan: miehistö on JO asemalla autossa valmiina,
+  // joten lähtö ~60 s. (Käsin asetettu turnout kuvaa tilannetta jossa miehistöä ei ole valmiina —
+  // ennen tämä jätettiin huomiotta ja VPK-yksikkö asemavalmiudessa näytti silti normaalin lähtöviiveen.)
+  if(ready.ready)out=Math.min(out,60);
   // Helikopteri: NOUSU ilmaan vie aikaa (~5 min). Vain kopteritilassa — autotilassa lähtee kuin auto.
   // (Lasku lisätään erikseen perillä, ja se on lyhyempi kuin nousu.)
   if(VTYPES[u.vt]&&VTYPES[u.vt].heli&&u._hemsMode!=='car')out+=300;
@@ -4801,7 +4805,7 @@ window.pullToHere=(uid,tid)=>{
   if(oldTk){
     oldTk.assigned=oldTk.assigned.filter(i=>i!==uid);
     oldTk.reqKey='';
-    if(oldTk.assigned.length===0&&oldTk.status!=='valmis'){oldTk.status='avoin';oldTk.onScene=false;}
+    if(oldTk.assigned.length===0&&oldTk.status!=='valmis'){oldTk.status='avoin';oldTk.onScene=false;oldTk._avoinSince=G.clock;oldTk.warned=false;oldTk.escNeglect=false;}
   }
   // SUORA SIIRTO uuteen tehtävään — ei tarvitse painaa LÄHETÄ.
   // Tämä korjaa kaksi bugia:
@@ -5378,6 +5382,9 @@ function neglectEligible(tk){
 }
 function checkNeglect(tk){
   if(tk._dupOf||tk.hTask)return; // päällekkäinen ilmoitus tai H-tehtävä (neuvonta) — ei oma tehtävänsä, ei sakkoa
+  // Kun tehtävä EI ole avoin (joku hoitaa sitä), nollaa odotusajastin ja varoitusliput → jos yksikkö
+  // myöhemmin vedetään pois, tehtävä saa TUOREEN aikaikkunan eikä sakotu heti.
+  if(tk.status!=='avoin'){ tk._avoinSince=null; if(tk.assigned&&tk.assigned.length){tk.warned=false;tk.escNeglect=false;} }
   // JUUTTUNEEN TEHTÄVÄN SIIVOUS: jos yksiköt ovat olleet matkalla todella kauan eivätkä
   // koskaan saavu (esim. vanha tallennus, mahdoton reitti), vapauta ne ja avaa tehtävä uudelleen.
   if(tk.status==='ajossa'&&!tk.onScene&&tk.assigned.length){
@@ -5402,7 +5409,11 @@ function checkNeglect(tk){
     }
   }
   if(tk.status!=='avoin'||!neglectEligible(tk))return;
-  const waited=G.clock-tk.created;
+  // BUGI-KORJAUS: "hoitamatta"-aika mitataan siitä kun tehtävä viimeksi jäi ILMAN yksiköitä (_avoinSince),
+  // EI luontihetkestä. Muuten kun pelaaja vetää ainoan yksikön pois tehtävältä (joka luotiin kauan sitten),
+  // tehtävä sakotettaisiin ja poistettaisiin VÄLITTÖMÄSTI sen palatessa avoimeksi.
+  if(!tk._avoinSince)tk._avoinSince=G.clock;
+  const waited=G.clock-(tk._avoinSince||tk.created);
   if(!tk.warned&&waited>360){tk.warned=true;alertTask(tk,'HÄKE: kiireellinen tehtävä '+tk.c+' '+tk.addr+' yhä ilman yksiköitä!');}
   if(!tk.escNeglect&&waited>600&&tk.escTo&&tk.escTo!==tk.c&&TASKS.find(t=>t.c===tk.escTo)){tk.escNeglect=true;const reasons=ESC_REASON[tk.c]||['tilanne ehti pahentua ilman apua'];const why=reasons[Math.floor(Math.random()*reasons.length)];alertTask(tk,'HÄKE: '+tk.c+' '+tk.addr+' — '+why+' (yhä ilman yksiköitä)');} // EI vaihda koodia pelaajan puolesta — vain varoitus
   if(waited>1000){
