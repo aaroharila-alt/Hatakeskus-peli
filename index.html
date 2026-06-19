@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v287'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v288'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3685,8 +3685,9 @@ const POI_COVER_KM=26;    // iso paikka kelpaa vain pelaajan alueen lähellä
 function rushFactor(){const h=Math.floor((G.clock||0)/3600)%24; if(h>=7&&h<9)return 2.4; if(h>=15&&h<18)return 2.1; if(h>=9&&h<15)return 1.25; if(h>=6&&h<7)return 1.4; if(h>=18&&h<22)return 1.1; if(h>=22||h<5)return 0.55; return 1;}
 // Sisäänrakennetut isot paikat pelaajan kattaman alueen lähellä.
 function builtinPoisNear(stations){
-  if(!stations||!stations.length)return [];
-  return BUILTIN_POIS.filter(p=>stations.some(s=>km(p.lat,p.lng,s.lat,s.lng)<=POI_COVER_KM));
+  // VAIN pelaajan tehtäväalueiden SISÄLLÄ olevat isot paikat (ei enää 26 km säde joka levitti
+  // tehtäviä kauas alueen ulkopuolelle). Mitään ei synny alueiden ulkopuolelle.
+  return BUILTIN_POIS.filter(p=>inSpawnArea(p.lat,p.lng));
 }
 // Painotettu valinta KOHTEEN KOON (i) mukaan: isompi kohde saa enemmän tehtäviä.
 function pickWeightedPoi(pois){
@@ -3699,27 +3700,29 @@ function pickWeightedPoi(pois){
 // Satunnainen piste isolla tiellä pelaajan alueen lähellä, painotettuna tien KOON (i), segmentin PITUUDEN
 // ja RUUHKAN mukaan (moottoritiet ruuhkassa selvästi vilkkaampia). snapToRoad tarkentaa pisteen tielle.
 function pickMajorRoadPoint(stations,maxKm){
-  if(!stations||!stations.length)return null;
   const rf=rushFactor();
   const cand=[]; let totW=0;
+  // Näytteistä jokaista tietä ~0,5 km välein ja pidä VAIN pelaajan tehtäväalueen SISÄLLÄ olevat pisteet.
+  // Näin liikennetehtävä syntyy isolle tielle vain siellä missä tie KULKEE alueesi läpi — ei koskaan ulkopuolelle.
   MAJOR_ROADS.forEach(rd=>{
     const baseI=rd.i||(rd.t==='motorway'?9:6);
     for(let i=0;i<rd.pts.length-1;i++){
       const a=rd.pts[i],b=rd.pts[i+1];
-      const mid=[(a[0]+b[0])/2,(a[1]+b[1])/2];
-      const near=stations.some(s=>km(mid[0],mid[1],s.lat,s.lng)<=maxKm||km(a[0],a[1],s.lat,s.lng)<=maxKm||km(b[0],b[1],s.lat,s.lng)<=maxKm);
-      if(!near)continue;
       const segLen=km(a[0],a[1],b[0],b[1]);
-      let w=baseI*Math.max(0.5,segLen/3);
-      if(rd.t==='motorway')w*=rf; else w*=(1+(rf-1)*0.5);
-      cand.push({a,b,rd,w}); totW+=w;
+      const steps=Math.max(2,Math.min(60,Math.round(segLen/0.5)));
+      for(let s=0;s<steps;s++){
+        const f=(s+0.5)/steps;
+        const la=a[0]+(b[0]-a[0])*f, ln=a[1]+(b[1]-a[1])*f;
+        if(!inSpawnArea(la,ln))continue;
+        let w=baseI; if(rd.t==='motorway')w*=rf; else w*=(1+(rf-1)*0.5);
+        cand.push({la,ln,rd,w}); totW+=w;
+      }
     }
   });
   if(!cand.length)return null;
   let r=Math.random()*totW, seg=cand[0];
   for(const c of cand){ r-=c.w; if(r<=0){seg=c;break;} }
-  const a=seg.a,b=seg.b,f=Math.random();
-  return {lat:a[0]+(b[0]-a[0])*f,lng:a[1]+(b[1]-a[1])*f,road:seg.rd.n,roadType:seg.rd.t};
+  return {lat:seg.la,lng:seg.ln,road:seg.rd.n,roadType:seg.rd.t};
 }
 
 const FIGHT_CODES=new Set(['031','032','022','012','011','072','041','051']);
@@ -3839,6 +3842,16 @@ function allSpawnAreas(){
   (G.spawnAreas||[]).forEach(ar=>out.push(ar));
   return out;
 }
+// Onko piste pelaajan JONKIN tehtäväalueen sisällä (aseman ympyrä TAI piirretty alue/ympyrä)?
+// Tällä varmistetaan ettei mitään synny alueiden ulkopuolelle.
+function inSpawnArea(lat,lng){
+  const areas=allSpawnAreas();
+  for(const ar of areas){
+    if(ar.type==='poly'&&ar.points&&ar.points.length>=3){ if(pointInPoly(lat,lng,ar.points))return true; }
+    else { if(km(lat,lng,ar.lat,ar.lng)<=(ar.radius||3))return true; }
+  }
+  return false;
+}
 // Onko piste tieyhteydellä saavutettavissa lähimmältä asemalta (ei lautan/saaren takana)?
 async function reachableFromStation(lat,lng){
   let best=null,bd=1e9;G.stations.forEach(st=>{const d=km(lat,lng,st.lat,st.lng);if(d<bd){bd=d;best=st;}});
@@ -3865,13 +3878,23 @@ async function pickLandLoc(s,minD,maxD){
   }
   return fallback||{lat:s.lat,lng:s.lng};
 }
+// Kuten pickLandLoc, mutta VARMISTAA että tulos on pelaajan tehtäväalueen sisällä. Jos osuma menee
+// (snäppäyksen takia) alueen ulkopuolelle, kutistetaan hajontaa; viimeisenä palautetaan alueen sisäpiste.
+async function pickLandLocInArea(s,minD,maxR){
+  for(let k=0;k<3;k++){
+    const loc=await pickLandLoc(s,minD,maxR*(k===0?1:(k===1?0.55:0.28)));
+    if(inSpawnArea(loc.lat,loc.lng))return loc;
+  }
+  try{const sn=await snapToRoad(s.lat,s.lng);if(inSpawnArea(sn.lat,sn.lng))return {lat:sn.lat,lng:sn.lng};}catch(e){}
+  return {lat:s.lat,lng:s.lng};
+}
 async function pickLocationForTask(t){
   const a=activeStations();
   // ISOT TIET (piilodata): liikennetehtävät (where:'road' / motari-koodit) sijoitetaan oikealle ISOLLE
   // TIELLE pelaajan kattaman alueen lähellä — tavoitettavissa. snapToRoad tarkentaa pisteen tielle.
   if((t.where==='road'||MOTARI_CODES.has(String(t.c)))&&Math.random()<Math.min(0.93,0.6*rushFactor())){
     const rp=pickMajorRoadPoint(a,ROAD_COVER_KM);
-    if(rp){ const loc=await pickLandLoc({lat:rp.lat,lng:rp.lng},0.0,0.12); return loc; }
+    if(rp){ const loc=await pickLandLoc({lat:rp.lat,lng:rp.lng},0.0,0.06); if(inSpawnArea(loc.lat,loc.lng))return loc; }
   }
   // KOHDEPISTEET: pelaajan omat POIt + sisäänrakennetut ISOT PAIKAT (kauppakeskukset, lentoasemat, satamat,
   // teollisuus, ratapihat, stadionit) pelaajan kattaman alueen lähellä. Tehtävä sopivalle kohteelle.
@@ -3883,7 +3906,8 @@ async function pickLocationForTask(t){
       const pk=(sorted[0]||{w:[p.lat,p.lng]}).w;
       return {lat:pk[0]+rnd(-0.004,0.004),lng:pk[1]+rnd(-0.008,0.008)};
     }
-    return await pickLandLoc({lat:p.lat,lng:p.lng},0.04,0.5);
+    const loc=await pickLandLoc({lat:p.lat,lng:p.lng},0.02,0.2);
+    if(inSpawnArea(loc.lat,loc.lng))return loc;
   }
   // YHDISTETTY aluelista: jokaisen aseman OMA alue (automaattinen) + käyttäjän piirtämät alueet.
   // Painotettu väentiheydellä. Näin uusi asema saa heti oman alueen ja kaikki toimii.
@@ -3928,11 +3952,11 @@ async function pickLocationForTask(t){
 
   // MAATEHTÄVÄT: pickLandLoc varmistaa että kohde on tieyhteydellä saavutettavissa lähimmältä
   // asemalta (ei lautan takana saaressa). Jos ei → kokeillaan lähempää tai palataan asemalle.
-  if(where==='forest')   return await pickLandLoc(s,1.5,Math.max(1.5,maxR));
-  if(where==='industrial')return await pickLandLoc(s,0.5,maxR);
-  if(where==='road')     return await pickLandLoc(s,0.2,maxR);
-  if(where==='urban')    return await pickLandLoc(s,0.1,Math.min(1.5,maxR));
-  return await pickLandLoc(s,0.25,maxR);
+  if(where==='forest')   return await pickLandLocInArea(s,1.5,Math.max(1.5,maxR));
+  if(where==='industrial')return await pickLandLocInArea(s,0.5,maxR);
+  if(where==='road')     return await pickLandLocInArea(s,0.2,maxR);
+  if(where==='urban')    return await pickLandLocInArea(s,0.1,Math.min(1.5,maxR));
+  return await pickLandLocInArea(s,0.25,maxR);
 }
 
 // Kadunnimet paikan typin mukaan
@@ -7399,12 +7423,12 @@ function maybeReleaseExtras(tk){
   const _wasLead=tk.lead===u.name;
   let _msg;
   if(_wasLead){
-    // Mestari/johtaja ei jatka kohteeseen → kertoo kuka johtaa jatkossa
-    const _rem=tk.assigned.map(id=>G.units.find(x=>x.id===id)).filter(x=>x&&x.toimi===tk.toimi);
-    _rem.sort((a,b)=>leadLevel(b)-leadLevel(a));
-    const _nl=_rem[0]&&_rem[0].name;
-    if(_nl){tk.lead=_nl;_msg='otan peruutuksen, '+_nl+' johtaa';}
-    else _msg='otan peruutuksen, palaan asemalle';
+    // Mestari/johtaja ei jatka kohteeseen → uusi johtaja valitaan SAMALLA logiikalla (setLead:
+    // kohteessa oleva ennen matkalla olevaa, eka hälytetty ratkaisee) kuin muuallakin pelissä,
+    // jottei nimetä väärää yksikköä (esim. 401) kun oikea johtaja on kohteessa oleva (esim. 311).
+    setLead(tk);
+    const _nl=(tk.lead&&tk.lead!==u.name)?tk.lead:null;
+    _msg=_nl?('otan peruutuksen, '+_nl+' johtaa'):'otan peruutuksen, palaan asemalle';
   } else {
     const lines=['otan peruutuksen, palaan asemalle','otamme peruutuksen, palaamme asemalle','selvä, käännymme takaisin','kuitataan, peruutamme asemalle'];
     _msg=lines[Math.floor(Math.random()*lines.length)];
@@ -7641,12 +7665,20 @@ function standDown(tk,keptNames,droppedNames,preferSpeaker,allowSelfAck){
 function midTaskRelease(tk){
   // Kun työ on edennyt yli puolivälin, johtaja voi vapauttaa AIDOSTI ylimääräisiä yksiköitä
   // (ei niitä joita tehtävä vaatii — neededKeep suojaa ne, myös suoja/minCrew).
-  if(tk.work<tk.workNeeded*0.5)return;if(tk.midDone)return;if(Math.random()>0.004)return;tk.midDone=true;
-  const keep=neededKeep(tk);const onsc=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
-  const extras=onsc.filter(u=>!keep.has(u.id));if(!extras.length)return;
-  const drop=extras.slice(0,Math.max(1,Math.floor(extras.length/2)));
-  const remainOnsc=onsc.filter(u=>!drop.includes(u));
+  if(tk.work<tk.workNeeded*0.5)return;if(tk.midDone)return;if(Math.random()>0.004)return;
+  const keep=neededKeep(tk);
+  const onsc=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
+  const onExtras=onsc.filter(u=>!keep.has(u.id));
+  // Matkalla olevat ylimääräiset (ei tarvitut): nämä KÄÄNNETÄÄN myös, jotta "muille peruutus" pitää
+  // paikkansa — ennen tämä jätti matkalla olevan jatkamaan kohteeseen vaikka johtaja peruutti muut.
+  const enr=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&(u.status==='matka'||u.status==='otettu')&&!keep.has(u.id));
+  if(!onExtras.length&&!enr.length)return;
+  const dropOn=onExtras.slice(0,Math.max(onExtras.length?1:0,Math.floor(onExtras.length/2)));
+  const remainOnsc=onsc.filter(u=>!dropOn.includes(u));
   if(!needMetBy(tk,remainOnsc))return; // varmuus: älä pudota jos kohteessa ei enää riittäisi
+  const drop=dropOn.concat(enr);
+  if(!drop.length)return;
+  tk.midDone=true;
   const freed=drop.map(u=>u.name);
   drop.forEach(u=>{freeUnit(u);tk.assigned=tk.assigned.filter(i=>i!==u.id);});
   // Puhuja = paikalle JÄÄVÄ johtaja (ei vapautettava). Yksikkö ei vapauta itseään nimellään.
