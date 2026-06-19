@@ -840,7 +840,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v281'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v282'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -2476,6 +2476,7 @@ function renderStation(sid){const s=G.stations.find(x=>x.id===sid);if(!s)return;
          <div class="smallnote" style="margin-bottom:6px">Kuljettajan koulutus pelastusveneeseen. Vain merkityt yksiköt voivat ajaa venettä venelaiturin lähtemällä keikalle. Yleensä oman aseman tai linkatun venelaiturin yksikkö.</div>
          <button class="${u.canDriveBoat?'buy':'btn-x'}" style="width:100%" onclick="toggleBoatDriver('${u.id}');renderStation('${s.id}')">${u.canDriveBoat?'✓ Koulutettu kuljettaja':'Merkitse veneenkuljettajaksi'}</button>
        </div></details>`:''}
+       ${(isBoatUnit(u)&&s.t!=='venelaituri')?`<div class="smallnote" style="margin:4px 0 8px;padding:7px 9px;background:var(--bg);border:1px solid var(--acc);border-radius:7px;color:var(--acc2)">🚚 <b>Trailerivene.</b> Paloaseman vene on trailerilla — se ei aja itse, vaan <b>vetoauto</b> (vetokykyinen pelastusauto, esim. sammutusauto) vetää sen rantaan ja laskee vesille. Vetoauto haetaan automaattisesti keikalle jos sitä ei valita. Jos haluat veneen lähtevän itse vesiltä, sijoita se <b>venelaiturille</b>.</div>`:''}
        ${isBoatUnit(u)?`<details class="sm" ${u.ownCrew?'open':''}><summary>🧑‍🚒 Oma miehistö <span class="tag tag-N" style="background:${u.ownCrew?'var(--acc2)':'var(--bg)'};color:${u.ownCrew?'#06210f':'var(--dim)'}">${u.ownCrew?'on':'ei (miehittämätön)'}</span></summary><div class="smbox">
          <div class="smallnote" style="margin-bottom:6px">Onko veneellä oma vakituinen miehistö? Useimmiten EI — silloin vene on miehittämätön: sen miehittää kuljettava yksikkö (venelaiturilla linkatun paloaseman miehistö), ja AUTO jää rannalle. Jos päällä, vene lähtee omalla miehistöllään eikä tarvitse erillistä kuljettajaa.</div>
          <button class="${u.ownCrew?'buy':'btn-x'}" style="width:100%" onclick="toggleBoatCrew('${u.id}');renderStation('${s.id}')">${u.ownCrew?'✓ Oma miehistö (lähtee itse)':'Merkitse: oma miehistö'}</button>
