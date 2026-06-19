@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v294'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v295'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -4493,13 +4493,10 @@ function dStatusInner(tk){
     else s='lähdössä';
   }else if(u.status==='matka'){
     if(u.departAt&&G.clock<u.departAt){s='lähtee ~'+Math.ceil((u.departAt-G.clock)/60)+' min';}
-    else if(u.routeEta&&u.routeEta>G.clock){
-      const lm=Math.max(1,Math.round((u.routeEta-G.clock)/60));
-      const dk=u.routeDistance?(' · '+Math.round(u.routeDistance/100)/10+'km'):'';
-      s='~'+lm+' min'+dk;
-    }else{
-      const d=km(u.lat,u.lng,tk.lat,tk.lng);const spd=etaSpeed(u,tk.urg||'B');
-      s='~'+Math.max(1,Math.round(d*1.55/spd*60))+' min';
+    else {
+      const spd=Math.max(1,etaSpeed(u,tk.urg||'B'));
+      let remKm=remainingRouteKm(u); if(remKm==null)remKm=km(u.lat,u.lng,tk.lat,tk.lng)*1.32;
+      s='~'+Math.max(1,Math.round(remKm/spd*60))+' min · '+(Math.round(remKm*10)/10)+'km';
     }
   }else if(u.status==='kohde')s='✓ kohteessa';else if(u.status==='paluu')s='paluumatkalla';else s=u.status;
     return `<div style="font-size:12px;display:flex;align-items:center;gap:6px;padding:3px 0"><span class="mono" style="flex:1">${u.name}${_tag(u)}</span><span style="color:${unitColor(u)}">${s}</span><button class="btn-x" style="padding:6px 14px;font-size:12px;min-width:68px;touch-action:manipulation" data-act="cancelunit" data-uid="${u.id}">Peruuta</button></div>`;
@@ -4597,14 +4594,12 @@ function openUnitInfo(id){const u=G.units.find(x=>x.id===id);if(!u)return;
     if(u.departAt&&G.clock<u.departAt){
       const waitMin=Math.ceil((u.departAt-G.clock)/60);
       eta='lähtee ~'+waitMin+' min';
-    } else if(u.routeEta&&u.routeEta>G.clock){
-      const leftMin=Math.max(1,Math.round((u.routeEta-G.clock)/60));
-      const distKm=u.routeDistance?Math.round(u.routeDistance/100)/10:null;
-      eta='perillä ~'+leftMin+' min'+(distKm?' · '+distKm+' km':'');
     } else {
-      const spd=etaSpeed(u,tk.urg);
-      const d=km(u.lat,u.lng,tk.lat,tk.lng)*1.32;
-      eta='perillä ~'+Math.max(1,Math.round(d/spd*60))+' min';
+      // Aika JA matka lasketaan jäljellä olevasta reitistä → ne pysyvät johdonmukaisina koko matkan ajan.
+      const spd=Math.max(1,etaSpeed(u,tk.urg||'B'));
+      let remKm=remainingRouteKm(u); if(remKm==null)remKm=km(u.lat,u.lng,tk.lat,tk.lng)*1.32;
+      const leftMin=Math.max(1,Math.round(remKm/spd*60));
+      eta='perillä ~'+leftMin+' min · '+(Math.round(remKm*10)/10)+' km';
     }
   } else if(u.status==='kuljetus'&&u.transport){
     const d=km(u.lat,u.lng,u.transport.hlat,u.transport.hlng)*1.32;
@@ -6650,6 +6645,16 @@ function topKmh(u){
 // realistista keskinopeutta, jolloin näytetty aika vastaa oikeaa saapumista paljon paremmin.
 const ETA_TRAFFIC=0.85;
 function etaSpeed(u,urg){return effectiveSpeed(u,urg)*ETA_TRAFFIC;}
+// JÄLJELLÄ oleva matka reittiä pitkin yksikön nykysijainnista kohteeseen (km). Käytetään ETA-näyttöön,
+// jotta NÄYTETTY aika ja matka vastaavat AINA jäljellä olevaa matkaa (ennen näytettiin koko reitin pituus
+// vaikka aika laski alas → "perillä ~1 min · 19.9 km"). Palauttaa null jos ei reittiä (suora linja).
+function remainingRouteKm(u){
+  if(!u||!u.route||!u.route.length)return null;
+  let ri=u.ri||0; if(ri<0)ri=0; if(ri>u.route.length-1)ri=u.route.length-1;
+  let d=km(u.lat,u.lng,u.route[ri][0],u.route[ri][1]);
+  for(let i=ri;i<u.route.length-1;i++)d+=km(u.route[i][0],u.route[i][1],u.route[i+1][0],u.route[i+1][1]);
+  return d;
+}
 
 function moveUnit(u,dt){
   // VETOAUTO ODOTTAA TRAILERIVENETTÄ RANNASSA: pysyy paikallaan kunnes vene palaa ja kytketään takaisin
