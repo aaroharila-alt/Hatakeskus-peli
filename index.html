@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v288'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v289'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -2888,9 +2888,9 @@ window.buyStationLoad=(sid,l)=>{const s=G.stations.find(x=>x.id===sid);if(!s||!L
   if(G.money<price){toast('Tarvitset '+price.toLocaleString('fi-FI')+'€');return;}
   G.money-=price;updateMoney();s.availableLoads.push(l);
   toast('📦 Ostettu: '+LOAD_NAMES[l]+' → '+s.n);renderStation(sid);saveGame(false);};
-window.toggleStationSpawn=(sid)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;s.spawnOff=!s.spawnOff;toast(s.n+': tehtäväalue '+(s.spawnOff?'pois päältä':'käytössä'));saveGame(false);};
+window.toggleStationSpawn=(sid)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;s.spawnOff=!s.spawnOff;G._areaVer=(G._areaVer||0)+1;toast(s.n+': tehtäväalue '+(s.spawnOff?'pois päältä':'käytössä'));saveGame(false);};
 window.addKorjaamoExpansion=(sid)=>{const s=G.stations.find(x=>x.id===sid);if(!s||s.korjaamo)return;const cost=20000;if(G.money<cost){toast('Tarvitset '+cost.toLocaleString('fi-FI')+'€');return;}G.money-=cost;updateMoney();s.korjaamo=true;toast('🔧 Huoltohalli rakennettu: '+s.n);try{renderStation(sid);}catch(e){}saveGame(false);};
-window.setStationSpawnRadius=(sid,val)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;s.spawnRadius=Math.max(1,parseFloat(val)||3);};
+window.setStationSpawnRadius=(sid,val)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;s.spawnRadius=Math.max(1,parseFloat(val)||3);G._areaVer=(G._areaVer||0)+1;};
 window.setStationSpawnDensity=(sid,val)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;s.spawnDensity=parseFloat(val)||1;toast(s.n+' tehtävätiheys: '+s.spawnDensity+'×');saveGame(false);};
 window.showStationSpawnOnMap=(sid)=>{const s=G.stations.find(x=>x.id===sid);if(!s)return;
   document.getElementById('smod').classList.remove('open');closePanels();setNav('map');map.invalidateSize();
@@ -2998,7 +2998,7 @@ function clearPolyDraft(){polyDraft=[];polyDraftLayers.forEach(l=>map.removeLaye
 window.clearAllSpawnAreas=()=>{
   if(!(G.spawnAreas&&G.spawnAreas.length)&&!polyDraft.length){toast('Ei poistettavia lisäalueita');return;}
   if(!confirm('Poistetaanko KAIKKI piirretyt lisäalueet? (Asemien omat tehtäväalueet säilyvät.)'))return;
-  G.spawnAreas=[];polyDraft=[];renderSpawnCircles();toast('Lisäalueet poistettu');
+  G.spawnAreas=[];polyDraft=[];renderSpawnCircles();G._areaVer=(G._areaVer||0)+1;toast('Lisäalueet poistettu');
 };
 window.undoPolyPoint=()=>{if(polyDraft.length){polyDraft.pop();renderPolyDraft();}};
 function renderPolyDraft(){
@@ -3025,7 +3025,7 @@ function renderPolyDraft(){
 window.finishPolyArea=()=>{
   if(polyDraft.length<3){toast('Tarvitaan vähintään 3 pistettä');return;}
   G.spawnAreas=G.spawnAreas||[];
-  G.spawnAreas.push({id:'A'+(G.uidc++),type:'poly',points:polyDraft.map(p=>[p[0],p[1]]),density:spawnEditDensity});
+  G.spawnAreas.push({id:'A'+(G.uidc++),type:'poly',points:polyDraft.map(p=>[p[0],p[1]]),density:spawnEditDensity});G._areaVer=(G._areaVer||0)+1;
   clearPolyDraft();
   renderSpawnCircles();
   toast('Piirretty alue lisätty ('+G.spawnAreas.length+' kpl)');
@@ -3107,7 +3107,7 @@ function renderSpawnCircles(){
       // KORJAUS: ennen klikkaus poisti alueen heti → uutta aluetta rakentaessa vanha poistui vahingossa.
       // Nyt kysytään varmistus, joten vahinkoklikkaus ei poista aluetta.
       if(!confirm('Poista tämä tehtäväalue?'))return;
-      G.spawnAreas.splice(i,1);
+      G.spawnAreas.splice(i,1);G._areaVer=(G._areaVer||0)+1;
       renderSpawnCircles();
       saveGame(false);
       toast('Tehtäväalue poistettu');
@@ -3303,7 +3303,7 @@ map.on('click',e=>{
       return;
     }
     G.spawnAreas=G.spawnAreas||[];
-    G.spawnAreas.push({id:'A'+(G.uidc++),type:'circle',lat:e.latlng.lat,lng:e.latlng.lng,radius:spawnEditRadius,density:spawnEditDensity});
+    G.spawnAreas.push({id:'A'+(G.uidc++),type:'circle',lat:e.latlng.lat,lng:e.latlng.lng,radius:spawnEditRadius,density:spawnEditDensity});G._areaVer=(G._areaVer||0)+1;
     renderSpawnCircles();
     toast('Tehtäväalue lisätty ('+G.spawnAreas.length+' kpl). Klikkaa aluetta poistaaksesi.');
     return;
@@ -3843,10 +3843,44 @@ function allSpawnAreas(){
   return out;
 }
 // Onko piste pelaajan JONKIN tehtäväalueen sisällä (aseman ympyrä TAI piirretty alue/ympyrä)?
-// Tällä varmistetaan ettei mitään synny alueiden ulkopuolelle.
+// SUORITUSKYKY: rakennetaan spatiaalinen RUUDUKKO (grid) jolla tarkistus on vakioaikainen myös kun
+// asemia on satoja/tuhansia (ennen tämä kävi kaikki alueet läpi joka kutsulla -> pickMajorRoadPoint
+// hyytyi ~0,5 s/keikka 1000 asemalla). Ruudukko cachetaan ja rakennetaan uudelleen vain kun
+// alueet muuttuvat (asemamäärä/piirretyt alueet/_areaVer-laskuri säteen tms. muuttuessa).
+let _areaIdx=null,_areaIdxSig='';
+function _buildAreaIndex(){
+  const areas=allSpawnAreas();const CELL=0.05;const grid=new Map();
+  let minLat=1e9,maxLat=-1e9,minLng=1e9,maxLng=-1e9;
+  areas.forEach(ar=>{
+    let aLatMin,aLatMax,aLngMin,aLngMax;
+    if(ar.type==='poly'&&ar.points&&ar.points.length>=3){
+      aLatMin=Math.min.apply(null,ar.points.map(p=>p[0]));aLatMax=Math.max.apply(null,ar.points.map(p=>p[0]));
+      aLngMin=Math.min.apply(null,ar.points.map(p=>p[1]));aLngMax=Math.max.apply(null,ar.points.map(p=>p[1]));
+    } else {
+      const rLat=(ar.radius||3)/111,rLng=(ar.radius||3)/(111*Math.max(0.3,Math.cos((ar.lat||0)*Math.PI/180)));
+      aLatMin=ar.lat-rLat;aLatMax=ar.lat+rLat;aLngMin=ar.lng-rLng;aLngMax=ar.lng+rLng;
+    }
+    if(aLatMin<minLat)minLat=aLatMin;if(aLatMax>maxLat)maxLat=aLatMax;if(aLngMin<minLng)minLng=aLngMin;if(aLngMax>maxLng)maxLng=aLngMax;
+    for(let la=Math.floor(aLatMin/CELL);la<=Math.floor(aLatMax/CELL);la++)
+      for(let ln=Math.floor(aLngMin/CELL);ln<=Math.floor(aLngMax/CELL);ln++){
+        const k=la+','+ln;let arr=grid.get(k);if(!arr){arr=[];grid.set(k,arr);}arr.push(ar);
+      }
+  });
+  return {grid,CELL,minLat,maxLat,minLng,maxLng,empty:areas.length===0};
+}
+function _areaIndex(){
+  // Kevyt signatuuri (O(1)): asemamäärä + estetyt + piirretyt alueet + versio. Sädemuutos bumppaa _areaVer.
+  const sig=(G.stations?G.stations.length:0)+':'+(G.disabledStations?Object.keys(G.disabledStations).length:0)+':'+((G.spawnAreas||[]).length)+':'+(G._areaVer||0);
+  if(_areaIdx&&_areaIdxSig===sig)return _areaIdx;
+  _areaIdx=_buildAreaIndex();_areaIdxSig=sig;return _areaIdx;
+}
 function inSpawnArea(lat,lng){
-  const areas=allSpawnAreas();
-  for(const ar of areas){
+  const idx=_areaIndex();
+  if(idx.empty)return false;
+  if(lat<idx.minLat||lat>idx.maxLat||lng<idx.minLng||lng>idx.maxLng)return false; // bbox-pikahylkäys
+  const arr=idx.grid.get(Math.floor(lat/idx.CELL)+','+Math.floor(lng/idx.CELL));
+  if(!arr)return false;
+  for(const ar of arr){
     if(ar.type==='poly'&&ar.points&&ar.points.length>=3){ if(pointInPoly(lat,lng,ar.points))return true; }
     else { if(km(lat,lng,ar.lat,ar.lng)<=(ar.radius||3))return true; }
   }
@@ -9210,7 +9244,7 @@ function applyLoaded(d){
     G.tasks.forEach(t=>{if(t.marker){map.removeLayer(t.marker);t.marker=null;}});
     G.stations.forEach(s=>{if(s.marker){map.removeLayer(s.marker);s.marker=null;}});
   }catch(e){}
-  G.stations=[];G.units=[];
+  G.stations=[];G.units=[];_areaIdx=null;G._areaVer=(G._areaVer||0)+1;
   (d.stations||[]).forEach(s=>{G.stations.push(s);addStationMarker(s);});
   // MIGRAATIO: lavat ovat nyt OSTETTAVIA. Vanhat asemat joilla on lava-autoja mutta ei valintaa
   // saavat kaikki lavat omistukseen (vanha peli ei rikkoudu). Uudet asemat aloittavat ilman lavoja.
