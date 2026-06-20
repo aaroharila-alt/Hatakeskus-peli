@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v296'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v299'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -2523,7 +2523,16 @@ function clearAlertIfResolved(tk){
   try{if(missingNeed(tk).length===0){tk.alert=false;refreshTaskAlert(tk);}}catch(e){}
 }
 function alertTask(tk,msg){tk.alert=true;refreshTaskAlert(tk);if(G.settings.showCallouts)toast('📻 '+msg);renderList();}
-function unitColor(u){return {asema:'#5b8dff',otettu:'#ff8a1e',matka:'#ff3b3b',kohde:'#1c3fd6',paluu:'#39c06a',kuljetus:'#c79a16',muu:'#a7f',huolto:'#888',vapaa_valmius:'#39c06a'}[u.status]||'#888';}
+function unitColor(u){
+  // Väri johdetaan NÄYTETYSTÄ tilasta (statusLabel), jotta kartan/listan väri vastaa AINA tekstistatusta.
+  // Korjaa bugin: vapaana ajeleva VPK (status 'muu', omamieli 'vpkajo', _vpkFree) näytti liilana ('muu'),
+  // vaikka tila oli "Vapaa" → nyt se on VIHREÄ kuten muutkin vapaat.
+  const lbl=statusLabel(u);
+  const c={'Vapaa':'#39c06a','Asemalla':'#5b8dff','Ei hälytettävissä':'#888','Tehtävä vastaanotettu':'#ff8a1e','Matkalla':'#ff3b3b','Kohteessa':'#1c3fd6','Kuljetus':'#c79a16'}[lbl];
+  if(c)return c;
+  if(lbl&&lbl.indexOf('Valmiuskutsu')===0)return '#e6a23c'; // miehistö matkalla asemalle
+  return '#888';
+}
 function statusLabel(u){
   // HUOM (muille kehittäjille): status-kentässä saa lukea VAIN jokin näistä seitsemästä:
   //   "Vapaa" · "Ei hälytettävissä" · "Asemalla" · "Tehtävä vastaanotettu" · "Kohteessa" · "Matkalla" · "Kuljetus".
@@ -3511,8 +3520,13 @@ function fleetCapacity(){return G.units.filter(u=>u&&!u.spare&&!(G.disabledStati
 // kun kalusto on mitoitettu alueeseen, ambulanssien käyttöaste asettuu realistiseen ~32 % (tehtäväsidonnaisuus).
 function regionSpawnBase(){
   let base=0;
-  activeStations().forEach(s=>{ if(!s.spawnOff)base+=0.45*(s.spawnDensity||1); });
-  (G.spawnAreas||[]).forEach(a=>{ base+=0.30*(a.density||1); });
+  const customs=G.spawnAreas||[];
+  activeStations().forEach(s=>{
+    if(s.spawnOff)return;
+    if(customs.length&&stationUnderCustomArea(s))return; // piirretty oma alue aseman päällä → ei lasketa aseman ympyrää (alue korvaa sen)
+    base+=0.45*(s.spawnDensity||1);
+  });
+  customs.forEach(a=>{ base+=0.30*(a.density||1); });
   return base;
 }
 // ===== KOHDEPISTEET (POI) — pelaaja merkitsee ympäristöä, jonka mukaan tiettyjä tehtäviä syntyy =====
@@ -3844,13 +3858,29 @@ const WATER_POINTS=[
 // Yhdistetty tehtäväaluelista: jokaisen aktiivisen aseman OMA alue (ellei pois päältä) +
 // käyttäjän piirtämät erilliset alueet (G.spawnAreas). Tämä luo automaattisesti alueen
 // jokaiselle asemalle ja päivittyy kun rakennat lisää.
+// Onko piste annetun alueen (ympyrä/polygoni) sisällä?
+function _ptInArea(lat,lng,a){
+  if(!a)return false;
+  if(a.type==='poly'&&a.points&&a.points.length>=3)return pointInPoly(lat,lng,a.points);
+  if(a.lat!=null)return km(lat,lng,a.lat,a.lng)<=(a.radius||3);
+  return false;
+}
+// Onko aseman keskipiste pelaajan PIIRTÄMÄN oman tehtäväalueen sisällä? Jos on, aseman oma ympyräalue
+// jätetään huomiotta tehtävien generoinnissa (piirretty alue korvaa sen → ei tuplaa samaan kohtaan).
+function stationUnderCustomArea(s){
+  const areas=G.spawnAreas||[];
+  for(const a of areas){ if(_ptInArea(s.lat,s.lng,a))return true; }
+  return false;
+}
 function allSpawnAreas(){
   const out=[];
+  const customs=G.spawnAreas||[];
   activeStations().forEach(s=>{
     if(s.spawnOff)return; // pelaaja sammuttanut tämän aseman alueen
+    if(customs.length&&stationUnderCustomArea(s))return; // piirretty oma alue aseman päällä → ohita aseman ympyrä
     out.push({type:'circle',lat:s.lat,lng:s.lng,radius:s.spawnRadius||3,density:s.spawnDensity||1,stationId:s.id});
   });
-  (G.spawnAreas||[]).forEach(ar=>out.push(ar));
+  customs.forEach(ar=>out.push(ar));
   return out;
 }
 // Onko piste pelaajan JONKIN tehtäväalueen sisällä (aseman ympyrä TAI piirretty alue/ympyrä)?
