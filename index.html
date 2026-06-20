@@ -788,7 +788,7 @@ html,body{height:100vh;height:100svh;height:100dvh;min-height:100vh;min-height:-
 
 <script>
 /* ===== TILA ===== */
-const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:3,jsonbinKey:'',maxTaskGap:300,upkeep:true}};
+const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:12,jsonbinKey:'',maxTaskGap:300,upkeep:true}};
 
 /* ===== KALENTERI / AIKAJÄRJESTELMÄ =====
    G.clock = sekunnit vuorokauden alusta (0-86400)
@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v302'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v303'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -8576,7 +8576,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
 function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio '+VERSION+' · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="5" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
-  h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
+  h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="24" step="1" value="${G.settings.offlineMaxTasks??12}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??12)===0?'ei uusia':(G.settings.offlineMaxTasks??12)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
   h+=`<div class="toggle"><span>Pelin nopeus (aika nopeutuu)</span><input type="range" min="1" max="16" step="1" value="${TIME_MULT}" oninput="TIME_MULT=parseInt(this.value);document.getElementById('tmv').textContent=TIME_MULT+'×'"><span id="tmv">${TIME_MULT}×</span></div>`;
   h+=`<div class="toggle"><span>Vasteaika-kerroin (lähtöaika)</span><input type="range" min="0" max="2.5" step="0.1" value="${TURNOUT_MULT}" oninput="TURNOUT_MULT=parseFloat(this.value);document.getElementById('tov').textContent=TURNOUT_MULT.toFixed(1)+'×'"><span id="tov">${TURNOUT_MULT.toFixed(1)}×</span></div>`;
@@ -9295,6 +9295,9 @@ function applyLoaded(d){
   G.openPops=d.openPops||null;
   if(d.taskStats)G.taskStats=d.taskStats;
   G.settings=Object.assign(G.settings,d.settings||{});
+  // MIGRAATIO: vanha offline-tehtävien oletuskatto (3) oli liian matala → poissa ollessa syntyi "melkein
+  // ei yhtään". Nostetaan vanha 3 arvoon 12 (jätä pelaajan tietoiset valinnat 0-2 ja >12 ennalleen).
+  if(G.settings.offlineMaxTasks===3||G.settings.offlineMaxTasks==null)G.settings.offlineMaxTasks=12;
   try{renderPois();}catch(e){} // KORJAUS: piirrä kohdepisteet uudelleen NYT kun asetukset (hidePois) on ladattu — muuten piilotetut näkyivät aina pelin avauksessa
   if(d.timeMult)TIME_MULT=d.timeMult;if(d.turnoutMult)TURNOUT_MULT=d.turnoutMult;
   if(d.radio)G.radio=d.radio;
@@ -9520,8 +9523,17 @@ function spawnCatchUp(){
       const _avgPerHour=Math.max(0.5,Math.min(28,_base*G.spawnRate*todaySpawnBoost()*0.95)); // 0.95 = vuorokausirytmin ka
       const _ceil=Math.max(8,Math.min(24,Math.round(_base*3.5)));
       const _cur=G.tasks.filter(t=>t.status!=='valmis').length;
-      const _want=Math.max(0,Math.min(Math.round(_avgPerHour*(gameGapSec/3600)),_ceil-_cur));
-      for(let i=0;i<_want;i++){try{spawnTask();}catch(e){}}
+      const _maxOff=G.settings.offlineMaxTasks??12; // pelaajan yläraja poissaolotehtäville
+      const _want=Math.max(0,Math.min(Math.round(_avgPerHour*(gameGapSec/3600)),_ceil-_cur,_maxOff>0?_maxOff:0));
+      // LUOTETTAVA: odotetaan jokainen spawnTask loppuun (await) ennen seuraavaa, jotta openCeil-tarkistus
+      // toimii oikein ja tehtävät oikeasti syntyvät (ennen fire-and-forget-silmukka ei luonut niita luotettavasti).
+      (async()=>{
+        for(let i=0;i<_want;i++){
+          if(G.tasks.filter(t=>t.status!=='valmis').length>=_ceil)break;
+          try{await spawnTask();}catch(e){}
+        }
+        try{renderList();updateBadge();}catch(e){}
+      })();
     }
   }catch(e){}
   // OFFLINE-TULO: myönnä valtion tuki kuluneilta peli-tunneilta (et menetä rahaa poissa ollessa).
@@ -9543,15 +9555,6 @@ function spawnCatchUp(){
   const realTxt=realMin>=60?Math.floor(realMin/60)+'h '+(realMin%60)+'min':realMin+' min';
   const gameTxt=gameMin>=60?Math.floor(gameMin/60)+'h '+(gameMin%60)+'min':gameMin+' min';
   if(realMin>=5)setTimeout(()=>toast('🕐 Olit poissa '+realTxt+' (peliaikana '+gameTxt+'). Yksiköt etenivät taustalla'+(_completedOff?' · '+_completedOff+' tehtävää valmistui':'')+(G._offlineIncome?'. Valtion tuki +'+G._offlineIncome.toLocaleString('fi-FI')+'€':'')+'.'),800);
-  // Lisää uusia tehtäviä (kunnioita spawnRate 0 ja offlineMaxTasks-asetus)
-  if(!G.spawnRate||G.spawnRate<=0)return;
-  const maxOffline=G.settings.offlineMaxTasks??3;
-  if(maxOffline<=0)return;
-  const extraTasks=Math.min(maxOffline,Math.floor(realGapMs/600000));
-  if(extraTasks<1)return;
-  let added=0;
-  function tryAdd(){if(added>=extraTasks||G.tasks.filter(t=>t.status!=='valmis').length>8)return;added++;spawnTask().then(()=>setTimeout(tryAdd,500));}
-  setTimeout(tryAdd,2500);
 }
 async function loadGame(){try{const code=localStorage.getItem('hatakeskus_code');if(code){const d=JSON.parse(decodeURIComponent(escape(atob(code))));G.lastSaveTs=d.lastSaveTs||0;applyLoaded(d);spawnCatchUp();return true;}}catch(e){}try{const r=await window.storage.get('hatakeskus_v2');if(r&&r.value){const d=JSON.parse(r.value);G.lastSaveTs=d.lastSaveTs||0;applyLoaded(d);spawnCatchUp();return true;}}catch(e){}return false;}
 let _isWiping=false;
