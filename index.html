@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v303'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v304'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -866,7 +866,7 @@ const URG_COL={A:'#ff3b3b',B:'#ff8a1e',C:'#ffd11a',D:'#39c06a',N:'#7c8794'};
 const TOIMI_COL={pelastus:'#ff7a3c',ensihoito:'#27c2c2',poliisi:'#3f7bff'};
 
 /* ===== KARTTA ===== */
-const map=L.map('map',{zoomControl:true,attributionControl:false}).setView([60.20,24.75],11);
+const map=L.map('map',{zoomControl:true,attributionControl:false,preferCanvas:true,zoomAnimationThreshold:3}).setView([60.20,24.75],11);
 // KOKONÄYTTÖ: kun mobiiliselaimen osoite-/työkalupalkki piiloutuu tai laite kääntyy, näkyvän alueen
 // korkeus muuttuu. Päivitä kartan koko, jottei alas jää tyhjää (mustaa) rakoa. visualViewport tarkin.
 (function(){
@@ -877,8 +877,21 @@ const map=L.map('map',{zoomControl:true,attributionControl:false}).setView([60.2
   if(window.visualViewport){window.visualViewport.addEventListener('resize',_refit,{passive:true});window.visualViewport.addEventListener('scroll',_refit,{passive:true});}
   window.addEventListener('load',()=>setTimeout(_refit,300));
 })();
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,minZoom:6}).addTo(map);
-L.control.attribution({prefix:false}).addAttribution('© OpenStreetMap').addTo(map);
+// SUORITUSKYKY: nopea CDN-tiilipalvelu (Carto Voyager) OSM:n hitaan oman palvelimen sijaan. 4 rinnakkaista
+// aliverkkotunnusta (abcd) → enemmän rinnakkaisia latauksia, keepBuffer pitää reunatiilet muistissa (vähemmän
+// uudelleenlatausta panoroidessa), detectRetina:false puolittaa tiilipyynnöt tarkoissa näytöissä, ei
+// päivitystä zoomin/animaation aikana → sulavampi. Varapalvelin (OSM) jos CDN ei vastaa.
+const _tiles=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',{
+  maxZoom:19,minZoom:6,subdomains:'abcd',detectRetina:false,crossOrigin:true,
+  keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false
+});
+let _tileErrCount=0;
+_tiles.on('tileerror',()=>{ if(++_tileErrCount===12){ // CDN ei vastaa → vaihda OSM:ään
+  try{map.removeLayer(_tiles);}catch(e){}
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,minZoom:6,keepBuffer:4,updateWhenZooming:false}).addTo(map);
+}});
+_tiles.addTo(map);
+L.control.attribution({prefix:false}).addAttribution('© OpenStreetMap © CARTO').addTo(map);
 
 /* ===== AJONEUVOTYYPIT ===== */
 // Raivausauto ja sammutusauto ovat sama kalusto — ainoa ero on veden määrä.
