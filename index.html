@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v300'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v302'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -4169,9 +4169,8 @@ function resolveHTasks(){
 }
 async function spawnTask(){
   if(activeStations().length===0)return;
-  // #12: avointen/käynnissä olevien tehtävien KATTO skaalautuu nyt KATETTUUN ALUEESEEN (ei kalustoon),
-  // jotta realistinen tahti näkyy myös alimitoitetulla laitoksella (tehtävät kasaantuvat → realistista),
-  // mutta lista ei kasva loputtomiin. Iso alue → enemmän yhtäaikaisia tehtäviä.
+  // #12: yhtäaikaisten tehtävien KATTO skaalautuu katettuun alueeseen (EI tehtävätahdin kertoimeen) —
+  // kerroin nopeuttaa tahtia/täyttymistä mutta lista ei kasva kattoa korkeammaksi.
   const _openCeil=Math.max(8,Math.min(24,Math.round(regionSpawnBase()*3.5)));
   if(G.tasks.filter(t=>t.status!=='valmis').length>=_openCeil)return;
   if(Math.random()<0.07&&!G._offlineSim){await spawnHTask();return;} // osa ilmoituksista on neuvontaa (ei yksikköä) — selvä vähemmistö
@@ -5732,6 +5731,7 @@ function tick(dt){G.clock+=dt;
     // EI kaluston määrään. Hälytykset EIVÄT lopu vaikka autot ovat kiinni — realistinen kuormitus, jonka
     // pelaaja kohtaa mitoittamalla kalustonsa alueeseen. spawnRate-liukuri (oletus 1×) säätää tahtia.
     const _regionBase=regionSpawnBase();
+    // Kerroin (spawnRate) nopeuttaa TAHTIA, mutta katot pidetään alueperustaisina (ei skaalata kertoimella).
     const perHour=Math.max(0.5,Math.min(28,_regionBase*G.spawnRate*dayBoost*_diurnal*_wkndF));
     const baseInterval=3600/perHour;
     // REALISTINEN AJOITUS: Poisson-prosessi (eksponentiaaliset väliajat) → luonnolliset ryppäät ja
@@ -5739,8 +5739,7 @@ function tick(dt){G.clock+=dt;
     if(!G._burst){G._burst={nextAt:G.clock+_expInterval(baseInterval)};}
     const b=G._burst;
     // RUUHKARAJA: jos hoitamattomia (yksiköittä odottavia) tehtäviä on jo paljon suhteessa alueeseen,
-    // uudet pidätetään hetkeksi (HÄKE jonottaa). EI sidottu kalustoon → tahti pysyy realistisena, mutta
-    // jono ei kasva loputtomiin. Alimitoitettu laitos näkee kasaantuvat tehtävät (realistinen seuraus).
+    // uudet pidätetään hetkeksi (HÄKE jonottaa). Alueperustainen, ei kertoimella skaalattu.
     const _openWaiting=G.tasks.filter(t=>t.status==='avoin'&&!t.parked).length;
     const _backlogOk=_openWaiting<Math.max(5,Math.round(_regionBase*2.5));
     // REALISTINEN AJOITUS (Poisson) — mutta ohitetaan jos jono on jo täynnä (nextAt silti etenee, ei patoudu).
@@ -8576,7 +8575,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 /* ===== ASETUKSET ===== */
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
 function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio '+VERSION+' · Asetukset</div>';
-  h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="3" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
+  h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="5" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="10" step="1" value="${G.settings.offlineMaxTasks??3}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??3)===0?'ei uusia':(G.settings.offlineMaxTasks??3)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
   h+=`<div class="toggle"><span>Pelin nopeus (aika nopeutuu)</span><input type="range" min="1" max="16" step="1" value="${TIME_MULT}" oninput="TIME_MULT=parseInt(this.value);document.getElementById('tmv').textContent=TIME_MULT+'×'"><span id="tmv">${TIME_MULT}×</span></div>`;
