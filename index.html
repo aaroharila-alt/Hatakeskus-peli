@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v299'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v300'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -9510,6 +9510,21 @@ function spawnCatchUp(){
   const _preOpenIds=G.tasks.filter(t=>t.status!=='valmis').map(t=>t.id);
   simulateOffline(gameGapSec);
   const _completedOff=_preOpenIds.filter(id=>{const t=G.tasks.find(x=>x.id===id);return !t||t.status==='valmis';}).length;
+  // OFFLINE-TEHTÄVÄT: synnytä realistinen määrä uusia tehtäviä poissaolon ajalta (ennen tehtäviä ei
+  // syntynyt offline-aikana lainkaan, koska simulateOffline ei kutsu spawn-ajastinta). Tahti = sama
+  // alueperustainen realistinen tahti × poissaolotunnit, mutta KATTO = alueperustainen yhtäaikaiskatto:
+  // kukaan ei ehtinyt purkaa jonoa, joten se täyttyy enintään kapasiteettiin (HÄKE jonottaa). Lyhyt
+  // poissaolo → muutama; pitkä → jono kattoon. Tehtävät luodaan nyt (tuore ajastin → ei offline-sakkoja).
+  try{
+    const _base=regionSpawnBase();
+    if(_base>0&&G.spawnRate>0){
+      const _avgPerHour=Math.max(0.5,Math.min(28,_base*G.spawnRate*todaySpawnBoost()*0.95)); // 0.95 = vuorokausirytmin ka
+      const _ceil=Math.max(8,Math.min(24,Math.round(_base*3.5)));
+      const _cur=G.tasks.filter(t=>t.status!=='valmis').length;
+      const _want=Math.max(0,Math.min(Math.round(_avgPerHour*(gameGapSec/3600)),_ceil-_cur));
+      for(let i=0;i<_want;i++){try{spawnTask();}catch(e){}}
+    }
+  }catch(e){}
   // OFFLINE-TULO: myönnä valtion tuki kuluneilta peli-tunneilta (et menetä rahaa poissa ollessa).
   // Katto 48 peli-tuntia jottei kerry valtavia summia pitkästä tauosta.
   const offHours=Math.min(3,Math.floor(gameGapSec/3600)); // KATTO 3 peli-tuntia (oli 48) — ei valtavia passiivisia summia poissaolosta; raha tulee pääosin offline-suoritetuista tehtävistä
