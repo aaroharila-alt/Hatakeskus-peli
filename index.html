@@ -788,7 +788,7 @@ html,body{height:100vh;height:100svh;height:100dvh;min-height:100vh;min-height:-
 
 <script>
 /* ===== TILA ===== */
-const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:12,mapStyle:'voyager',jsonbinKey:'',maxTaskGap:300,upkeep:true}};
+const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:12,mapStyle:'satelliitti',jsonbinKey:'',maxTaskGap:300,upkeep:true}};
 
 /* ===== KALENTERI / AIKAJÄRJESTELMÄ =====
    G.clock = sekunnit vuorokauden alusta (0-86400)
@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v306'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v307'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -882,21 +882,25 @@ const map=L.map('map',{zoomControl:true,attributionControl:false,preferCanvas:tr
 // palvelin. Esri = topografinen, nopea CDN. Kaikissa asiakaspuolen optimoinnit (keepBuffer, ei retina-tuplausta,
 // ei tiilipäivitystä zoomatessa).
 const MAP_STYLES={
-  voyager:{name:'Voyager (nopea, nimet)',url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',opts:{maxZoom:19,minZoom:6,subdomains:'abcd',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© OpenStreetMap © CARTO'},
-  osm:{name:'OSM (yksityiskohtainen)',url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opts:{maxZoom:19,minZoom:6,subdomains:'abc',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© OpenStreetMap'},
-  esri:{name:'Esri (topo, nimet)',url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',opts:{maxZoom:19,minZoom:6,detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© Esri, OpenStreetMap'}
+  satelliitti:{name:'Satelliitti (rakennukset)',url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opts:{maxZoom:19,minZoom:6,detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© Esri, Maxar © OpenStreetMap © CARTO',overlay:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png'},
+  osm:{name:'OSM (rakennukset, värikäs)',url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opts:{maxZoom:19,minZoom:6,subdomains:'abc',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© OpenStreetMap'},
+  esri:{name:'Esri katu (rakennukset)',url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',opts:{maxZoom:19,minZoom:6,detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© Esri, OpenStreetMap'},
+  voyager:{name:'Voyager (vaalea, nopea)',url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',opts:{maxZoom:19,minZoom:6,subdomains:'abcd',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© OpenStreetMap © CARTO'}
 };
-let _baseLayer=null,_attrCtl=null;
+let _baseLayer=null,_overlayLayer=null,_attrCtl=null;
 function setMapStyle(key){
-  const st=MAP_STYLES[key]||MAP_STYLES.voyager;
+  const st=MAP_STYLES[key]||MAP_STYLES.satelliitti;
   if(_baseLayer){try{map.removeLayer(_baseLayer);}catch(e){}}
+  if(_overlayLayer){try{map.removeLayer(_overlayLayer);}catch(e){}_overlayLayer=null;}
   _baseLayer=L.tileLayer(st.url,st.opts).addTo(map);
   _baseLayer.bringToBack();
+  // Satelliitin päälle läpinäkyvä nimitaso (kadut, koulut, paloasemat OSM-datasta)
+  if(st.overlay){_overlayLayer=L.tileLayer(st.overlay,{maxZoom:19,minZoom:6,subdomains:'abcd',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);_overlayLayer.bringToFront();}
   if(_attrCtl){try{map.removeControl(_attrCtl);}catch(e){}}
   _attrCtl=L.control.attribution({prefix:false}).addAttribution(st.attr).addTo(map);
   G.settings.mapStyle=key;
 }
-setMapStyle(G.settings.mapStyle||'voyager');
+setMapStyle(G.settings.mapStyle||'satelliitti');
 
 /* ===== AJONEUVOTYYPIT ===== */
 // Raivausauto ja sammutusauto ovat sama kalusto — ainoa ero on veden määrä.
@@ -8595,7 +8599,7 @@ function renderSet(){try{renderSetInner();}catch(e){document.getElementById('set
 function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio '+VERSION+' · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="5" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
   h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="24" step="1" value="${G.settings.offlineMaxTasks??12}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??12)===0?'ei uusia':(G.settings.offlineMaxTasks??12)+' kpl'}</span></div>`;
-  h+=`<div class="toggle"><span>Karttatyyli <span style="color:var(--dim);font-size:11px">(nopeus / nimet)</span></span><select class="inp" style="max-width:210px" onchange="setMapStyle(this.value);saveGame(false)">${Object.entries(MAP_STYLES).map(([k,v])=>`<option value="${k}" ${(G.settings.mapStyle||'voyager')===k?'selected':''}>${v.name}</option>`).join('')}</select></div>`;
+  h+=`<div class="toggle"><span>Karttatyyli <span style="color:var(--dim);font-size:11px">(nopeus / nimet)</span></span><select class="inp" style="max-width:210px" onchange="setMapStyle(this.value);saveGame(false)">${Object.entries(MAP_STYLES).map(([k,v])=>`<option value="${k}" ${(G.settings.mapStyle||'satelliitti')===k?'selected':''}>${v.name}</option>`).join('')}</select></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
   h+=`<div class="toggle"><span>Pelin nopeus (aika nopeutuu)</span><input type="range" min="1" max="16" step="1" value="${TIME_MULT}" oninput="TIME_MULT=parseInt(this.value);document.getElementById('tmv').textContent=TIME_MULT+'×'"><span id="tmv">${TIME_MULT}×</span></div>`;
   h+=`<div class="toggle"><span>Vasteaika-kerroin (lähtöaika)</span><input type="range" min="0" max="2.5" step="0.1" value="${TURNOUT_MULT}" oninput="TURNOUT_MULT=parseFloat(this.value);document.getElementById('tov').textContent=TURNOUT_MULT.toFixed(1)+'×'"><span id="tov">${TURNOUT_MULT.toFixed(1)}×</span></div>`;
@@ -9317,7 +9321,10 @@ function applyLoaded(d){
   // MIGRAATIO: vanha offline-tehtävien oletuskatto (3) oli liian matala → poissa ollessa syntyi "melkein
   // ei yhtään". Nostetaan vanha 3 arvoon 12 (jätä pelaajan tietoiset valinnat 0-2 ja >12 ennalleen).
   if(G.settings.offlineMaxTasks===3||G.settings.offlineMaxTasks==null)G.settings.offlineMaxTasks=12;
-  try{if(typeof setMapStyle==='function')setMapStyle(G.settings.mapStyle||'voyager');}catch(e){}
+  try{
+    if((G.settings._mapV||0)<307){ if(G.settings.mapStyle==='voyager')G.settings.mapStyle='satelliitti'; G.settings._mapV=307; }
+    if(typeof setMapStyle==='function')setMapStyle(G.settings.mapStyle||'satelliitti');
+  }catch(e){}
   try{renderPois();}catch(e){} // KORJAUS: piirrä kohdepisteet uudelleen NYT kun asetukset (hidePois) on ladattu — muuten piilotetut näkyivät aina pelin avauksessa
   if(d.timeMult)TIME_MULT=d.timeMult;if(d.turnoutMult)TURNOUT_MULT=d.turnoutMult;
   if(d.radio)G.radio=d.radio;
