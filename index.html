@@ -231,7 +231,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 .rch{background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:8px 12px;font-size:12px;white-space:nowrap;cursor:pointer;font-weight:600;min-height:36px;font-family:var(--fmono)}
 .rch.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
 .rmsg{border-bottom:1px solid var(--line);padding:9px 2px;font-size:13.5px;line-height:1.5}
-.rmsg.new{background:rgba(255,211,77,.30);border-left:3px solid var(--acc);padding-left:8px;animation:newfade 6s ease-out forwards}
+.rmsg.new{background:rgba(255,211,77,.30);border-left:3px solid var(--acc);padding-left:8px}
 @keyframes newfade{0%{background:rgba(255,211,77,.40)}100%{background:transparent}}
 .rmsg .rt{color:var(--dim2);font-size:11px;font-family:var(--fmono)}.rmsg .ru{color:var(--acc);font-weight:700;font-family:var(--fmono)}
 
@@ -443,7 +443,7 @@ details.sm>summary{background:#4a4a4a}
 .radiowin,#chanpick,#taskpop{background:#3a3a3af5;border-color:#262626}
 .radiowin .rh,#taskpop .th{background:linear-gradient(180deg,#e0382b,#c52f23);color:#fff;border-bottom:1px solid #9e2519;text-transform:none}
 .radiowin .rh [data-close],#taskpop .th [onclick]{background:#00000033;border:1px solid #ffffff55;color:#fff}
-.rmsg.new{background:rgba(92,184,92,.22);border-left-color:#5cb85c}
+.rmsg.new{background:rgba(255,211,77,.30);border-left-color:var(--acc)}
 .rmsg .ru{color:#8fdc8f}
 .radiobtn,.taskbtn{background:#2e2e2e;border:1px solid #5cb85c;color:#fff;border-radius:8px}
 .fab{background:#5cb85c;color:#fff;box-shadow:0 4px 16px #0009}
@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v307'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v310'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -5151,6 +5151,9 @@ async function sendDispatch(next){
       u._isLandBoat = !!(stb && stb.t!=='venelaituri'); // ei laituri -> maa-asema (trailer)
       u._boatLaunched = u._isLandBoat ? false : true;    // laituri = jo vedessä; maa-asema = trailerilla (tie ensin)
       u._launchShore = null;
+      // MIEHITTÄMÄTÖN LAITURIVENE ei lähde itse: ODOTTAA laiturilla kunnes kuljettaja (canDriveBoat) saapuu
+      // ja nousee kyytiin (u._mannedBy asetettu kuljettajan haussa). Vasta sitten vene lähtee kohteeseen.
+      u._awaitCrew = !!(!u._isLandBoat && !u.ownCrew && u._mannedBy);
       // TRAILERIVENE EI AJA ITSE: jos sillä on vetoauto, se ODOTTAA ja liikkuu vetoauton MUKANA rantaan,
       // jossa lasketaan vesille (kuten oikea perävaunu). Ei omaa reittiä.
       if(u._isLandBoat && u._towedBy){
@@ -5191,7 +5194,8 @@ async function sendDispatch(next){
       if(_isTankki) _vpkRoll = _r<0.95 ? 'tankki' : 'eiLahde';   // lähtee lähes aina heti pienellä vahvuudella
       else _vpkRoll = _r<0.85 ? 'full' : (_r<0.96 ? 'vajaa' : 'eiLahde');
     }
-    const _dest=(tk.where==='water'&&!isBoatUnit(u))?taskShore(tk):{lat:tk.lat,lng:tk.lng}; // vesitehtävässä VAIN vene vesipisteeseen; maayksiköt JA HEMS rantaan (HEMS ei laskeudu mereen)
+    let _dest=(tk.where==='water'&&!isBoatUnit(u))?taskShore(tk):{lat:tk.lat,lng:tk.lng}; // vesitehtävässä VAIN vene vesipisteeseen; maayksiköt JA HEMS rantaan (HEMS ei laskeudu mereen)
+    if(u._mansBoat){const _bt=G.units.find(x=>x.id===u._mansBoat);if(_bt)_dest={lat:_bt.lat,lng:_bt.lng};} // veneen MIEHITTÄJÄ ajaa veneelle (laiturille), ei kohteeseen → nousee kyytiin, vene lähtee
     u.status=atStation?'otettu':'matka';u.taskId=tk.id;u.target={lat:_dest.lat,lng:_dest.lng};u.route=null;u.ri=0;u.omamieli=u.omamieli==='partio'?null:u.omamieli;
     const stt=G.stations.find(s=>s.id===u.stationId);
     // Käytä yksikön EFEKTIIVISTÄ lähtöaikaa (huomioi yksikön muodon, ei aseman) — sama kuin ETA-arvio.
@@ -5491,10 +5495,10 @@ function ensureChannels(){
   vpkRegs.forEach(r=>{if(!G.radio[r+' VPK'])G.radio[r+' VPK']=[];});
 }
 function ensureVpkChannels(){ensureChannels();}
-function radio(ch,from,msg){
-  if(G._offlineSim)return; // ei radiospämiä offline-simulaation aikana
+function radio(ch,from,msg,important){
+  if(G._offlineSim&&!important)return; // offline: vain TÄRKEÄT (esim. lisäyksikköpyyntö) tallennetaan, ei rutiinipuhetta
   if(!G.radio[ch])G.radio[ch]=[];
-  const m={t:G.clock,from,msg,unread:true,_isNew:true};
+  const m={t:G.clock,from,msg,unread:true,_isNew:true,_unseen:true};
   G.radio[ch].push(m);
   // Säilytä korkeintaan 50 viestiä per kanava; poista myös vanhat (yli 2h vanhat)
   if(G.radio[ch].length>50)G.radio[ch].shift();
@@ -5614,13 +5618,16 @@ function restorePops(){
   });
 }
 function renderRadio(){const tabs=Object.keys(G.radio);if(!G.selChannel||!G.radio[G.selChannel])G.selChannel=tabs[0];
-  // Merkitse valitun kanavan viestit luetuiksi
+  // KELTAINEN KOROSTUS: kun vaihdat kanavaa, EDELLISEN kanavan keltaiset merkitään nähdyiksi (poistuu).
+  if(G._radioViewCh&&G._radioViewCh!==G.selChannel)(G.radio[G._radioViewCh]||[]).forEach(m=>m._unseen=false);
+  G._radioViewCh=G.selChannel;
+  // Merkitse valitun kanavan viestit luetuiksi (badge); keltainen (_unseen) säilyy kunnes kanavalta poistutaan
   if(G.selChannel)clearRadioUnread(G.selChannel);
   try{updateBadge();}catch(e){} // tyhjennä alapalkin Radio-huomio luetusta
   // Korosta kanava jossa on lukematonta
   document.getElementById('rtabs').innerHTML=tabs.map(c=>{const unread=(G.radio[c]||[]).filter(m=>m.unread).length;return `<div class="rch ${G.selChannel===c?'on':''}" onclick="G.selChannel='${c}';renderRadio()">${c}${unread?' <span style="background:var(--A);color:#fff;font-size:9px;padding:0 4px;border-radius:3px;margin-left:4px">'+unread+'</span>':''}</div>`;}).join('');
   const f=G.radio[G.selChannel]||[];
-  document.getElementById('rfeed').innerHTML=f.slice().reverse().map(m=>`<div class="rmsg${m.unread?' new':''}"><span class="rt mono">${fmtClock(m.t)}</span> <span class="ru">${linkifyUnits(m.from)}:</span> ${linkifyUnits(m.msg)}</div>`).join('')||'<div class="smallnote">Ei liikennettä.</div>';
+  document.getElementById('rfeed').innerHTML=f.slice().reverse().map(m=>`<div class="rmsg${m._unseen?' new':''}"><span class="rt mono">${fmtClock(m.t)}</span> <span class="ru">${linkifyUnits(m.from)}:</span> ${linkifyUnits(m.msg)}</div>`).join('')||'<div class="smallnote">Ei liikennettä.</div>';
   updateBadge();
 }
 
@@ -6719,6 +6726,51 @@ function remainingRouteKm(u){
 }
 
 function moveUnit(u,dt){
+  // VENEEN MIEHITTÄJÄ (kuljettaja, canDriveBoat): ajaa miehittämättömän veneen luo LAITURILLE ja nousee
+  // kyytiin → AUTO JÄÄ rannalle, vene lähtee miehitettynä kohteeseen. Ei aja itse kohteeseen.
+  if(u._mansBoat){
+    const _boat=G.units.find(x=>x.id===u._mansBoat);
+    if(!_boat||_boat._mannedBy!==u.id){ u._mansBoat=null; } // vene kadonnut → kuljettaja jatkaa normaalisti
+    else if(km(u.lat,u.lng,_boat.lat,_boat.lng)<0.3){
+      _boat._awaitCrew=false; // perillä laiturilla → vene lähtee nyt kohteeseen
+      const _bn=_boat.name;
+      // Kuljettajan auto jää rannalle eikä ole kohteessa → poista se tehtävän yksiköistä (vene edustaa miehistöä).
+      const _tk=u.taskId?G.tasks.find(t=>t.id===u.taskId):null;
+      if(_tk){_tk.assigned=(_tk.assigned||[]).filter(i=>i!==u.id);if(_tk.lead===u.name)try{setLead(_tk);}catch(e){}}
+      u._mansBoat=null;u._parkedAtDock=true;u._dockBoat=_boat.id;u.taskId=null;u.route=null;u.ri=0;u.target=null;u.omamieli=null;u.status='muu';
+      try{refreshUnitMarker(u);refreshUnitMarker(_boat);}catch(e){}
+      if(G.settings.showCallouts)try{toast('🚣 '+u.name+' miehitti veneen '+_bn+' — auto jää rannalle, vene lähtee');}catch(e){}
+      return;
+    }
+    // muuten: jatkaa normaalia ajoa laiturille (target on jo laituri)
+  }
+  // MIEHITTÄMÄTÖN VENE ODOTTAA KULJETTAJAA laiturilla — ei liiku ennen kuin kuljettaja on noussut kyytiin.
+  if(isBoatUnit(u)&&u._awaitCrew){
+    const _drv=G.units.find(x=>x.id===u._mannedBy);
+    if(!_drv||_drv._mansBoat!==u.id){
+      // Kuljettaja katosi ennen kyytiin nousua → vene EI lähde miehittämättömänä; vapautetaan tehtävältä,
+      // jää laiturille. (Estää veneen ajamisen ilman miehistöä.)
+      u._awaitCrew=false;u._mannedBy=null;
+      const _tk=G.tasks.find(t=>t.id===u.taskId);
+      if(_tk){_tk.assigned=(_tk.assigned||[]).filter(i=>i!==u.id);if(_tk.lead===u.name)try{setLead(_tk);}catch(e){}if(_tk.status!=='valmis'&&!(_tk.assigned&&_tk.assigned.length)){_tk.status='avoin';_tk.onScene=false;}}
+      u.taskId=null;u.status='asema';u.lat=u.hx;u.lng=u.hy;u.route=null;u.ri=0;u.target=null;
+      try{refreshUnitMarker(u);renderList();updateBadge();}catch(e){}
+      return;
+    }
+    try{refreshUnitMarker(u);}catch(e){}return; // odottaa kuljettajaa laiturilla
+  }
+  // VENEEN MIEHITTÄJÄN AUTO odottaa rannalla kunnes vene on palannut/vapautunut → palaa sitten asemalle.
+  if(u._parkedAtDock){
+    const _boat=u._dockBoat?G.units.find(x=>x.id===u._dockBoat):null;
+    if(!_boat||!_boat.taskId||_boat.status==='asema'||_boat.status==='vapaa_valmius'){
+      u._parkedAtDock=false;u._dockBoat=null;
+      const _atH=km(u.lat,u.lng,u.hx,u.hy)<0.2;
+      if(_atH){u.status='asema';u.lat=u.hx;u.lng=u.hy;}
+      else{u.status='paluu';u.target={lat:u.hx,lng:u.hy};u.route=null;u.ri=0;try{fetchRoute(u.lat,u.lng,u.hx,u.hy).then(r=>{if(u.status==='paluu'&&r){u.route=r.coords;u.ri=0;}});}catch(e){}}
+      try{refreshUnitMarker(u);}catch(e){}return;
+    }
+    try{refreshUnitMarker(u);}catch(e){}return; // odottaa rannalla
+  }
   // VETOAUTO ODOTTAA TRAILERIVENETTÄ RANNASSA: pysyy paikallaan kunnes vene palaa ja kytketään takaisin
   // trailerille. Jos odotettu vene on poistettu, lopettaa odotuksen ja ajaa asemalle.
   if(u._awaitBoat){
@@ -7698,7 +7750,7 @@ function progressTask(tk,dt){
   const _enrU=tk.assigned.map(id=>G.units.find(x=>x.id===id)).filter(u=>u&&(u.status==='matka'||u.status==='otettu'));
   // APU JO MATKALLA: jos tulossa olevat yksiköt korjaavat puutteen (esim. imeytysaine/säiliö/savusukelluspari
   // matkalla, matka vain kestää) → EI pyydetä uudelleen.
-  if(tk.onScene && onsc.length && rate<0.5 && !tk._capReqDone && tk.firstArrival && (G.clock-tk.firstArrival>75) && !(_enrU.length&&workRate(tk,onsc.concat(_enrU))>=0.999)){
+  if(tk.onScene && onsc.length && (rate<0.5||!_met) && !tk._capReqDone && tk.firstArrival && (G.clock-tk.firstArrival>75) && !(_enrU.length&&(workRate(tk,onsc.concat(_enrU))>=0.999||needMetBy(tk,onsc.concat(_enrU))))){
     let _need=null;
     if(/rakennuspalo/i.test(tk.n||'') && fireWaterDemand(tk)>3000){
       const _pairs=onsc.filter(u=>['sammutus','miehisto'].includes(u.vt)&&effCrewN(u)>=4).length;
@@ -7706,10 +7758,11 @@ function progressTask(tk,dt){
     }
     if(!_need && isFireTask(tk) && fireWaterDemand(tk)>0 && fireWaterSupply(onsc,tk)<fireWaterDemand(tk)) _need='vesi ei riitä — pyydän lisää säiliöautoa kohteeseen';
     if(!_need && /^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water' && !onsc.some(u=>oilCapable(u)&&((u.material==null)||u.material>5))) _need='ei imeytysainetta — pyydän vahingontorjunta-auton kohteeseen';
+    if(!_need){ const _rp=missingRequestPhrase(tk); if(_rp)_need=_rp.phrase; } // YLEINEN alivahvuus (mikä tahansa puuttuva yksikkö) → pyydä lisää
     if(_need){
       tk._capReqDone=true;
       const _sp=tk.lead||onsc[0].name;
-      try{radio(chFor(tk.toimi,'INFO',tk),_sp,tk.addr+' — '+_need);}catch(e){}
+      try{radio(chFor(tk.toimi,'INFO',tk),_sp,tk.addr+' — '+_need,true);}catch(e){} // important=true → tallentuu myös offline-aikana → näkyy paluussa
       tk.reqMsg=_need; try{renderList();updateBadge();}catch(e){}
     }
   }
@@ -8742,7 +8795,12 @@ function renderProf(){
 }
 
 /* ===== NAV ===== */
-function closePanels(){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));}
+function closePanels(){
+  // KELTAINEN KOROSTUS: kun radiopaneeli suljetaan (kartalle / toiseen välilehteen), katsotun kanavan
+  // keltaiset merkitään nähdyiksi → poistuvat seuraavalla avauksella, ja vain uudet näkyvät keltaisina.
+  if(G._radioViewCh){(G.radio[G._radioViewCh]||[]).forEach(m=>m._unseen=false);G._radioViewCh=null;}
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));
+}
 function isOpen(id){return document.getElementById(id).classList.contains('open');}
 window.toggleMenu=(e)=>{if(e)e.stopPropagation();const m=document.getElementById('menupop');if(m)m.classList.toggle('open');};
 window.closeMenu=()=>{const m=document.getElementById('menupop');if(m)m.classList.remove('open');};
@@ -8899,7 +8957,7 @@ function serializeGame(){
     patrolling:u.patrolling||false,patrolArea:u.patrolArea||null,trafficDuty:u.trafficDuty||false,patrolRoute:u.patrolRoute||null,patrolRouteIdx:u.patrolRouteIdx||0,
     spare:u.spare||false,spareScope:u.spareScope||null,spareCanDispatch:u.spareCanDispatch||false,_coverFor:u._coverFor||null,_origName:u._origName||null,_origStation:u._origStation||null,canSukellus:u.canSukellus||false,
     transport:u.transport||null,
-    _isLandBoat:u._isLandBoat||false,_boatLaunched:u._boatLaunched||false,_launchShore:u._launchShore||null,_awaitBoat:u._awaitBoat||null,_strandedBoat:u._strandedBoat||false,_hemsMode:u._hemsMode||null,_heliBroken:u._heliBroken||false,material:u.material??100,
+    _isLandBoat:u._isLandBoat||false,_boatLaunched:u._boatLaunched||false,_launchShore:u._launchShore||null,_awaitBoat:u._awaitBoat||null,_strandedBoat:u._strandedBoat||false,_hemsMode:u._hemsMode||null,_heliBroken:u._heliBroken||false,material:u.material??100,_awaitCrew:u._awaitCrew||false,_mannedBy:u._mannedBy||null,_mansBoat:u._mansBoat||null,_parkedAtDock:u._parkedAtDock||false,_dockBoat:u._dockBoat||null,
     _huoltoTarget:u._huoltoTarget||null,_huoltoUntilDur:u._huoltoUntilDur||null,
     lat:u.lat,lng:u.lng,hx:u.hx,hy:u.hy})),
   tasks:G.tasks.filter(t=>t.status!=='valmis').map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||'any',shore:t.shore||null,offshore:t.offshore||false,boatOnly:t.boatOnly||false,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null,_leadAssessAt:t._leadAssessAt??null,_reqAnnounced:t._reqAnnounced||null,_reqLastAt:t._reqLastAt||null,_relNames:t._relNames||null,_relT:t._relT||null,_escT:t._escT||null,escSuggest:t.escSuggest||null,airwayRisk:t.airwayRisk||false,patrolGen:t.patrolGen||false,_letkuReadyAt:t._letkuReadyAt||null,_letkuAnnounced:t._letkuAnnounced||false,waterNeed:(t.waterNeed==null?null:t.waterNeed),_origWorkNeeded:t._origWorkNeeded||null,_stabilizedAt:t._stabilizedAt||null,_firstResponder:t._firstResponder||null,_dupOf:t._dupOf||null,_vainaja:t._vainaja||false,_vainajaChecked:t._vainajaChecked||false,_vainajaNoPolice:t._vainajaNoPolice||false,hTask:t.hTask||false,_expireAt:t._expireAt||null,_codeConfirmed:t._codeConfirmed||false,pickedCode:t.pickedCode||null,pickedToimi:t.pickedToimi||null})),
@@ -9398,7 +9456,7 @@ function applyLoaded(d){
     if(u.patrolRoute)nu.patrolRoute=u.patrolRoute;
     if(u.patrolRouteIdx)nu.patrolRouteIdx=u.patrolRouteIdx;
     nu.taskId=u.taskId||null;
-    nu._isLandBoat=u._isLandBoat||false;nu._boatLaunched=u._boatLaunched||false;nu._launchShore=u._launchShore||null;nu._awaitBoat=u._awaitBoat||null;nu._strandedBoat=u._strandedBoat||false;nu._hemsMode=u._hemsMode||null;nu._heliBroken=u._heliBroken||false;nu.material=(u.material==null?100:u.material);
+    nu._isLandBoat=u._isLandBoat||false;nu._boatLaunched=u._boatLaunched||false;nu._launchShore=u._launchShore||null;nu._awaitBoat=u._awaitBoat||null;nu._strandedBoat=u._strandedBoat||false;nu._hemsMode=u._hemsMode||null;nu._heliBroken=u._heliBroken||false;nu.material=(u.material==null?100:u.material);nu._awaitCrew=u._awaitCrew||false;nu._mannedBy=u._mannedBy||null;nu._mansBoat=u._mansBoat||null;nu._parkedAtDock=u._parkedAtDock||false;nu._dockBoat=u._dockBoat||null;
     nu._huoltoTarget=u._huoltoTarget||null;nu._huoltoUntilDur=u._huoltoUntilDur||null;
     if(u.departAt)nu.departAt=u.departAt;
     // Palauta kaikki tilat suoraan
