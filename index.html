@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v312'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v314'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -882,10 +882,10 @@ const map=L.map('map',{zoomControl:true,attributionControl:false,preferCanvas:tr
 // palvelin. Esri = topografinen, nopea CDN. Kaikissa asiakaspuolen optimoinnit (keepBuffer, ei retina-tuplausta,
 // ei tiilipäivitystä zoomatessa).
 const MAP_STYLES={
-  satelliitti:{name:'Satelliitti (rakennukset)',url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opts:{maxZoom:19,minZoom:6,detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© Esri, Maxar © OpenStreetMap © CARTO',overlay:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png'},
-  osm:{name:'OSM (rakennukset, värikäs)',url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opts:{maxZoom:19,minZoom:6,subdomains:'abc',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© OpenStreetMap'},
-  esri:{name:'Esri katu (rakennukset)',url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',opts:{maxZoom:19,minZoom:6,detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© Esri, OpenStreetMap'},
-  voyager:{name:'Voyager (vaalea, nopea)',url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',opts:{maxZoom:19,minZoom:6,subdomains:'abcd',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© OpenStreetMap © CARTO'}
+  satelliitti:{name:'Satelliitti (rakennukset)',url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',opts:{maxZoom:20,minZoom:6,maxNativeZoom:18,detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© Esri, Maxar © OpenStreetMap © CARTO',overlay:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png'},
+  osm:{name:'OSM (rakennukset, värikäs)',url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',opts:{maxZoom:20,minZoom:6,maxNativeZoom:18,subdomains:'abc',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© OpenStreetMap'},
+  esri:{name:'Esri katu (rakennukset)',url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',opts:{maxZoom:20,minZoom:6,maxNativeZoom:18,detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© Esri, OpenStreetMap'},
+  voyager:{name:'Voyager (vaalea, nopea)',url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',opts:{maxZoom:20,minZoom:6,maxNativeZoom:18,subdomains:'abcd',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false},attr:'© OpenStreetMap © CARTO'}
 };
 let _baseLayer=null,_overlayLayer=null,_attrCtl=null;
 function setMapStyle(key){
@@ -895,7 +895,7 @@ function setMapStyle(key){
   _baseLayer=L.tileLayer(st.url,st.opts).addTo(map);
   _baseLayer.bringToBack();
   // Satelliitin päälle läpinäkyvä nimitaso (kadut, koulut, paloasemat OSM-datasta)
-  if(st.overlay){_overlayLayer=L.tileLayer(st.overlay,{maxZoom:19,minZoom:6,subdomains:'abcd',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);_overlayLayer.bringToFront();}
+  if(st.overlay){_overlayLayer=L.tileLayer(st.overlay,{maxZoom:20,minZoom:6,maxNativeZoom:18,subdomains:'abcd',detectRetina:false,crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);_overlayLayer.bringToFront();}
   if(_attrCtl){try{map.removeControl(_attrCtl);}catch(e){}}
   _attrCtl=L.control.attribution({prefix:false}).addAttribution(st.attr).addTo(map);
   G.settings.mapStyle=key;
@@ -4043,10 +4043,11 @@ async function pickLocationForTask(t){
     // AVOMERITEHTÄVÄT (vesiliikenneonnett.): voivat olla kauempana rannasta, avomerellä.
     // Suunta poispäin lähimmästä asemasta = kohti merta (asema on rannalla/sisämaassa).
     // Pysyy pelaajan alueella (esim. Helsingin edusta kohti Tallinnaa, ei Soukan rantaan).
-    const offshore=(t.c==='221'||t.c==='222')||Math.random()<0.45; // useampi vesitehtävä ulottuu kauemmas vedelle (merelle/järvelle päin)
+    const _openWater=['221','222','223','474','475','484F'].includes(String(t.c)); // aidot avovesitehtävät
+    const offshore=_openWater && ((t.c==='221'||t.c==='222'||t.c==='223')||Math.random()<0.55); // VAIN avovesi työntyy ulos; pelastustehtävät (714/484/483 = laiturilta tippunut ym.) pysyvät rannalla → pintapelastus riittää
     if(offshore){
       const dLat=lat-s.lat,dLng=lng-s.lng;const mag=Math.sqrt(dLat*dLat+dLng*dLng)||1;
-      const pushKm=(t.c==='221'||t.c==='222')?rnd(3,22):rnd(1,11); // isot vesiliikenneonn. kauemmas avovedelle, muut maltillisemmin
+      const pushKm=(t.c==='221'||t.c==='222'||t.c==='223')?rnd(3,22):rnd(2,12); // isot vesiliikenneonn. kauemmas avovedelle, muut maltillisemmin
       lat+=(dLat/mag)*(pushKm/111);
       lng+=(dLng/mag)*(pushKm/(111*Math.max(0.3,Math.cos(s.lat*Math.PI/180))));
     }
@@ -7217,6 +7218,21 @@ function neededKeep(tk){
       units.filter(u=>!keep.has(u.id)).sort((a,b)=>crewCount(b)-crewCount(a)).forEach(u=>{if(crew<tk.minCrew){keep.add(u.id);crew+=crewCount(u);}});
     }
   }
+  // KYVYKKYYS-SUOJA: yksiköt joita TYÖ vaatii (teho romahtaa ilman) vaikka ne eivät ole need-listalla.
+  // Estää midTaskReleasea peruuttamasta niitä turhaan ja johtajaa pyytämästä niitä heti takaisin.
+  if(/^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water' && !units.some(u=>keep.has(u.id)&&oilCapable(u))){
+    const oil=units.find(u=>oilCapable(u)&&((u.material==null)||u.material>5));if(oil)keep.add(oil.id); // öljyntorjunta-auto (imeytysaine)
+  }
+  if(isFireTask(tk)&&fireWaterDemand(tk)>0){
+    const dem=fireWaterDemand(tk);
+    if(fireWaterSupply(units.filter(u=>keep.has(u.id)),tk)<dem){
+      units.filter(u=>!keep.has(u.id)).sort((a,b)=>fireWaterSupply([b],tk)-fireWaterSupply([a],tk)).forEach(u=>{ if(fireWaterSupply(units.filter(x=>keep.has(x.id)),tk)<dem)keep.add(u.id); }); // säiliöt kunnes vesi riittää
+    }
+  }
+  if(/rakennuspalo/i.test(tk.n||'')&&fireWaterDemand(tk)>3000){
+    let pairs=units.filter(u=>keep.has(u.id)&&['sammutus','miehisto'].includes(u.vt)&&effCrewN(u)>=4).length;
+    units.filter(u=>!keep.has(u.id)&&['sammutus','miehisto'].includes(u.vt)&&effCrewN(u)>=4).forEach(u=>{if(pairs<2){keep.add(u.id);pairs++;}}); // 2 savusukelluspari
+  }
   return keep;
 }
 function missingNeed(tk){
@@ -7757,13 +7773,14 @@ function progressTask(tk,dt){
   // APU JO MATKALLA: jos tulossa olevat yksiköt korjaavat puutteen (esim. imeytysaine/säiliö/savusukelluspari
   // matkalla, matka vain kestää) → EI pyydetä uudelleen.
   if(tk.onScene && onsc.length && (rate<0.5||!_met) && !tk._capReqDone && tk.firstArrival && (G.clock-tk.firstArrival>75) && !(_enrU.length&&(workRate(tk,onsc.concat(_enrU))>=0.999||needMetBy(tk,onsc.concat(_enrU))))){
+    const _all=onsc.concat(_enrU); // huomioi myös MATKALLA olevat: jos säiliöauto/yksikkö on jo tulossa, EI pyydetä turhaan lisää
     let _need=null;
     if(/rakennuspalo/i.test(tk.n||'') && fireWaterDemand(tk)>3000){
-      const _pairs=onsc.filter(u=>['sammutus','miehisto'].includes(u.vt)&&effCrewN(u)>=4).length;
+      const _pairs=_all.filter(u=>['sammutus','miehisto'].includes(u.vt)&&effCrewN(u)>=4).length;
       if(_pairs<2)_need='emme pääse turvalliseen savusukellukseen yksin — pyydän lisää sammutusyksikön (savusukelluspari) kohteeseen';
     }
-    if(!_need && isFireTask(tk) && fireWaterDemand(tk)>0 && fireWaterSupply(onsc,tk)<fireWaterDemand(tk)) _need='vesi ei riitä — pyydän lisää säiliöautoa kohteeseen';
-    if(!_need && /^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water' && !onsc.some(u=>oilCapable(u)&&((u.material==null)||u.material>5))) _need='ei imeytysainetta — pyydän vahingontorjunta-auton kohteeseen';
+    if(!_need && isFireTask(tk) && fireWaterDemand(tk)>0 && fireWaterSupply(_all,tk)<fireWaterDemand(tk)) _need='vesi ei riitä — pyydän lisää säiliöautoa kohteeseen';
+    if(!_need && /^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water' && !_all.some(u=>oilCapable(u)&&((u.material==null)||u.material>5))) _need='ei imeytysainetta — pyydän vahingontorjunta-auton kohteeseen';
     if(!_need){ const _rp=missingRequestPhrase(tk); if(_rp)_need=_rp.phrase; } // YLEINEN alivahvuus (mikä tahansa puuttuva yksikkö) → pyydä lisää
     if(!_need && !_met){ _need='pyydän lisää yksiköitä kohteeseen'; } // VARMISTUS: vaste ei täsmää mutta erittelyä ei saatu → tulee silti aina
     if(!_need && _met && rate<0.5 && tk.firstArrival && (G.clock-tk.firstArrival>180)){ _need='työ ei etene odotetusti — pyydän lisää yksiköitä kohteeseen'; } // vaste täsmää mutta työ junnaa → pyydä lisää
