@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v314'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v315'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -5735,7 +5735,7 @@ function tick(dt){G.clock+=dt;
       if(tow){ tow._pickupBoat=bt.id; bt._beingPickedUp=true; tow.status='matka'; tow.target={lat:bt.lat,lng:bt.lng}; tow.route=null; tow.ri=0; try{fetchRoute(tow.lat,tow.lng,bt.lat,bt.lng).then(r=>{if(tow._pickupBoat===bt.id&&r){tow.route=r.coords;tow.ri=0;}});}catch(e){} }
     });
   }catch(e){}
-  G.tasks.forEach(t=>{progressTask(t,dt);checkNeglect(t);});
+  G.tasks.forEach(t=>{try{progressTask(t,dt);checkNeglect(t);}catch(e){}}); // SUOJA: yhden tehtävän virhe ei saa kaataa koko tickiä (eikä estää spawnia)
   try{resolveDuplicates();}catch(e){}
   try{resolveHTasks();}catch(e){}
   if(G.hospAdmits&&G.hospAdmits.length){const _b=G.hospAdmits.length;G.hospAdmits=G.hospAdmits.filter(a=>a.until>G.clock);if(G.hospAdmits.length!==_b){try{renderHospitals();}catch(e){}}}
@@ -5779,12 +5779,12 @@ function tick(dt){G.clock+=dt;
     const _openWaiting=G.tasks.filter(t=>t.status==='avoin'&&!t.parked).length;
     const _backlogOk=_openWaiting<Math.max(5,Math.round(_regionBase*2.5));
     // REALISTINEN AJOITUS (Poisson) — mutta ohitetaan jos jono on jo täynnä (nextAt silti etenee, ei patoudu).
-    if(G.clock>=b.nextAt){if(_backlogOk){lastSpawn=G.clock;spawnTask();}b.nextAt=G.clock+_expInterval(baseInterval);}
+    if(G.clock>=b.nextAt){if(_backlogOk){lastSpawn=G.clock;try{spawnTask();}catch(e){}}b.nextAt=G.clock+_expInterval(baseInterval);}
     // VARMUUSRAJA (maxTaskGap): ei pakota luonnollista tahtia tiheämmäksi (pieni laitos ei huku) —
     // lattia relaksoituu vähintään luonnolliseen väliin. 0 = ei rajaa. Lattia toimii vain kun jono lyhyt.
     const setGap=G.settings.maxTaskGap??300;
     const effGap=setGap>0?Math.max(setGap,baseInterval):0;
-    if(effGap>0&&_backlogOk&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;spawnTask();b.nextAt=G.clock+_expInterval(baseInterval);}
+    if(effGap>0&&_backlogOk&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;try{spawnTask();}catch(e){}b.nextAt=G.clock+_expInterval(baseInterval);}
   }
   // VPK-liikenne — vähennetty rajusti (oli liian usein). Vain ~5% entisestä.
   if(Math.random()<0.00002*dt){const vpkUnits=G.units.filter(u=>{const s=G.stations.find(x=>x.id===u.stationId);return s&&unitMuoto(u)==='vpk'&&u.toimi==='pelastus'&&u.status==='asema'&&!u.taskId&&!unitNoCrew(u);});if(vpkUnits.length){const u=vpkUnits[Math.floor(Math.random()*vpkUnits.length)];const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';const lines=['pyydämme lupaa kalustoharjoitukseen','pyydämme lupaa lähteä huoltoajolle'];const line=lines[Math.floor(Math.random()*lines.length)];if(!(st&&isNight(st))){radio(reg+' VPK',u.name,line);pendingVpkEvent(u,st,line);}}}
@@ -7220,6 +7220,7 @@ function neededKeep(tk){
   }
   // KYVYKKYYS-SUOJA: yksiköt joita TYÖ vaatii (teho romahtaa ilman) vaikka ne eivät ole need-listalla.
   // Estää midTaskReleasea peruuttamasta niitä turhaan ja johtajaa pyytämästä niitä heti takaisin.
+  try{
   if(/^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water' && !units.some(u=>keep.has(u.id)&&oilCapable(u))){
     const oil=units.find(u=>oilCapable(u)&&((u.material==null)||u.material>5));if(oil)keep.add(oil.id); // öljyntorjunta-auto (imeytysaine)
   }
@@ -7233,6 +7234,7 @@ function neededKeep(tk){
     let pairs=units.filter(u=>keep.has(u.id)&&['sammutus','miehisto'].includes(u.vt)&&effCrewN(u)>=4).length;
     units.filter(u=>!keep.has(u.id)&&['sammutus','miehisto'].includes(u.vt)&&effCrewN(u)>=4).forEach(u=>{if(pairs<2){keep.add(u.id);pairs++;}}); // 2 savusukelluspari
   }
+  }catch(e){}
   return keep;
 }
 function missingNeed(tk){
