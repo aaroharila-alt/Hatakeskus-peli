@@ -841,7 +841,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v310'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v312'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3874,7 +3874,13 @@ const WATER_POINTS=[
   [60.22,25.10],[60.05,24.75],[60.10,24.80],[60.13,24.86],[60.23,24.98],
   [61.50,23.78],[61.48,23.82],[61.52,23.70],[62.88,27.60],[62.90,27.65],
   [61.06,28.18],[61.08,28.20],[60.45,22.30],[60.47,22.35],[65.00,25.40],
-  [64.98,25.42],[63.08,21.58],[63.06,21.62],[62.60,29.80],[62.63,29.75]
+  [64.98,25.42],[63.08,21.58],[63.06,21.62],[62.60,29.80],[62.63,29.75],
+  // JÄRVET: isoja Suomen järviä, jotta vesitehtäviä syntyy myös sisämaan järvialueille
+  [61.05,25.55],[61.02,25.50],[61.10,25.52],[61.22,25.50],[61.36,25.45],[61.55,25.48], // Vesijärvi / Päijänne (Lahti, Vääksy, Asikkala)
+  [61.45,23.85],[61.56,23.80],[61.62,23.72], // Pyhäjärvi / Näsijärvi (Tampere)
+  [61.30,28.20],[61.45,28.05],[62.00,28.55],[61.85,29.30], // Saimaa
+  [62.85,26.00],[62.92,27.70],[63.00,29.55], // Keitele, Kallavesi (Kuopio), Pielinen
+  [64.30,27.30],[63.15,23.65] // Oulujärvi, Lappajärvi
 ];
 
 // Yhdistetty tehtäväaluelista: jokaisen aktiivisen aseman OMA alue (ellei pois päältä) +
@@ -4037,10 +4043,10 @@ async function pickLocationForTask(t){
     // AVOMERITEHTÄVÄT (vesiliikenneonnett.): voivat olla kauempana rannasta, avomerellä.
     // Suunta poispäin lähimmästä asemasta = kohti merta (asema on rannalla/sisämaassa).
     // Pysyy pelaajan alueella (esim. Helsingin edusta kohti Tallinnaa, ei Soukan rantaan).
-    const offshore=(t.c==='221'||t.c==='222');
+    const offshore=(t.c==='221'||t.c==='222')||Math.random()<0.45; // useampi vesitehtävä ulottuu kauemmas vedelle (merelle/järvelle päin)
     if(offshore){
       const dLat=lat-s.lat,dLng=lng-s.lng;const mag=Math.sqrt(dLat*dLat+dLng*dLng)||1;
-      const pushKm=rnd(2,14); // 2–14 km lisää merelle (ei koomisen kaukana, mutta voi olla avomerellä)
+      const pushKm=(t.c==='221'||t.c==='222')?rnd(3,22):rnd(1,11); // isot vesiliikenneonn. kauemmas avovedelle, muut maltillisemmin
       lat+=(dLat/mag)*(pushKm/111);
       lng+=(dLng/mag)*(pushKm/(111*Math.max(0.3,Math.cos(s.lat*Math.PI/180))));
     }
@@ -4169,7 +4175,7 @@ async function spawnHTask(){
     }catch(e){}
   }
   G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
-  if(G.settings.showCallouts)toast('Uusi tehtävä'); // EI paljasteta tehtävän laatua/nimeä — pelaaja päättelee kuvauksesta (sama teksti kuin oikeilla tehtävillä, ettei H-tehtäviä erota ilmoituksesta)
+  if(G.settings.showCallouts&&!G._offlineSpawning)toast('Uusi tehtävä'); // EI paljasteta tehtävän laatua/nimeä — pelaaja päättelee kuvauksesta (sama teksti kuin oikeilla tehtävillä, ettei H-tehtäviä erota ilmoituksesta)
 }
 // H-tehtävien ratkaisu: jos pelaaja hälytti yksikön -> turha (vapauta); jos jätettiin -> soittaja ohjautuu eteenpäin (vanhenee).
 function resolveHTasks(){
@@ -4195,7 +4201,7 @@ async function spawnTask(){
   // kerroin nopeuttaa tahtia/täyttymistä mutta lista ei kasva kattoa korkeammaksi.
   const _openCeil=Math.max(8,Math.min(24,Math.round(regionSpawnBase()*3.5)));
   if(G.tasks.filter(t=>t.status!=='valmis').length>=_openCeil)return;
-  if(Math.random()<0.07&&!G._offlineSim){await spawnHTask();return;} // osa ilmoituksista on neuvontaa (ei yksikköä) — selvä vähemmistö
+  if(Math.random()<0.07&&!G._offlineSim&&!G._offlineSpawning){await spawnHTask();return;} // osa ilmoituksista on neuvontaa (ei yksikköä) — selvä vähemmistö
   let t=pickTask();if(!t)return;
   const loc=await pickLocationForTask(t);
   let workMin=rnd(t.dur[0],t.dur[1]);if(Math.random()<0.08)workMin*=1.8;
@@ -4347,9 +4353,9 @@ async function spawnTask(){
   }
   G.tasks.push(tk);tk.marker=makeTaskMarker(tk);renderList();updateBadge();
   try{maybeSpawnDuplicate(tk);}catch(e){}
-  if(G.settings.showCallouts)toast('Uusi tehtävä');
+  if(G.settings.showCallouts&&!G._offlineSpawning)toast('Uusi tehtävä');
   // Äänimerkki UUDESTA tehtävästä (asetuksista). Throttle estää piippusarjan jos monta syntyy kerralla.
-  try{ if(!G._offlineSim && (!window.__taskBeepT || Date.now()-window.__taskBeepT>1200)){ window.__taskBeepT=Date.now(); playDispatchSound(); } }catch(e){}
+  try{ if(!G._offlineSim && !G._offlineSpawning && (!window.__taskBeepT || Date.now()-window.__taskBeepT>1200)){ window.__taskBeepT=Date.now(); playDispatchSound(); } }catch(e){}
 }
 
 /* ===== DISPATCH-IKKUNA ===== */
@@ -7759,6 +7765,8 @@ function progressTask(tk,dt){
     if(!_need && isFireTask(tk) && fireWaterDemand(tk)>0 && fireWaterSupply(onsc,tk)<fireWaterDemand(tk)) _need='vesi ei riitä — pyydän lisää säiliöautoa kohteeseen';
     if(!_need && /^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water' && !onsc.some(u=>oilCapable(u)&&((u.material==null)||u.material>5))) _need='ei imeytysainetta — pyydän vahingontorjunta-auton kohteeseen';
     if(!_need){ const _rp=missingRequestPhrase(tk); if(_rp)_need=_rp.phrase; } // YLEINEN alivahvuus (mikä tahansa puuttuva yksikkö) → pyydä lisää
+    if(!_need && !_met){ _need='pyydän lisää yksiköitä kohteeseen'; } // VARMISTUS: vaste ei täsmää mutta erittelyä ei saatu → tulee silti aina
+    if(!_need && _met && rate<0.5 && tk.firstArrival && (G.clock-tk.firstArrival>180)){ _need='työ ei etene odotetusti — pyydän lisää yksiköitä kohteeseen'; } // vaste täsmää mutta työ junnaa → pyydä lisää
     if(_need){
       tk._capReqDone=true;
       const _sp=tk.lead||onsc[0].name;
@@ -9610,14 +9618,17 @@ function spawnCatchUp(){
       const _cur=G.tasks.filter(t=>t.status!=='valmis').length;
       const _maxOff=G.settings.offlineMaxTasks??12; // pelaajan yläraja poissaolotehtäville
       const _want=Math.max(0,Math.min(Math.round(_avgPerHour*(gameGapSec/3600)),_ceil-_cur,_maxOff>0?_maxOff:0));
-      // LUOTETTAVA: odotetaan jokainen spawnTask loppuun (await) ennen seuraavaa, jotta openCeil-tarkistus
-      // toimii oikein ja tehtävät oikeasti syntyvät (ennen fire-and-forget-silmukka ei luonut niita luotettavasti).
+      G._offlineSpawning=true; // estä per-tehtävä-toast/ääni offline-tehtäville (yksi yhteenveto alla)
+      const _before=G.tasks.length;
       (async()=>{
         for(let i=0;i<_want;i++){
           if(G.tasks.filter(t=>t.status!=='valmis').length>=_ceil)break;
           try{await spawnTask();}catch(e){}
         }
+        G._offlineSpawning=false;
+        const _made=G.tasks.length-_before;
         try{renderList();updateBadge();}catch(e){}
+        if(_made>0&&G.settings.showCallouts)try{toast('🆕 '+_made+' uutta tehtävää tuli poissa ollessasi');}catch(e){}
       })();
     }
   }catch(e){}
