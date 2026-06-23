@@ -842,7 +842,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v317'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v318'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -5774,16 +5774,17 @@ function tick(dt){G.clock+=dt;
   try{resolveDuplicates();}catch(e){}
   try{resolveHTasks();}catch(e){}
   if(G.hospAdmits&&G.hospAdmits.length){const _b=G.hospAdmits.length;G.hospAdmits=G.hospAdmits.filter(a=>a.until>G.clock);if(G.hospAdmits.length!==_b){try{renderHospitals();}catch(e){}}}
-  tickVpkReadiness(dt);
-  tickDeployments(dt);
-  tickDutyTransfers(dt);
-  tickOmamieli(dt);
-  tickPatrol(dt);
-  tickPoliceObservation(dt);
-  tickH351();
-  tickSelfRedeploy(dt);
-  tickVpkDrive(dt);
-  try{tickCrewRotation(dt);}catch(e){}
+  const _safeTick=(fn,name)=>{try{fn();}catch(e){if(!G._tickErr){G._tickErr=name+': '+((e&&e.message)||e);try{console.error(name,e);}catch(_){}try{toast('⚠️ Virhe ('+name+'): '+((e&&e.message)||e));}catch(_){}}}};
+  _safeTick(()=>tickVpkReadiness(dt),'tickVpkReadiness');
+  _safeTick(()=>tickDeployments(dt),'tickDeployments');
+  _safeTick(()=>tickDutyTransfers(dt),'tickDutyTransfers');
+  _safeTick(()=>tickOmamieli(dt),'tickOmamieli');
+  _safeTick(()=>tickPatrol(dt),'tickPatrol');
+  _safeTick(()=>tickPoliceObservation(dt),'tickPoliceObservation');
+  _safeTick(()=>tickH351(),'tickH351');
+  _safeTick(()=>tickSelfRedeploy(dt),'tickSelfRedeploy');
+  _safeTick(()=>tickVpkDrive(dt),'tickVpkDrive');
+  _safeTick(()=>tickCrewRotation(dt),'tickCrewRotation');
   const n=activeStations().length;
   // Kalenteripäivän boosti (Vappu, juhannus jne.) sekä juhannus/jne. vaikutus spawniin
   const dayBoost=todaySpawnBoost();
@@ -5814,12 +5815,12 @@ function tick(dt){G.clock+=dt;
     const _openWaiting=G.tasks.filter(t=>t.status==='avoin'&&!t.parked).length;
     const _backlogOk=_openWaiting<Math.max(5,Math.round(_regionBase*2.5));
     // REALISTINEN AJOITUS (Poisson) — mutta ohitetaan jos jono on jo täynnä (nextAt silti etenee, ei patoudu).
-    if(G.clock>=b.nextAt){if(_backlogOk){lastSpawn=G.clock;try{spawnTask();}catch(e){}}b.nextAt=G.clock+_expInterval(baseInterval);}
+    if(G.clock>=b.nextAt){if(_backlogOk){lastSpawn=G.clock;try{spawnTask().catch(_e=>{if(!G._spawnErr){G._spawnErr=String((_e&&_e.message)||_e);try{toast("⚠️ Spawn-virhe: "+G._spawnErr);}catch(__){}}});}catch(e){}}b.nextAt=G.clock+_expInterval(baseInterval);}
     // VARMUUSRAJA (maxTaskGap): ei pakota luonnollista tahtia tiheämmäksi (pieni laitos ei huku) —
     // lattia relaksoituu vähintään luonnolliseen väliin. 0 = ei rajaa. Lattia toimii vain kun jono lyhyt.
     const setGap=G.settings.maxTaskGap??300;
     const effGap=setGap>0?Math.max(setGap,baseInterval):0;
-    if(effGap>0&&_backlogOk&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;try{spawnTask();}catch(e){}b.nextAt=G.clock+_expInterval(baseInterval);}
+    if(effGap>0&&_backlogOk&&G.clock-lastSpawn>effGap){lastSpawn=G.clock;try{spawnTask().catch(_e=>{if(!G._spawnErr){G._spawnErr=String((_e&&_e.message)||_e);try{toast("⚠️ Spawn-virhe: "+G._spawnErr);}catch(__){}}});}catch(e){}b.nextAt=G.clock+_expInterval(baseInterval);}
   }
   // VPK-liikenne — vähennetty rajusti (oli liian usein). Vain ~5% entisestä.
   if(Math.random()<0.00002*dt){const vpkUnits=G.units.filter(u=>{const s=G.stations.find(x=>x.id===u.stationId);return s&&unitMuoto(u)==='vpk'&&u.toimi==='pelastus'&&u.status==='asema'&&!u.taskId&&!unitNoCrew(u);});if(vpkUnits.length){const u=vpkUnits[Math.floor(Math.random()*vpkUnits.length)];const st=G.stations.find(s=>s.id===u.stationId);const reg=(st&&st.reg)||'LU';const lines=['pyydämme lupaa kalustoharjoitukseen','pyydämme lupaa lähteä huoltoajolle'];const line=lines[Math.floor(Math.random()*lines.length)];if(!(st&&isNight(st))){radio(reg+' VPK',u.name,line);pendingVpkEvent(u,st,line);}}}
