@@ -789,7 +789,7 @@ html,body{height:100vh;height:100svh;height:100dvh;min-height:100vh;min-height:-
 
 <script>
 /* ===== TILA ===== */
-const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:12,mapStyle:'satelliitti',jsonbinKey:'',maxTaskGap:300,upkeep:true}};
+const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:6,mapStyle:'satelliitti',jsonbinKey:'',maxTaskGap:300,upkeep:true}};
 
 /* ===== KALENTERI / AIKAJÄRJESTELMÄ =====
    G.clock = sekunnit vuorokauden alusta (0-86400)
@@ -842,7 +842,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v316'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v317'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -8713,7 +8713,7 @@ window.claimAll=()=>{let total=0;getGoals().forEach(g=>{const done=goalProgress(
 function renderSet(){try{renderSetInner();}catch(e){document.getElementById('setbody').innerHTML='<div style="padding:12px;color:#f88">Asetusten virhe: '+e.message+'</div>';}}
 function renderSetInner(){const sw=(l,on,fn)=>`<div class="toggle"><span>${l}</span><div class="sw ${on?'on':''}" onclick="${fn}"><i></i></div></div>`;let h='<div class="smallnote" style="margin-bottom:8px">Versio '+VERSION+' · Asetukset</div>';
   h+=`<div class="toggle"><span>Tehtävien tiheys (sama kuin ylävalikko)</span><input type="range" min="0" max="5" step="0.1" value="${G.spawnRate}" oninput="G.spawnRate=parseFloat(this.value);document.getElementById('srv').textContent=G.spawnRate.toFixed(2)+'×'"><span id="srv">${G.spawnRate.toFixed(2)}×</span></div>`;
-  h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="24" step="1" value="${G.settings.offlineMaxTasks??12}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??12)===0?'ei uusia':(G.settings.offlineMaxTasks??12)+' kpl'}</span></div>`;
+  h+=`<div class="toggle"><span>Poissa ollessa syntyvät tehtävät (max)</span><input type="range" min="0" max="24" step="1" value="${G.settings.offlineMaxTasks??6}" oninput="G.settings.offlineMaxTasks=parseInt(this.value);document.getElementById('omtv').textContent=this.value==='0'?'ei uusia':this.value+' kpl'"><span id="omtv">${(G.settings.offlineMaxTasks??6)===0?'ei uusia':(G.settings.offlineMaxTasks??6)+' kpl'}</span></div>`;
   h+=`<div class="toggle"><span>Karttatyyli <span style="color:var(--dim);font-size:11px">(nopeus / nimet)</span></span><select class="inp" style="max-width:210px" onchange="setMapStyle(this.value);saveGame(false)">${Object.entries(MAP_STYLES).map(([k,v])=>`<option value="${k}" ${(G.settings.mapStyle||'satelliitti')===k?'selected':''}>${v.name}</option>`).join('')}</select></div>`;
   h+=`<div class="toggle"><span>Pisin tauko tehtävien välillä <span style="color:var(--dim);font-size:11px">(peliaikaa)</span></span><input type="range" min="0" max="1200" step="30" value="${G.settings.maxTaskGap??300}" oninput="G.settings.maxTaskGap=parseInt(this.value);document.getElementById('mtg').textContent=this.value==='0'?'ei rajaa':(Math.round(this.value/60*10)/10)+' min';saveGame(false)"><span id="mtg">${(G.settings.maxTaskGap??300)===0?'ei rajaa':(Math.round((G.settings.maxTaskGap??300)/60*10)/10)+' min'}</span></div>`;
   h+=`<div class="toggle"><span>Pelin nopeus (aika nopeutuu)</span><input type="range" min="1" max="16" step="1" value="${TIME_MULT}" oninput="TIME_MULT=parseInt(this.value);document.getElementById('tmv').textContent=TIME_MULT+'×'"><span id="tmv">${TIME_MULT}×</span></div>`;
@@ -9438,9 +9438,10 @@ function applyLoaded(d){
   G.openPops=d.openPops||null;
   if(d.taskStats)G.taskStats=d.taskStats;
   G.settings=Object.assign(G.settings,d.settings||{});
-  // MIGRAATIO: vanha offline-tehtävien oletuskatto (3) oli liian matala → poissa ollessa syntyi "melkein
-  // ei yhtään". Nostetaan vanha 3 arvoon 12 (jätä pelaajan tietoiset valinnat 0-2 ja >12 ennalleen).
-  if(G.settings.offlineMaxTasks===3||G.settings.offlineMaxTasks==null)G.settings.offlineMaxTasks=12;
+  // MIGRAATIO: offline-tehtävien katto laskettu 6:een (aiempi 12 pinosi liikaa). Versioportti asettaa
+  // arvon 6 kerran; sen jälkeen pelaaja voi säätää liukurista vapaasti (myös takaisin ylös).
+  if(G.settings.offlineMaxTasks==null)G.settings.offlineMaxTasks=6;
+  if((G.settings._omtV||0)<316){G.settings.offlineMaxTasks=6;G.settings._omtV=316;}
   try{
     if((G.settings._mapV||0)<307){ if(G.settings.mapStyle==='voyager')G.settings.mapStyle='satelliitti'; G.settings._mapV=307; }
     if(typeof setMapStyle==='function')setMapStyle(G.settings.mapStyle||'satelliitti');
@@ -9670,7 +9671,7 @@ function spawnCatchUp(){
       const _avgPerHour=Math.max(0.5,Math.min(28,_base*G.spawnRate*todaySpawnBoost()*0.95)); // 0.95 = vuorokausirytmin ka
       const _ceil=Math.max(8,Math.min(24,Math.round(_base*3.5)));
       const _cur=G.tasks.filter(t=>t.status!=='valmis').length;
-      const _maxOff=G.settings.offlineMaxTasks??12; // pelaajan yläraja poissaolotehtäville
+      const _maxOff=G.settings.offlineMaxTasks??6; // pelaajan yläraja poissaolotehtäville
       const _want=Math.max(0,Math.min(Math.round(_avgPerHour*(gameGapSec/3600)),_ceil-_cur,_maxOff>0?_maxOff:0));
       G._offlineSpawning=true; // estä per-tehtävä-toast/ääni offline-tehtäville (yksi yhteenveto alla)
       const _before=G.tasks.length;
