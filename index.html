@@ -842,7 +842,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v318'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v322'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -2533,6 +2533,7 @@ let currentNav='map';
 
 /* ===== MARKKERIT ===== */
 function makeTaskMarker(tk){
+  try{if(tk.marker)map.removeLayer(tk.marker);}catch(e){} // ESTÄ KAKSOISMARKKERI: poista vanha ennen uuden luontia (esim. lataus/pilvisynkka live-markkereiden päälle)
   const col=TOIMI_COL[tk.toimi]||'#aaa';
   const ic=L.divIcon({html:`<div class="tmk ${tk.alert?'alert':''}"><div class="d" style="background:${col}"></div><span class="ex">❗</span><span class="lbl" id="lbl-${tk.id}">${codeConfirmed(tk)?(tk.pickedCode||tk.c):'—'}${tk.urg||''}</span></div>`,className:'',iconSize:[14,14],iconAnchor:[7,7]});
   const mk=L.marker([tk.lat,tk.lng],{icon:ic}).addTo(map);
@@ -4239,7 +4240,8 @@ async function spawnTask(){
   if(G.tasks.filter(t=>t.status!=='valmis').length>=_openCeil)return;
   if(Math.random()<0.07&&!G._offlineSim&&!G._offlineSpawning){await spawnHTask();return;} // osa ilmoituksista on neuvontaa (ei yksikköä) — selvä vähemmistö
   let t=pickTask();if(!t)return;
-  const loc=await pickLocationForTask(t);
+  let loc=await pickLocationForTask(t);
+  if(!loc||!isFinite(loc.lat)||!isFinite(loc.lng)){ const _as=activeStations(); loc=_as.length?{lat:_as[0].lat,lng:_as[0].lng}:{lat:60.20,lng:24.75}; } // VARMISTUS: ei NaN-sijaintia → markkeri syntyy aina
   let workMin=rnd(t.dur[0],t.dur[1]);if(Math.random()<0.08)workMin*=1.8;
   let desc=(t.variants&&t.variants.length)?t.variants[Math.floor(Math.random()*t.variants.length)]:t.info;
   // SOITTAJAN TILA (realismi): joskus soittaja on päihtynyt (tiedot epäselviä) tai puhelu
@@ -5092,6 +5094,7 @@ async function sendDispatch(next){
   const names=[];const ids=[...dSel];
   // Suodata pois ei-hälytettävissä olevat (mutta salli partioivat)
   const validIds=ids.filter(id=>{const u=G.units.find(x=>x.id===id);if(!u)return false;
+    if(u.taskId&&u.taskId!==tk.id&&G.tasks.some(t=>t.id===u.taskId&&t.status!=='valmis')){toast(u.name+' on jo toisella tehtävällä');return false;} // ESTÄ KAKSOISVARAUS: ei lähetetä jo toiselle aktiiviselle tehtävälle varattua yksikköä
     if(u.status==='huolto'){toast(u.name+' on huollossa');return false;}
     if(u.status==='muu'&&!['partio','kauppa','harjoitus','vpkajo'].includes(u.omamieli)){toast(u.name+' ei hälytettävissä juuri nyt');return false;} // tauko/harjoitus/vpk-ajo EIVÄT estä — vapaana ajeleva VPK voidaan hälyttää suoraan
     return true;});
@@ -5771,6 +5774,12 @@ function tick(dt){G.clock+=dt;
     });
   }catch(e){}
   G.tasks.forEach(t=>{try{progressTask(t,dt);checkNeglect(t);}catch(e){}}); // SUOJA: yhden tehtävän virhe ei saa kaataa koko tickiä (eikä estää spawnia)
+  // SAFETY: jos yksikön tehtävä on kadonnut (taskId osoittaa poistettuun tehtävään), vapauta yksikkö
+  // takaisin asemalle — muuten se jää "varatuksi" haamutehtävään (ja saattaisi näkyä toisella tehtävällä).
+  try{G.units.forEach(u=>{ if(u.taskId&&!G.tasks.some(t=>t.id===u.taskId)){ try{freeUnit(u);}catch(_){u.taskId=null;u.route=null;u.ri=0;} } });}catch(e){}
+  // SAFETY: jokaisella aktiivisella tehtävällä on oltava markkeri kartalla. Jos se puuttuu (esim.
+  // makeTaskMarker epäonnistui spawnissa/offline-catchupissa), luodaan se nyt → tehtävä ei jää näkymättömäksi.
+  try{G.tasks.forEach(t=>{ if(!t.marker&&t.status!=='valmis'&&isFinite(t.lat)&&isFinite(t.lng)){ try{t.marker=makeTaskMarker(t);}catch(_){} } });}catch(e){}
   try{resolveDuplicates();}catch(e){}
   try{resolveHTasks();}catch(e){}
   if(G.hospAdmits&&G.hospAdmits.length){const _b=G.hospAdmits.length;G.hospAdmits=G.hospAdmits.filter(a=>a.until>G.clock);if(G.hospAdmits.length!==_b){try{renderHospitals();}catch(e){}}}
@@ -6852,13 +6861,30 @@ function moveUnit(u,dt){
       }
       if(_tow.status==='asema'){ u.status='asema';u.lat=u.hx;u.lng=u.hy;u.route=null;u.ri=0;u.departAt=null;u.taskId=null;u._towedBy=null;u._waitingTow=false;_tow._towing=null; try{refreshUnitMarker(u);}catch(e){} return; }
       if(u._waitingTow){ u.lat=u.hx;u.lng=u.hy;u.status='otettu';u.departAt=(_tow.departAt||null); try{refreshUnitMarker(u);}catch(e){} return; }
-      u.lat=_tow.lat;u.lng=_tow.lng;u.status=_tow.status;u.target=_tow.target;u.route=null;u.ri=0;u.departAt=_tow.departAt;
+      // Perävaunu piirretään VIEREEN vetoautoa (ei päälle): pieni kohtisuora siirtymä kulkusuuntaan nähden.
+      // Vetoauto on totuus ja päättää kaiken — tämä on vain perävaunun markkerin näyttösijainti.
+      let _ax=0,_ay=0;
+      if(_tow.route&&_tow.route.length>_tow.ri+1){const _a=_tow.route[_tow.ri],_b=_tow.route[_tow.ri+1];_ay=_b[0]-_a[0];_ax=_b[1]-_a[1];}
+      else if(_tow.target){_ay=_tow.target.lat-_tow.lat;_ax=_tow.target.lng-_tow.lng;}
+      let _m=Math.hypot(_ax,_ay); if(_m<1e-9){_ax=1;_ay=0;_m=1;} _ax/=_m;_ay/=_m;
+      const _cosL=Math.max(0.3,Math.cos(_tow.lat*Math.PI/180)); const _off=0.00045; // ~50 m sivuun
+      u.lat=_tow.lat+_ax*_off; u.lng=_tow.lng+(-_ay)*_off/_cosL;
+      u.status=_tow.status;u.target=_tow.target;u.route=null;u.ri=0;u.departAt=_tow.departAt;
       try{refreshUnitMarker(u);}catch(e){}
       return;
     } else {
       u._towedBy=null;u._waitingTow=false; const _atH=km(u.lat,u.lng,u.hx,u.hy)<0.2; u.status=_atH?'asema':'muu'; if(_atH){u.lat=u.hx;u.lng=u.hy;} u.route=null;u.ri=0;u.target=null;u.omamieli=null;
       try{refreshUnitMarker(u);}catch(e){} return;
     }
+  }
+  // BACKSTOP: perävaunu EI KOSKAAN aja omalla reitillään tehtävälle. Tähän päästään vain jos perävaunulta
+  // puuttuu kelvollinen vetoauto (_towedBy). Kytke se tehtävän vetoautoon, tai pidä asemalla — estää sen
+  // että perävaunu ja vetoauto lähtevät eri reittiä.
+  if(VTYPES[u.vt]&&VTYPES[u.vt].trailer&&!u._towedBy&&(u.route||u.target)&&u.status!=='asema'){
+    const _tk=u.taskId?G.tasks.find(t=>t.id===u.taskId):null;
+    const _cand=_tk?(_tk.assigned||[]).map(i=>G.units.find(x=>x.id===i)).find(x=>x&&!x._towing&&x.id!==u.id&&x.toimi==='pelastus'&&!(VTYPES[x.vt]&&VTYPES[x.vt].trailer)&&!isBoatUnit(x)):null;
+    if(_cand){ u._towedBy=_cand.id;_cand._towing=u.id; const _far=km(u.lat,u.lng,_cand.lat,_cand.lng)>0.2; u._waitingTow=_far; if(_far){_cand._afterPickupTarget=_cand.target?{lat:_cand.target.lat,lng:_cand.target.lng}:(_tk?{lat:_tk.lat,lng:_tk.lng}:null);_cand._pickupTrailer=u.id;_cand.target={lat:u.lat,lng:u.lng};_cand.route=null;_cand.ri=0;} try{refreshUnitMarker(u);}catch(e){} return; }
+    else { u.lat=u.hx;u.lng=u.hy;u.route=null;u.ri=0;u.target=null;const _atH=km(u.lat,u.lng,u.hx,u.hy)<0.2;if(_atH)u.status='asema'; try{refreshUnitMarker(u);}catch(e){} return; }
   }
   // VETOAUTO noutaa perävaunun: ajaa ensin sen luo, kytkee, jatkaa kohteeseen.
   if(u._pickupTrailer){
@@ -9660,6 +9686,9 @@ function spawnCatchUp(){
   // Otetaan ennen-tilanne talteen jotta voidaan kertoa montako tehtävää valmistui poissaolon aikana.
   const _preOpenIds=G.tasks.filter(t=>t.status!=='valmis').map(t=>t.id);
   simulateOffline(gameGapSec);
+  // Poissaoloaika EI saa laskea tehtävän "hoitamatta"-ajastimeen (pelaaja ei ollut paikalla) → nollaa
+  // avoimien tehtävien _avoinSince nykyhetkeen, ettei niitä poisteta heti paluussa "jäi hoitamatta".
+  try{G.tasks.forEach(t=>{ if(t.status==='avoin'){ t._avoinSince=G.clock; t.warned=false; t.escNeglect=false; } });}catch(e){}
   const _completedOff=_preOpenIds.filter(id=>{const t=G.tasks.find(x=>x.id===id);return !t||t.status==='valmis';}).length;
   // OFFLINE-TEHTÄVÄT: synnytä realistinen määrä uusia tehtäviä poissaolon ajalta (ennen tehtäviä ei
   // syntynyt offline-aikana lainkaan, koska simulateOffline ei kutsu spawn-ajastinta). Tahti = sama
