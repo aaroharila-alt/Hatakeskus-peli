@@ -705,6 +705,7 @@ html,body{height:100vh;height:100svh;height:100dvh;min-height:100vh;min-height:-
     <button id="spawnFinishBtn" style="background:#2ee6a0;color:#06210f;border:none;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer" onclick="finishPolyArea()">✓ Sulje alue</button>
   </div>
   <button style="background:#1b9cff;color:#04243f;border:none;border-radius:8px;padding:6px 10px;font-weight:800;cursor:pointer" onclick="startFillArea()" title="Piirrä rajaus kartalle — koko sen sisäpuoli täyttyy tehtäväalueeksi (raot kylien välissä mukaan)">🧩 Täytä alue</button>
+  <button id="popSpawnBtn" style="background:#2a1a3a;color:#d8b4ff;border:1px solid #b07cff;border-radius:8px;padding:6px 10px;font-weight:800;cursor:pointer" onclick="togglePopSpawn()" title="Väestötiheys-spawn: tehtävät syntyvät Suomen taajamiin asukasluvun mukaan tämän alueen sisällä. Piirrä vain iso toiminta-alue, data hoitaa loput. Tehtäväalueita ei tällöin tarvita.">👥 Väestöspawn: OFF</button>
   <button style="background:#3a2a00;color:#ffd11a;border:1px solid #ffd11a;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer" onclick="clearAllSpawnAreas()">🗑️ Tyhjennä</button>
   <button style="background:#ffd11a;color:#1a1200;border:none;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer" onclick="stopEditSpawnArea()">✓ Valmis</button>
 </div>
@@ -806,7 +807,7 @@ function renderDebugLog(){const el=document.getElementById('dbgBody');if(!el)ret
 window.toggleDebugLog=function(){const p=document.getElementById('dbgPanel');if(!p)return;const show=p.style.display==='none'||!p.style.display;p.style.display=show?'block':'none';if(show)renderDebugLog();};
 window.clearDebugLog=function(){window.__errlog=[];try{G._tickErr=null;G._spawnErr=null;}catch(_){}renderDebugLog();};
 /* ===== TILA ===== */
-const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:6,mapStyle:'satelliitti',jsonbinKey:'',maxTaskGap:300,upkeep:true}};
+const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:6,mapStyle:'satelliitti',jsonbinKey:'',maxTaskGap:300,upkeep:true,popDensitySpawn:false}};
 
 /* ===== KALENTERI / AIKAJÄRJESTELMÄ =====
    G.clock = sekunnit vuorokauden alusta (0-86400)
@@ -859,7 +860,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v333'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v336'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3125,6 +3126,14 @@ function migrateSpawnAreas(){
     G.spawnCenter=null;
   }
 }
+window.togglePopSpawn=()=>{
+  G.settings.popDensitySpawn=!G.settings.popDensitySpawn;
+  const b=document.getElementById('popSpawnBtn');
+  if(b){b.textContent='👥 Väestöspawn: '+(G.settings.popDensitySpawn?'ON':'OFF');b.style.background=G.settings.popDensitySpawn?'#3a1a5a':'#2a1a3a';}
+  _popInRegion=null; // pakota uudelleenlaskenta
+  toast(G.settings.popDensitySpawn?'Väestötiheys-spawn päällä — tehtävät taajamiin asukasluvun mukaan alueesi sisällä':'Väestötiheys-spawn pois — tehtävät alueittain kuten ennen');
+  try{saveGame(false);}catch(e){}
+};
 window.startEditSpawnArea=()=>{
   migrateSpawnAreas();
   editingSpawnArea=true;
@@ -3134,6 +3143,7 @@ window.startEditSpawnArea=()=>{
   if(sl){sl.value=spawnEditRadius;}
   document.getElementById('spawnRadLbl').textContent=spawnEditRadius.toFixed(1)+' km';
   setSpawnEditMode('circle');
+  try{const pb=document.getElementById('popSpawnBtn');if(pb){pb.textContent='👥 Väestöspawn: '+(G.settings.popDensitySpawn?'ON':'OFF');pb.style.background=G.settings.popDensitySpawn?'#3a1a5a':'#2a1a3a';}}catch(e){}
   renderSpawnCircles();
   closePanels();setNav('map');
   try{map.invalidateSize();renderVpkQueue();restorePops();}catch(e){}
@@ -4008,6 +4018,13 @@ async function reachableFromStation(lat,lng){
 }
 // Valitse maakohde joka on tieyhteydellä saavutettavissa. Kokeilee muutaman kerran, kutistaa etäisyyttä.
 async function pickLandLoc(s,minD,maxD){
+  // POISSAOLON AIKANA EI VERKKOKUTSUJA: snapToRoad/reitti hyytyisi catch-up-silmukassa ja tehtäviä ei
+  // syntyisi. Palautetaan suora hajautettu piste heti (reititys tehdään myöhemmin pelin pyörähtäessä).
+  if(G._offlineSim||G._offlineSpawning){
+    const lngS=111*Math.max(0.3,Math.cos(s.lat*Math.PI/180));
+    const d=minD+Math.random()*Math.max(0.01,maxD-minD),an=Math.random()*Math.PI*2;
+    return {lat:s.lat+d*Math.sin(an)/111,lng:s.lng+d*Math.cos(an)/lngS};
+  }
   let fallback=null;
   const lngScale=111*Math.max(0.3,Math.cos(s.lat*Math.PI/180));
   for(let tries=0;tries<4;tries++){
@@ -4030,6 +4047,98 @@ async function pickLandLocInArea(s,minD,maxR){
   try{const sn=await snapToRoad(s.lat,s.lng);if(inSpawnArea(sn.lat,sn.lng))return {lat:sn.lat,lng:sn.lng};}catch(e){}
   return {lat:s.lat,lng:s.lng};
 }
+// ===== SUOMEN TAAJAMAT (väestödata, kaupunki/taajamataso) =====
+// [nimi, lat, lng, asukasluku]. Tehtävät syntyvät asukasluvun mukaan painotettuna pelaajan
+// toiminta-alueen sisältä → realistinen tiheys (pääkaupunkiseutu paljon, maaseutu vähän) ilman
+// manuaalisia tehtäväalueita. Asukasluvut ~2023, kaupunki/kunta-taso (ei tarkka väestöruudukko).
+const POP_CENTERS=[
+['Helsinki',60.1699,24.9384,660000],['Espoo',60.2055,24.6559,313000],['Tampere',61.4978,23.7610,263000],
+['Vantaa',60.2934,25.0378,247000],['Oulu',65.0121,25.4651,215000],['Turku',60.4518,22.2666,201000],
+['Jyväskylä',62.2426,25.7473,145000],['Kuopio',62.8924,27.6770,123000],['Lahti',60.9827,25.6612,120000],
+['Pori',61.4851,21.7974,83000],['Kouvola',60.8678,26.7041,81000],['Joensuu',62.6010,29.7636,78000],
+['Lappeenranta',61.0587,28.1887,73000],['Hämeenlinna',60.9959,24.4643,68000],['Vaasa',63.0951,21.6165,67000],
+['Seinäjoki',62.7903,22.8403,65000],['Rovaniemi',66.5039,25.7294,65000],['Mikkeli',61.6886,27.2723,51000],
+['Kotka',60.4664,26.9458,51000],['Salo',60.3850,23.1333,51000],['Porvoo',60.3925,25.6651,51000],
+['Kokkola',63.8385,23.1307,48000],['Hyvinkää',60.6306,24.8597,46000],['Järvenpää',60.4731,25.0900,45000],
+['Nurmijärvi',60.4642,24.8090,44000],['Lohja',60.2497,24.0654,44000],['Kirkkonummi',60.1239,24.4407,41000],
+['Tuusula',60.4031,25.0271,40000],['Rauma',61.1288,21.5114,39000],['Kerava',60.4036,25.1050,37000],
+['Kajaani',64.2273,27.7285,36000],['Nokia',61.4781,23.5089,35000],['Ylöjärvi',61.5500,23.5961,34000],
+['Kaarina',60.4072,22.3700,34000],['Kangasala',61.4639,24.0689,33000],['Savonlinna',61.8694,28.8786,32000],
+['Riihimäki',60.7376,24.7775,30000],['Vihti',60.4178,24.3211,29000],['Raasepori',59.9778,23.4400,27000],
+['Imatra',61.1719,28.7720,26000],['Lempäälä',61.3128,23.7497,25000],['Sastamala',61.3406,22.9082,24000],
+['Raisio',60.4858,22.1689,24000],['Raahe',64.6839,24.4810,24000],['Hollola',61.0394,25.4319,24000],
+['Sipoo',60.3776,25.2667,22000],['Tornio',65.8482,24.1467,21000],['Iisalmi',63.5594,27.1906,21000],
+['Valkeakoski',61.2642,24.0314,21000],['Mäntsälä',60.6336,25.3203,21000],['Kurikka',62.6167,22.4167,20000],
+['Lieto',60.5012,22.4569,20000],['Kemi',65.7361,24.5636,20000],['Varkaus',62.3151,27.8717,20000],
+['Jämsä',61.8642,25.1903,20000],['Pirkkala',61.4658,23.6431,20000],['Kempele',64.9133,25.5036,19000],
+['Naantali',60.4675,22.0264,19000],['Hamina',60.5697,27.1979,19000],['Pietarsaari',63.6750,22.7028,19000],
+['Mustasaari',63.1167,21.7000,19000],['Laukaa',62.4147,25.9486,19000],['Äänekoski',62.6058,25.7250,18000],
+['Heinola',61.2028,26.0319,18000],['Janakkala',60.9203,24.6342,17000],['Pieksämäki',62.3000,27.1333,17000],
+['Orimattila',60.8044,25.7331,16000],['Akaa',61.1689,23.8694,16000],['Forssa',60.8147,23.6258,16000],
+['Loimaa',60.8508,23.0583,15000],['Parainen',60.3072,22.3008,15000],['Loviisa',60.4575,26.2247,15000],
+['Ylivieska',64.0786,24.5447,15000],['Kauhava',63.1028,23.0703,15000],['Uusikaupunki',60.8003,21.4083,15000],
+['Kuusamo',65.9667,29.1833,15000],['Lapua',62.9700,23.0078,14000],['Kankaanpää',61.8056,22.4044,11000],
+['Liminka',64.8089,25.4153,11000],['Ulvila',61.4283,21.8717,13000],['Kauhajoki',62.4319,22.1797,13000],
+['Kalajoki',64.2575,23.9489,12000],['Eura',61.1331,22.1331,12000],['Lieksa',63.3186,30.0247,11000],
+['Paimio',60.4567,22.6889,11000],['Alavus',62.5856,23.6186,11000],['Mänttä-Vilppula',62.0270,24.6256,10000],
+['Huittinen',61.1769,22.6989,10000],['Kitee',62.0986,30.1361,10000],['Sotkamo',64.1333,28.4000,10000],
+['Nivala',63.9258,24.9694,10000],['Keuruu',62.2606,24.7028,9000],['Saarijärvi',62.7050,25.2589,9000],
+['Orivesi',61.6781,24.3578,9000],['Muhos',64.8083,25.9944,9000],['Somero',60.6308,23.5183,9000],
+['Ii',65.3167,25.3667,10000],['Närpes',62.4736,21.3367,9000],['Hanko',59.8333,22.9500,8000],
+['Asikkala',61.1717,25.5497,8000],['Sodankylä',67.4167,26.6000,8000],['Pudasjärvi',65.3667,27.0167,8000],
+['Kemijärvi',66.7144,27.4306,7000],['Kuhmo',64.1278,29.5167,8000],['Nurmes',63.5422,29.1394,7000],
+['Suomussalmi',64.8833,28.9000,7000],['Oulainen',64.2667,24.8167,7000],['Harjavalta',61.3142,22.1392,7000],
+['Kokemäki',61.2553,22.3539,7000],['Kittilä',67.6500,24.9167,6700],['Ivalo',68.6592,27.5386,7000],
+['Virrat',62.2406,23.7794,6700],['Kristiinankaupunki',62.2742,21.3789,6300],['Viitasaari',63.0742,25.8589,6300],
+['Ikaalinen',61.7700,23.0700,7000],['Parkano',62.0089,23.0233,6500],['Säkylä',61.0469,22.3306,6800],
+['Haapajärvi',63.7500,25.3333,7000],['Outokumpu',62.7256,29.0136,6700]
+];
+// Väestöpainotettu spawn-sijainti pelaajan toiminta-alueen sisältä. Manuaalisia tehtäväalueita ei tarvita:
+// pelaaja piirtää vain alueen jolle tehtäviä VOI syntyä, ja taajamat painottuvat asukasluvun mukaan.
+let _popInRegion=null,_popSig='';
+function popCentersInRegion(){
+  const idx=_areaIndex();
+  const sig=(idx.empty?'E':'A')+':'+(G.stations?G.stations.length:0)+':'+((G.spawnAreas||[]).length)+':'+(G._areaVer||0)+':'+(G.disabledStations?Object.keys(G.disabledStations).length:0);
+  if(_popInRegion&&_popSig===sig)return _popInRegion;
+  let list;
+  if(!idx.empty){
+    // ALUE PIIRRETTY → vain alueen sisällä olevat taajamat (pelaajan valinta mihin tehtäviä voi syntyä)
+    list=POP_CENTERS.filter(c=>inSpawnArea(c[1],c[2]));
+  } else {
+    // EI ALUETTA → rajaa taajamiin jotka ovat asemien ULOTTUVILLA, ettei synny tavoittamattomia tehtäviä
+    const st=(typeof activeStations==='function')?activeStations():[];
+    list = st.length ? POP_CENTERS.filter(c=>st.some(s=>km(c[1],c[2],s.lat,s.lng)<=45)) : [];
+  }
+  _popInRegion=list;_popSig=sig;return list;
+}
+function pickPopulationCenter(){
+  const list=popCentersInRegion();
+  if(!list.length)return null;
+  let tot=0;for(const c of list)tot+=c[3];
+  let r=Math.random()*tot;
+  for(const c of list){r-=c[3];if(r<=0)return c;}
+  return list[list.length-1];
+}
+async function pickPopulationLoc(where){
+  const c=pickPopulationCenter();if(!c)return null;
+  let spreadKm=Math.max(1.2,Math.min(16,1.5+Math.sqrt(c[3])/45)); // iso kaupunki = laajempi levinneisyys
+  let minKm=0;
+  if(where==='forest'){ minKm=5; spreadKm=Math.max(spreadKm,20); } // METSÄ/MAASTO: kaupungin ULKOPUOLELLE, ei keskustaan
+  const idx=_areaIndex();
+  const offline=G._offlineSim||G._offlineSpawning; // poissaolon aikana EI verkkokutsuja → tehtävät syntyvät heti
+  for(let k=0;k<4;k++){
+    const ang=Math.random()*2*Math.PI;
+    const d=minKm+Math.sqrt(Math.random())*Math.max(0.5,spreadKm-minKm)*(k===0?1:0.6); // sqrt → tasainen pinta-alalle
+    const lat=c[1]+d*Math.sin(ang)/111;
+    const lng=c[2]+d*Math.cos(ang)/(111*Math.max(0.3,Math.cos(c[1]*Math.PI/180)));
+    if(offline){ if(idx.empty||inSpawnArea(lat,lng))return {lat,lng}; continue; }
+    const loc=await pickLandLoc({lat,lng},0.0,0.04);
+    if(idx.empty||inSpawnArea(loc.lat,loc.lng))return loc;
+  }
+  if(!offline){ try{ const sn=await snapToRoad(c[1],c[2]); if(sn&&isFinite(sn.lat)&&(idx.empty||inSpawnArea(sn.lat,sn.lng)))return {lat:sn.lat,lng:sn.lng}; }catch(e){} }
+  return {lat:c[1],lng:c[2]};
+}
+
 async function pickLocationForTask(t){
   const a=activeStations();
   // ISOT TIET (piilodata): liikennetehtävät (where:'road' / motari-koodit) sijoitetaan oikealle ISOLLE
@@ -4050,6 +4159,11 @@ async function pickLocationForTask(t){
     }
     const loc=await pickLandLoc({lat:p.lat,lng:p.lng},0.02,0.2);
     if(inSpawnArea(loc.lat,loc.lng))return loc;
+  }
+  // VÄESTÖPAINOTETTU SPAWN: jos päällä, sijoita tehtävä todellisen väestötiheyden mukaan pelaajan
+  // toiminta-alueen sisältä (taajamat painottuvat asukasluvun mukaan). Vesitehtävät menevät omaa reittiään.
+  if(G.settings.popDensitySpawn && (t.where||'any')!=='water'){
+    try{ const pl=await pickPopulationLoc(t.where); if(pl)return pl; }catch(e){}
   }
   // YHDISTETTY aluelista: jokaisen aseman OMA alue (automaattinen) + käyttäjän piirtämät alueet.
   // Painotettu väentiheydellä. Näin uusi asema saa heti oman alueen ja kaikki toimii.
