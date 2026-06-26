@@ -743,6 +743,14 @@ html,body{height:100vh;height:100svh;height:100dvh;min-height:100vh;min-height:-
 </div>
 <button class="fab" id="fab"></button>
 <div id="toast"></div>
+<button id="dbgBtn" onclick="toggleDebugLog()" title="Virheloki — näyttää pelin virheet" style="position:fixed;left:8px;bottom:8px;z-index:9999;background:#1a1a1e;color:#ff9a9a;border:1px solid #ff6b6b;border-radius:8px;padding:4px 8px;font-size:13px;font-weight:700;cursor:pointer;opacity:.5">🐞</button>
+<div id="dbgPanel" style="display:none;position:fixed;left:8px;bottom:46px;z-index:9999;width:min(92vw,540px);max-height:52vh;overflow:auto;background:#0a0a0c;color:#e8e8e8;border:1px solid #ff6b6b;border-radius:10px;padding:10px;font:12px/1.45 monospace;box-shadow:0 6px 24px rgba(0,0,0,.6)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <b style="color:#ff9a9a">🐞 Virheloki</b>
+    <span><button onclick="clearDebugLog()" style="background:#222;color:#ffd11a;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:700">Tyhjennä</button> <button onclick="toggleDebugLog()" style="background:#222;color:#ccc;border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:700">Sulje</button></span>
+  </div>
+  <div id="dbgBody">Ei virheitä 👍</div>
+</div>
 
 <div class="panel" id="p-list"><div class="head">📋 Tehtävät <span class="spacer"></span><span class="smallnote mono" id="listcount"></span><select class="pill" id="spawnsel" style="cursor:pointer;margin-left:6px" title="Tehtävien syntymisnopeus"><option value="0">🚫 ei uusia tehtäviä</option><option value="0.33">0,33×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="5">5×</option><option value="real">🎲 realistinen</option></select><span class="pclose" onclick="goMap()">✕</span></div><div class="body" id="listbody"></div></div>
 <div class="panel" id="p-radio"><div class="head">📻 Radio <span class="spacer"></span><span class="pclose" onclick="goMap()">✕</span></div><div class="body"><div class="rtab" id="rtabs"></div><div id="rfeed"></div></div></div>
@@ -788,6 +796,15 @@ html,body{height:100vh;height:100svh;height:100dvh;min-height:100vh;min-height:-
 </nav>
 
 <script>
+/* ===== VIRHELOKI (ruudulle, koska mobiilissa ei näe konsolia) ===== */
+window.__errlog=window.__errlog||[];
+function _esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _logErr(src,msg,extra){try{window.__errlog.push({t:new Date().toLocaleTimeString(),src:src,msg:String(msg).slice(0,300),extra:extra?String(extra).slice(0,260):''});if(window.__errlog.length>60)window.__errlog.shift();const b=document.getElementById('dbgBtn');if(b){b.style.opacity='1';b.style.background='#5a0f0f';}try{renderDebugLog();}catch(_){}}catch(_){}}
+window.onerror=function(m,u,l,c,err){_logErr('JS',m,(u||'')+':'+(l||'')+(err&&err.stack?'\n'+err.stack.split('\n').slice(0,3).join('\n'):''));};
+window.addEventListener('unhandledrejection',function(ev){_logErr('promise',(ev&&ev.reason&&(ev.reason.message||ev.reason))||'rejection',ev&&ev.reason&&ev.reason.stack?ev.reason.stack.split('\n').slice(0,3).join('\n'):'');});
+function renderDebugLog(){const el=document.getElementById('dbgBody');if(!el)return;const xtra=[];try{if(typeof G!=='undefined'&&G._tickErr)xtra.push({t:'',src:'tick',msg:G._tickErr,extra:''});if(typeof G!=='undefined'&&G._spawnErr)xtra.push({t:'',src:'spawn',msg:G._spawnErr,extra:''});}catch(_){}const all=xtra.concat(window.__errlog.slice().reverse());el.innerHTML=all.length?all.map(e=>'<div style="border-bottom:1px solid #222;padding:4px 0"><span style="color:#ff9a9a">['+_esc(e.src)+']</span> '+(e.t?'<span style="color:#888">'+_esc(e.t)+'</span> ':'')+_esc(e.msg)+(e.extra?'<div style="color:#888;white-space:pre-wrap;font-size:11px">'+_esc(e.extra)+'</div>':'')+'</div>').join(''):'Ei virheitä 👍';}
+window.toggleDebugLog=function(){const p=document.getElementById('dbgPanel');if(!p)return;const show=p.style.display==='none'||!p.style.display;p.style.display=show?'block':'none';if(show)renderDebugLog();};
+window.clearDebugLog=function(){window.__errlog=[];try{G._tickErr=null;G._spawnErr=null;}catch(_){}renderDebugLog();};
 /* ===== TILA ===== */
 const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:6,mapStyle:'satelliitti',jsonbinKey:'',maxTaskGap:300,upkeep:true}};
 
@@ -842,7 +859,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v324'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v326'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -3068,11 +3085,14 @@ window.finishPolyArea=()=>{
 };
 // TÄYTÄ ALUE: piirrä rajaus kartalle → koko sen SISÄPUOLI täyttyy tehtäväalueeksi (raot kylien välissä mukaan).
 window.startFillArea=()=>{
-  try{setSpawnEditMode('poly');}catch(e){}
+  try{setSpawnEditMode('circle');}catch(e){}
   try{clearPolyDraft();}catch(e){}
+  spawnEditRadius=Math.max(spawnEditRadius||2.5,6); // isompi oletussäde täyttöä varten
+  const sl=document.getElementById('spawnRadSlider'); if(sl)sl.value=spawnEditRadius;
+  const lbl=document.getElementById('spawnRadLbl'); if(lbl)lbl.textContent=spawnEditRadius.toFixed(1)+' km';
   const h=document.getElementById('spawnEditHint');
-  if(h)h.textContent='🧩 Piirrä RAJAUS täytettävän alueen ympärille (klikkaa kulmat kartalle) → koko sisäpuoli täyttyy tehtäväalueeksi · paina «✓ Sulje alue» kun valmis';
-  toast('Piirrä rajaus kartalle — koko sen sisäpuoli täyttyy tehtäväalueeksi (raot mukaan)');
+  if(h)h.textContent='🧩 Napauta karttaa kohtaan jonka haluat täyttää → siihen syntyy tehtäväalue. Kokoa säädät liukurista. Napauta aluetta poistaaksesi sen.';
+  toast('Napauta karttaa — siihen syntyy täyttävä tehtäväalue. Kokoa säädät liukurista.');
 };
 // Piste polygonin sisällä? (ray casting)
 function pointInPoly(lat,lng,points){
