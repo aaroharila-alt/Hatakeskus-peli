@@ -859,7 +859,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v326'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v333'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -7136,7 +7136,7 @@ function arriveOrHome(u){
       tk.firstArrival=G.clock;
       // EI tilanneilmoitusta saapuessa — radioon vain jos lähdön kokoa nostetaan (requestMissing/maybeEscalate).
       // Johtaja ei tiedä heti — sizetään tilanne ensin (arviointiviive ennen pyyntöjä/eskalaatiota).
-      tk._leadAssessAt=G.clock+rnd(20,110);
+      tk._leadAssessAt=G.clock+reconTime(tk); // tiedustelun kesto tehtävän monimutkaisuuden mukaan
       // Ei saapumisilmoitusta — yksiköt raportoivat MDT:llä, ei radioon.
       // PILAPUHELU/AIHEETON tehtävä: tehtävä paljastuu paikan päällä
       if(tk.pilapuhelu){
@@ -7571,7 +7571,8 @@ function maybeEscalate(tk,arriving){
   // junnaava palo (teho gated alas, esim. rakennuspalo ilman toista savusukellusparia) voi levitä.
   if(isFireTask(tk)){
     const _onscE=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
-    if(_onscE.length && workRate(tk,_onscE)>=0.6) return;
+    const _wr=_onscE.length?workRate(tk,_onscE):0;
+    if(_onscE.length && (_wr>=0.6 || tk._fireSetup)) return; // hallinnassa TAI savusukellusvalmistelu käynnissä → ei leviä
   }
   const canEsc=tk.escTo&&tk.escTo!==tk.c&&TASKS.find(t=>t.c===tk.escTo);
   if(canEsc){
@@ -7767,7 +7768,17 @@ function workRate(tk,onsc){
   // hidasta. (Pieni/palanut ruoka -keikka ei vaadi tätä, koska vedentarve on pieni/0.)
   if(/rakennuspalo/i.test(tk.n||'') && fireWaterDemand(tk)>3000){
     const pairs=onsc.filter(u=>['sammutus','miehisto'].includes(u.vt) && effCrewN(u)>=4).length; // alle 1+3 (vajaa/pieni miehitys) EI pysty aloittamaan savusukellusta — vain tiedustelu/valmistelu
-    if(pairs<2) rate*=0.1; // ilman kahta savusukellusparia ei pääse sisään -> vain ulkopuolinen torjunta, palo ei sammu
+    if(pairs<2){ rate*=0.1; tk._fireSetup=false; } // ilman kahta savusukellusparia ei pääse sisään -> vain ulkopuolinen torjunta, palo ei sammu
+    else {
+      // SAVUSUKELLUKSEN VALMISTELU: vaikka vesi ja parit ovat paikalla, hyökkäys ei ala täydellä teholla
+      // heti — paineilmalaitteiden pukeminen, letkunveto ja hyökkäysreitin avaus vievät pari minuuttia.
+      const waterOk = fireWaterSupply(onsc,tk) >= fireWaterDemand(tk)*0.5;
+      if(waterOk){
+        if(!tk._attackStart) tk._attackStart=G.clock;
+        tk._fireSetup = (G.clock-tk._attackStart) < 180; // ~3 min valmistelu ennen täyttä iskua
+        if(tk._fireSetup) rate*=0.45;
+      } else { tk._attackStart=null; tk._fireSetup=false; }
+    }
   }
   if(/^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water'){
     const hasAbsorb = onsc.some(u=>oilCapable(u)&&((u.material==null)||u.material>5));
@@ -7779,6 +7790,73 @@ function workRate(tk,onsc){
     if(!hasElainp) rate*=0.7;
   }
   return rate;
+}
+// ===== TILANNEJOHTO ("yksikön mieli" kohteessa) — SISÄINEN tila, EI radioselostusta =====
+// Tämä ei kuittaile HÄKElle (kuten ei oikeastikaan): se vain kertoo PELILLE missä vaiheessa keikka on,
+// jotta yksiköt toimivat realistisesti (tiedustelu ennen täyttä työtä, hallinta-tila kun vaste riittää).
+// Aidot lisähälytyspyynnöt ("pyydän lisää X") hoituu erikseen ja menevät radioon kuten kuuluukin.
+function tickIncidentCommand(tk,onsc,rate){
+  if(!tk||!tk.onScene||!onsc||!onsc.length)return;
+  tk._ic=tk._ic||{phase:'tiedustelu'};
+  if(tk._ic.phase==='tiedustelu'){
+    const assessAt=tk._leadAssessAt||((tk.firstArrival||G.clock)+60);
+    if(G.clock>=assessAt){ tk._ic.phase='tyo'; try{revealScene(tk);}catch(e){} } // ensitiedustelu tehty → todellinen tilanne paljastuu kohteessa, siirrytään työhön
+    return;
+  }
+  if(tk._ic.phase==='tyo'){
+    const met=needMetBy(tk,onsc); const prog=tk.workNeeded?tk.work/tk.workNeeded:0;
+    if(met && rate>=0.6 && prog>0.5) tk._ic.phase='hallinnassa'; // sisäinen tila: tilanne hallinnassa
+    return;
+  }
+}
+// ===== TIEDUSTELUN KESTO tehtävän monimutkaisuuden mukaan =====
+// Peltikolaria ei tiedustella kauan; rakennuspaloa tai suuronnettomuutta kierretään ja arvioidaan pidempään.
+function reconTime(tk){
+  let s; const sev=tk.sev||'none';
+  if(sev==='critical')s=90; else if(sev==='high')s=60; else if(sev==='medium')s=35; else s=15;
+  if(typeof isFireTask==='function'&&isFireTask(tk)&&/rakennuspalo/i.test(tk.n||''))s+=40; // rakennuspalo: kohde kierretään
+  if((tk.minCrew||0)>=9)s+=30; else if((tk.minCrew||0)>=5)s+=15;                            // iso vaste = laajempi tilannearvio
+  if((tk.patients||0)>2)s+=20;                                                              // monipotilas: triage vie aikaa
+  return Math.round(s*(0.7+Math.random()*0.6));                                             // hajonta ±35 %
+}
+// ===== KOHTEESSA PALJASTUVA TODELLINEN TILANNE =====
+// Koodi on hätäkeskuksen ARVIO puhelusta. Kun tiedustelu on tehty, kohteessa selviää mitä OIKEASTI
+// tapahtuu, ja työ tehdään SEN mukaan — ei koodin mukaan. Tilanne voi olla vähäisempi (yliarvioitu
+// puhelussa), koodin mukainen tai suurempi (aliarvioitu → mahdollinen lisähälytys). Sisäinen, ei radiota:
+// jos tilanne kasvaa ja tarvitaan lisää, olemassa oleva lisähälytys/eskalointi hoitaa radion kuten ennen.
+function revealScene(tk){
+  if(!tk||tk._revealed)return;
+  if(tk.pilapuhelu||tk.patrolGen||tk.hTask){tk._revealed=true;return;}
+  const nm=tk.n||'';
+  // Paloautomaatti-/savu-/käryhälytykset hoituu maybeDeescalatella (oma radioilmoitus) → ei tuplata.
+  if(tk.toimi==='pelastus' && /ilmoitin|paloilmoit|paloh.?lyt|automaat|k.ry|savun? ?haj|palaneen haj|haju/i.test(nm)){tk._revealed=true;return;}
+  tk._revealed=true;
+  const sev=tk.sev||'none';
+  let pMinor=0.30,pBig=0.16;
+  if(sev==='critical'){pMinor=0.08;pBig=0.24;}            // kriittinen harvoin pikkujuttu, usein vakava
+  else if(sev==='high'){pMinor=0.18;pBig=0.20;}
+  else if(sev==='low'||sev==='none'){pMinor=0.42;pBig=0.10;} // matala sev usein yliarvioitu
+  const r=Math.random(); let kind,f;
+  if(r<pMinor){kind='vähäinen'; f=0.35+Math.random()*0.35;}            // 0.35–0.70× työ
+  else if(r<pMinor+pBig){kind='suurempi'; f=1.35+Math.random()*0.6;}   // 1.35–1.95× työ
+  else {kind='odotettu'; f=0.85+Math.random()*0.3;}                    // 0.85–1.15× työ
+  tk._realKind=kind;
+  tk.workNeeded=Math.max(60,Math.round((tk.workNeeded||60)*f));
+  // Potilasmäärä mukautuu todellisuuteen ensihoidossa/liikenteessä
+  if((tk.toimi==='ensihoito'||/liikenne|onnett|kolari|t.rm.ys|putoam/i.test(nm))&&tk.patients){
+    if(kind==='vähäinen')tk.patients=Math.max(1,Math.round(tk.patients*0.6));
+    else if(kind==='suurempi')tk.patients=tk.patients+(Math.random()<0.5?1:2);
+  }
+  // Suurempi tilanne → salli lisähälytys/eskalointi olemassa olevalla logiikalla (ei pakoteta koodia)
+  if(kind==='suurempi'){
+    tk.escDone=false; tk.esc=Math.max(tk.esc||0,0.012);
+    // Monipotilas paljastuu kohteessa → ambulanssitarve kasvaa, jolloin peli pyytää autonomisesti lisää.
+    // Nostetaan vain JO olemassa olevaa ambulanssitarvetta (ei lisätä uutta tyyppiä), katto 3 / ~1 per 2 potilasta.
+    if(tk.patients>1 && tk.need && tk.need.ambulanssi){
+      const want=Math.min(tk.need.ambulanssi+1, 3, Math.ceil(tk.patients/2));
+      if(want>tk.need.ambulanssi) tk.need.ambulanssi=want;
+    }
+  }
 }
 function progressTask(tk,dt){
   // HÄKE välittää viivästetyn 551-virka-apupyynnön PE ANTO:lle peliajassa (asetettu maybeRequest551:ssä).
@@ -7812,6 +7890,7 @@ function progressTask(tk,dt){
       const drain=(u.vt==='oty'||u.vt==='otyperv')?0.015:0.08; u.material=Math.max(0,u.material-dt*drain); });
   }
   const rate=workRate(tk,onsc);
+  try{tickIncidentCommand(tk,onsc,rate);}catch(e){} // tilannejohtajan "mieli": tiedustelu → arvio → hallinnassa
   // Letku saatu vedettyä -> yksikkö ilmoittaa radiossa (statusviesti, ei vihje).
   if(isFireTask(tk)){
     const letku=onsc.find(isLetkuUnit);
@@ -7823,7 +7902,7 @@ function progressTask(tk,dt){
       if(tk.workNeeded < tk._origWorkNeeded*1.8) tk.workNeeded += dt*(1-rate)*0.4;
     }
   }
-  if(_met||_selfResolve){if(tk.alert){tk.alert=false;refreshTaskAlert(tk);}tk.work+=dt*rate;midTaskRelease(tk);if(tk.work>tk.workNeeded)completeTask(tk);}
+  if(_met||_selfResolve){if(tk.alert){tk.alert=false;refreshTaskAlert(tk);}const _wrate=(tk._ic&&tk._ic.phase==='tiedustelu')?rate*0.35:rate;tk.work+=dt*_wrate;if(isFireTask(tk)&&tk.work>=tk.workNeeded*0.7)tk._knockdown=true;midTaskRelease(tk);if(tk.work>tk.workNeeded)completeTask(tk);} // tiedustelun aikana työ ramppaa hitaammin (size-up ennen täyttä toimintaa)
   // JUMITUKSEN ESTO (tehtävä): jos työ EI ole edennyt pitkään aikaan (esim. vaste ei täsmää: väärän
   // tyyppinen yksikkö jäänyt kohteeseen, oikea lähtenyt) → ei jätetä tehtävää ikuisesti "N min jäljellä".
   if(tk.status==='ajossa'&&tk.onScene){
@@ -7839,7 +7918,13 @@ function progressTask(tk,dt){
   const _enrU=tk.assigned.map(id=>G.units.find(x=>x.id===id)).filter(u=>u&&(u.status==='matka'||u.status==='otettu'));
   // APU JO MATKALLA: jos tulossa olevat yksiköt korjaavat puutteen (esim. imeytysaine/säiliö/savusukelluspari
   // matkalla, matka vain kestää) → EI pyydetä uudelleen.
-  if(tk.onScene && onsc.length && (rate<0.5||!_met) && !tk._capReqDone && tk.firstArrival && (G.clock-tk.firstArrival>75) && !(_enrU.length&&(workRate(tk,onsc.concat(_enrU))>=0.999||needMetBy(tk,onsc.concat(_enrU))))){
+  // HÄTÄKESKUSPERIAATE: henki/omaisuus/ympäristö edellä → korkean panoksen tehtävillä lisähälytys
+  // tehdään NOPEASTI (lyhyempi viive), koska alimitoitus maksaa eniten. Epävarmassa tilanteessa
+  // pyydetään mieluummin liikaa ja perutaan myöhemmin (midTaskRelease/deescalate hoitaa vapautuksen).
+  const _hazCode=/^47/.test(String(tk.realCode||tk.c))||/kemikaali|vaarallis|kaasu/i.test(tk.n||'');
+  const _highStakes=tk.sev==='critical'||tk.sev==='high'||/rakennuspalo/i.test(tk.n||'')||_hazCode;
+  const _reqWait=(tk.sev==='critical'||/rakennuspalo/i.test(tk.n||'')||_hazCode)?25:(tk.sev==='high'?40:75);
+  if(tk.onScene && onsc.length && (rate<0.5||!_met) && !tk._capReqDone && tk.firstArrival && (G.clock-tk.firstArrival>_reqWait) && !(_enrU.length&&(workRate(tk,onsc.concat(_enrU))>=0.999||needMetBy(tk,onsc.concat(_enrU))))){
     const _all=onsc.concat(_enrU); // huomioi myös MATKALLA olevat: jos säiliöauto/yksikkö on jo tulossa, EI pyydetä turhaan lisää
     let _need=null;
     if(/rakennuspalo/i.test(tk.n||'') && fireWaterDemand(tk)>3000){
@@ -7849,7 +7934,7 @@ function progressTask(tk,dt){
     if(!_need && isFireTask(tk) && fireWaterDemand(tk)>0 && fireWaterSupply(_all,tk)<fireWaterDemand(tk)) _need='vesi ei riitä — pyydän lisää säiliöautoa kohteeseen';
     if(!_need && /^47/.test(String(tk.realCode||tk.c)) && tk.where!=='water' && !_all.some(u=>oilCapable(u)&&((u.material==null)||u.material>5))) _need='ei imeytysainetta — pyydän vahingontorjunta-auton kohteeseen';
     if(!_need){ const _rp=missingRequestPhrase(tk); if(_rp)_need=_rp.phrase; } // YLEINEN alivahvuus (mikä tahansa puuttuva yksikkö) → pyydä lisää
-    if(!_need && !_met){ _need='pyydän lisää yksiköitä kohteeseen'; } // VARMISTUS: vaste ei täsmää mutta erittelyä ei saatu → tulee silti aina
+    if(!_need && !_met){ _need=_highStakes?'tilanne voi kehittyä vakavaksi — pyydän varmuuden vuoksi lisää yksiköitä kohteeseen nyt, perutaan jos ei tarvita':'pyydän lisää yksiköitä kohteeseen'; } // VARMISTUS + hätäkeskusperiaate: korkea panos → ennakoiva, isompi pyyntö
     if(!_need && _met && rate<0.5 && tk.firstArrival && (G.clock-tk.firstArrival>180)){ _need='työ ei etene odotetusti — pyydän lisää yksiköitä kohteeseen'; } // vaste täsmää mutta työ junnaa → pyydä lisää
     if(_need){
       tk._capReqDone=true;
@@ -7937,7 +8022,7 @@ function standDown(tk,keptNames,droppedNames,preferSpeaker,allowSelfAck){
 function midTaskRelease(tk){
   // Kun työ on edennyt yli puolivälin, johtaja voi vapauttaa AIDOSTI ylimääräisiä yksiköitä
   // (ei niitä joita tehtävä vaatii — neededKeep suojaa ne, myös suoja/minCrew).
-  if(tk.work<tk.workNeeded*0.5)return;if(tk.midDone)return;if(Math.random()>0.004)return;
+  if(tk.work<tk.workNeeded*0.5)return;if(tk.midDone)return;if(Math.random() > (tk._knockdown?0.02:0.004))return;
   const keep=neededKeep(tk);
   const onsc=tk.assigned.map(id=>G.units.find(u=>u.id===id)).filter(u=>u&&u.status==='kohde');
   const onExtras=onsc.filter(u=>!keep.has(u.id));
@@ -9052,7 +9137,7 @@ function serializeGame(){
     _isLandBoat:u._isLandBoat||false,_boatLaunched:u._boatLaunched||false,_launchShore:u._launchShore||null,_awaitBoat:u._awaitBoat||null,_strandedBoat:u._strandedBoat||false,_hemsMode:u._hemsMode||null,_heliBroken:u._heliBroken||false,material:u.material??100,_awaitCrew:u._awaitCrew||false,_mannedBy:u._mannedBy||null,_mansBoat:u._mansBoat||null,_parkedAtDock:u._parkedAtDock||false,_dockBoat:u._dockBoat||null,
     _huoltoTarget:u._huoltoTarget||null,_huoltoUntilDur:u._huoltoUntilDur||null,
     lat:u.lat,lng:u.lng,hx:u.hx,hy:u.hy})),
-  tasks:G.tasks.filter(t=>t.status!=='valmis').map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||'any',shore:t.shore||null,offshore:t.offshore||false,boatOnly:t.boatOnly||false,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null,_leadAssessAt:t._leadAssessAt??null,_reqAnnounced:t._reqAnnounced||null,_reqLastAt:t._reqLastAt||null,_relNames:t._relNames||null,_relT:t._relT||null,_escT:t._escT||null,escSuggest:t.escSuggest||null,airwayRisk:t.airwayRisk||false,patrolGen:t.patrolGen||false,_letkuReadyAt:t._letkuReadyAt||null,_letkuAnnounced:t._letkuAnnounced||false,waterNeed:(t.waterNeed==null?null:t.waterNeed),_origWorkNeeded:t._origWorkNeeded||null,_stabilizedAt:t._stabilizedAt||null,_firstResponder:t._firstResponder||null,_dupOf:t._dupOf||null,_vainaja:t._vainaja||false,_vainajaChecked:t._vainajaChecked||false,_vainajaNoPolice:t._vainajaNoPolice||false,hTask:t.hTask||false,_expireAt:t._expireAt||null,_codeConfirmed:t._codeConfirmed||false,pickedCode:t.pickedCode||null,pickedToimi:t.pickedToimi||null})),
+  tasks:G.tasks.filter(t=>t.status!=='valmis').map(t=>({id:t.id,c:t.c,base:t.base,realCode:t.realCode,n:t.n,toimi:t.toimi,need:t.need,minCrew:t.minCrew,rew:t.rew,info:t.info,patients:t.patients,sev:t.sev,timeCrit:t.timeCrit,esc:t.esc,escTo:t.escTo,where:t.where||'any',shore:t.shore||null,offshore:t.offshore||false,boatOnly:t.boatOnly||false,fastRoad:t.fastRoad||false,reqSuoja:t.reqSuoja??null,lat:t.lat,lng:t.lng,urg:t.urg,addr:t.addr,workNeeded:t.workNeeded,work:t.work||0,onScene:t.onScene||false,mislabeled:t.mislabeled,pilapuhelu:t.pilapuhelu||false,addrBlurred:t.addrBlurred||false,status:t.status,assigned:t.assigned,lead:t.lead,firstArrival:t.firstArrival,outcome:t.outcome,requestedOnInfo:t.requestedOnInfo||false,reqDone:t.reqDone||false,escDone:t.escDone||false,created:t.created,midDone:t.midDone||false,escNeglect:t.escNeglect||false,initialAnnounced:t.initialAnnounced||false,downtime:t.downtime||null,lastSeen:t.lastSeen||null,arrestStart:t.arrestStart||null,_leadAssessAt:t._leadAssessAt??null,_revealed:t._revealed||false,_realKind:t._realKind||null,_ic:t._ic||null,_knockdown:t._knockdown||false,_attackStart:t._attackStart??null,_reqAnnounced:t._reqAnnounced||null,_reqLastAt:t._reqLastAt||null,_relNames:t._relNames||null,_relT:t._relT||null,_escT:t._escT||null,escSuggest:t.escSuggest||null,airwayRisk:t.airwayRisk||false,patrolGen:t.patrolGen||false,_letkuReadyAt:t._letkuReadyAt||null,_letkuAnnounced:t._letkuAnnounced||false,waterNeed:(t.waterNeed==null?null:t.waterNeed),_origWorkNeeded:t._origWorkNeeded||null,_stabilizedAt:t._stabilizedAt||null,_firstResponder:t._firstResponder||null,_dupOf:t._dupOf||null,_vainaja:t._vainaja||false,_vainajaChecked:t._vainajaChecked||false,_vainajaNoPolice:t._vainajaNoPolice||false,hTask:t.hTask||false,_expireAt:t._expireAt||null,_codeConfirmed:t._codeConfirmed||false,pickedCode:t.pickedCode||null,pickedToimi:t.pickedToimi||null})),
   packages:G.packages||[],cloudId:G.cloudId||null,cloudEnabled:G.cloudEnabled||false,readyMigrated:true};
 }
 async function saveGame(manual){
