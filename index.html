@@ -807,7 +807,7 @@ function renderDebugLog(){const el=document.getElementById('dbgBody');if(!el)ret
 window.toggleDebugLog=function(){const p=document.getElementById('dbgPanel');if(!p)return;const show=p.style.display==='none'||!p.style.display;p.style.display=show?'block':'none';if(show)renderDebugLog();};
 window.clearDebugLog=function(){window.__errlog=[];try{G._tickErr=null;G._spawnErr=null;}catch(_){}renderDebugLog();};
 /* ===== TILA ===== */
-const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:6,mapStyle:'satelliitti',jsonbinKey:'',maxTaskGap:300,upkeep:true,popDensitySpawn:false}};
+const G={money:1500000,clock:8*3600,dayCount:0,startDateISO:'2026-01-01',speed:1,timeScale:6,turnoutMul:1,stations:[],units:[],tasks:[],radio:{},season:'talvi',spawnRate:1,uidc:1,tidc:1,selChannel:null,missDone:0,missClaimed:[],vpkValmius:{},taskStats:{total:0,byCode:{},respSum:0,respCount:0},settings:{autoEsc:true,showCallouts:true,offlineMaxTasks:6,mapStyle:'satelliitti',jsonbinKey:'',maxTaskGap:300,upkeep:true,popDensitySpawn:true,_popDefaultV:1}};
 
 /* ===== KALENTERI / AIKAJÄRJESTELMÄ =====
    G.clock = sekunnit vuorokauden alusta (0-86400)
@@ -860,7 +860,7 @@ const CALENDAR_EVENTS=[
 function todayEvent(d){d=d||gameDate();return CALENDAR_EVENTS.find(e=>e.m===d.getMonth()+1&&e.d===d.getDate())||null;}
 function todaySpawnBoost(){const e=todayEvent();return e?(e.spawnBoost||1):1;}
 let TIME_MULT=4; // peliaika kulkee 4× reaaliaikaan — yksiköt liikkuvat luonnollisesti, säädettävissä asetuksista
-const VERSION='v336'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
+const VERSION='v339'; // näkyy Asetuksissa — päivitä tämä kun versio vaihtuu
 const PAYOUT_MULT=0.8; // globaali tehtäväpalkkiokerroin (ei laskuja enää → palkkiot voivat olla isompia)
 let TURNOUT_MULT=1;
 const HAKEKESKUKSET=[
@@ -2095,7 +2095,7 @@ function seasonAdjust(t){if(G.season==='talvi'){if(t.c==='745')return {...t,w:t.
 /* ===== APU ===== */
 function fmtClock(s){s=Math.floor(s)%86400;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor(s%3600/60)).padStart(2,'0');}
 function km(la1,ln1,la2,ln2){const x=(ln2-ln1)*55,y=(la2-la1)*111;return Math.sqrt(x*x+y*y);}
-function toast(t){if(G._offlineSim)return;if(typeof currentNav!=='undefined'&&currentNav!=='map')return;const d=document.createElement('div');d.className='tmsg';d.textContent=t;document.getElementById('toast').appendChild(d);setTimeout(()=>d.remove(),2600);}
+function toast(t){if(G._offlineSim)return;if(typeof currentNav!=='undefined'&&currentNav!=='map')return;try{const c=document.getElementById('toast');if(!c)return;if([...c.children].some(ch=>ch.textContent===t))return; /* DEDUPE: sama viesti ei näy päällekkäin (estä tulva) */ const d=document.createElement('div');d.className='tmsg';d.textContent=t;c.appendChild(d);while(c.children.length>4)c.removeChild(c.firstChild); /* KATTO: enintään 4 kerralla, ei peitä näkymää */ setTimeout(()=>{try{d.remove();}catch(e){}},2600);}catch(e){}}
 // saveToast: näkyy AINA (myös paneelissa) — tallennusvahvistus ei saa jäädä piiloon.
 function saveToast(t){if(G._offlineSim)return;try{const d=document.createElement('div');d.className='tmsg';d.textContent=t;const c=document.getElementById('toast');c.appendChild(d);setTimeout(()=>d.remove(),3200);}catch(e){}}
 // Autosave-indikaattori yläpalkin napissa: vihreä vilkahdus = tallennettu, punainen = ei tallennu.
@@ -3147,7 +3147,7 @@ window.startEditSpawnArea=()=>{
   renderSpawnCircles();
   closePanels();setNav('map');
   try{map.invalidateSize();renderVpkQueue();restorePops();}catch(e){}
-  toast('Valitse ⭕ Ympyrä tai ✏️ Piirrä alue, ja klikkaa karttaa.');
+  toast('Piirrä alue jolle tehtäviä voi syntyä — ne ilmestyvät väestötiheyden mukaan (taajamiin enemmän). Klikkaa karttaa.');
 };
 window.stopEditSpawnArea=()=>{
   editingSpawnArea=false;
@@ -4361,13 +4361,8 @@ async function spawnTask(){
   if(!loc||!isFinite(loc.lat)||!isFinite(loc.lng)){ const _as=activeStations(); loc=_as.length?{lat:_as[0].lat,lng:_as[0].lng}:{lat:60.20,lng:24.75}; } // VARMISTUS: ei NaN-sijaintia → markkeri syntyy aina
   let workMin=rnd(t.dur[0],t.dur[1]);if(Math.random()<0.08)workMin*=1.8;
   let desc=(t.variants&&t.variants.length)?t.variants[Math.floor(Math.random()*t.variants.length)]:t.info;
-  // SOITTAJAN TILA (realismi): joskus soittaja on päihtynyt (tiedot epäselviä) tai puhelu
-  // katkeaa kesken — katkeamiselle on yleensä SYY (soittaja itse menee huonoon kuntoon).
-  if(!t.pila&&Math.random()<0.06){
-    desc+=' Soittaja vaikuttaa päihtyneeltä, tiedot epäselviä.';
-  } else if(t.toimi==='ensihoito'&&(t.patients||0)>0&&Math.random()<0.05){
-    desc+=' Puhelu katkesi kesken, soittajaa ei tavoiteta uudelleen.';
-  }
+  // (Soittajan tila / epävarmuus lisätään ALEMPANA kontekstitietoisesti: vain sopiviin tehtäviin,
+  //  ei laitoskutsuihin/siirtoihin eikä liikenne-/metsätehtäviin. Ks. "EPÄSELVÄ TIETO" -lohko.)
   // Aikamerkinnät päivystäjätyyliin. REALISMI: aikatieto (esim. "viim. nähty hereillä") on vain
   // jos soittaja on LÄHEINEN / henkilökunta / itse. Ohikulkija/tuntematon EI tiedä → epävarmuus.
   const closeCaller=/puoliso|vaimo|tytär|poika|omainen|hoitaja|äiti|isä|vanhemp|työkaver|työtover|työnjoht|kotihoitaja|omaishoitaja|itse|salin valvoja|valmentaja|henkilökunta/i.test(desc);
@@ -4436,7 +4431,7 @@ async function spawnTask(){
   }
   // Liitä oikea kunta osoitteeseen, jotta osoite vastaa kartalla näkyvää sijaintia (KORJAUS)
   taskAddr+=', '+municipalityFor(loc.lat,loc.lng);
-  const tk={id:'T'+(G.tidc++),c:shownC,base:shownC,realCode:realT.c,n:t.n,toimi:t.toimi,need:JSON.parse(JSON.stringify(realT.need)),minCrew:realT.minCrew,rew:realT.rew,info:desc,patients:realT.patients,sev:realT.sev||'none',timeCrit:(realT.toimi==='ensihoito'&&!['high','critical'].includes(realT.sev||'none'))?null:(realT.timeCrit||null),esc:t.esc||0,escTo:t.escTo||null,where:t.where||'any',lat:loc.lat,lng:loc.lng,urg:t.forceUrg||null,status:'avoin',assigned:[],created:G.clock,addr:taskAddr,addrBlurred:addrIsBlurred,onScene:false,escDone:false,lead:null,workNeeded:workMin*60,work:0,mislabeled:realT.c!==shownC,pilapuhelu:pilapuhelu,outcome:null};
+  const tk={id:'T'+(G.tidc++),c:shownC,base:shownC,realCode:realT.c,n:t.n,toimi:t.toimi,need:JSON.parse(JSON.stringify(realT.need)),minCrew:realT.minCrew,rew:realT.rew,info:desc,patients:realT.patients,sev:realT.sev||'none',timeCrit:(realT.toimi==='ensihoito'&&!['high','critical'].includes(realT.sev||'none'))?null:(realT.timeCrit||null),esc:t.esc||0,escTo:t.escTo||null,where:t.where||'any',lat:loc.lat,lng:loc.lng,urg:t.forceUrg||null,status:'avoin',assigned:[],created:G.clock,addr:taskAddr,addrBlurred:addrIsBlurred,onScene:false,escDone:false,lead:null,workNeeded:workMin*60,work:0,mislabeled:realT.c!==shownC,pilapuhelu:pilapuhelu,instCaller:!!realT.instCaller,outcome:null};
   // OIKEA OSOITE kartan koordinaateista: korvaa yleisosoite todellisella kadulla + kunnalla (kun haku valmistuu).
   try{revGeocodeAddr(loc.lat,loc.lng,(road,city)=>{
     if(!city)return;
@@ -4920,7 +4915,7 @@ function renderDispatch(){
   document.getElementById('daddr').textContent='📍 '+tk.addr;
   let near=nearestUnits(tk).filter(x=>classFilter(x.u,dFilter));
   document.getElementById('dbody').innerHTML=`
-   <div class="sec"><div class="smallnote">${tk.info}${tk.patients?` · ilmoituksen mukaan potilaita ${tk.patients}`:''}</div></div>
+   <div class="sec"><div class="smallnote">${tk.info}${tk.patients?` · ${tk.instCaller?(tk.patients===1?'potilas siirrossa':tk.patients+' potilasta siirrossa'):('ilmoituksen mukaan '+tk.patients+' '+(tk.patients===1?'potilas':'potilasta'))}`:''}</div></div>
    <div id="dstat">${dStatusInner(tk)}</div>
    <div class="sec"><h4>Kiireellisyys <span style="font-weight:400;color:var(--dim);font-size:11px">— päättele kuvauksesta</span></h4><div class="urg">${['A','B','C','D'].map(u=>`<div class="urgb ${tk.urg===u?'sel':''}" data-u="${u}" onclick="setUrg('${u}')">${u}</div>`).join('')}</div></div>
    <div class="sec"><h4>Koodi <span style="font-weight:400;color:var(--dim);font-size:11px">— valitse koodi, hae numerolla</span></h4>
@@ -5863,7 +5858,7 @@ function tick(dt){G.clock+=dt;
     // Päivitä päivämäärä top-paneeliin
     try{const el=document.getElementById('gamedate');if(el)el.textContent=fmtGameDate();}catch(e){}
   }
-  G.units.forEach(u=>{
+  G.units.forEach(u=>{ try{
     if(u.status==='huolto'&&u.huoltoUntil&&G.clock>u.huoltoUntil){
       u.huoltoUntil=null;u.material=100;
       // Jos auto on kotiasemalla huollossa ja päivystysasema on eri → ajetaan takaisin
@@ -5881,7 +5876,7 @@ function tick(dt){G.clock+=dt;
       try{checkSpareReturn(u);}catch(e){}
     }
     moveUnit(u,dt);
-  });
+  }catch(e){ if(!G._tickErr)G._tickErr='yksikkö '+((u&&u.name)||'?')+': '+String((e&&e.message)||e); } }); // SUOJA: yhden yksikön virhe ei kaada koko liikkumis-luuppia eikä tickiä
   // RANNALLE JÄÄNYT TRAILERVENE: lähetä vapaa vetoauto (oma asema ensin) noutamaan se takaisin asemalle.
   try{
     G.units.filter(u=>u._strandedBoat&&!u._beingPickedUp).forEach(bt=>{
@@ -6238,7 +6233,7 @@ function tickOmamieli(dt){
     }
   }
 }
-setInterval(()=>{G.units.forEach(u=>{if(u.taskId)return;if(u.omamieli&&u.omamieliBack&&G.clock>u.omamieliBack){
+setInterval(()=>{try{G.units.forEach(u=>{if(u.taskId)return;if(u.omamieli&&u.omamieliBack&&G.clock>u.omamieliBack){
   const st=G.stations.find(s=>s.id===u.stationId);const reg=st?st.reg:'LU';
   const ch=(st&&st.muoto==='vpk')?reg+' VPK':pfx(u.toimi)+' '+reg+' INFO';
   // Luovutus valmis sairaalalla: yksikkö ilmoittaa vapaaksi ja ajaa takaisin asemalle
@@ -6253,7 +6248,7 @@ setInterval(()=>{G.units.forEach(u=>{if(u.taskId)return;if(u.omamieli&&u.omamiel
   u.status='asema';u.omamieli=false;u.omamieliBack=null;
   // EI ilmoitusta "jälleen käytettävissä" — epäolennainen kohinaa. Status näkyy yksikön infossa.
   refreshUnitMarker(u);
-}});},3000);
+}});}catch(e){}},3000);
 
 /* ===== PARTIOINTI: manuaalinen käynnistys/pysäytys ===== */
 // G.patrolAreas: {stationId: {radius: km}} — per asema muokattava alue
@@ -9450,7 +9445,7 @@ async function fbWarnIfNewer(){
   }
 }
 window.fbWarnIfNewer=fbWarnIfNewer;
-setInterval(fbPeriodicPull,120000);
+setInterval(()=>{try{fbPeriodicPull();}catch(e){}},120000);
 window.addEventListener('online',()=>{if(fbReady&&G.user)fbPeriodicPull();});
 // ANDROID-PALUUNAPPI: laitteen takaisin-nuoli sulkee päällimmäisen avoimen näkymän (hälytys,
 // asema, muu paneeli) sen sijaan että poistuisi pelistä.
@@ -9667,6 +9662,9 @@ function applyLoaded(d){
   G.openPops=d.openPops||null;
   if(d.taskStats)G.taskStats=d.taskStats;
   G.settings=Object.assign(G.settings,d.settings||{});
+  // KERTAMUUNNOS: väestötiheys-spawn oletukseksi PÄÄLLE (tehtävät syntyvät väestön mukaan piirretyn
+  // alueen sisältä). Tehdään kerran; jos pelaaja myöhemmin sammuttaa sen, valinta säilyy.
+  if(!(G.settings._popDefaultV>=1)){ G.settings.popDensitySpawn=true; G.settings._popDefaultV=1; }
   // MIGRAATIO: offline-tehtävien katto laskettu 6:een (aiempi 12 pinosi liikaa). Versioportti asettaa
   // arvon 6 kerran; sen jälkeen pelaaja voi säätää liukurista vapaasti (myös takaisin ylös).
   if(G.settings.offlineMaxTasks==null)G.settings.offlineMaxTasks=6;
@@ -9988,8 +9986,12 @@ async function init(){
   HAKEKESKUKSET.forEach(h=>{const m=L.marker([h.lat,h.lng],{icon:L.divIcon({html:`<div class="smk">📞</div>`,className:'',iconSize:[20,20],iconAnchor:[10,10]})}).addTo(map).bindTooltip(h.n+' — klikkaa');m.on('click',()=>openHake(h.n));});
   renderHospitals();
   let last=performance.now();
-  setInterval(()=>{const now=performance.now();let real=(now-last)/1000;last=now;if(real>1)real=1;tick(real*TIME_MULT);updateFab();updateDispatchLive();},150);
-  setInterval(()=>saveGame(false),20000);
+  setInterval(()=>{const now=performance.now();let real=(now-last)/1000;last=now;if(real>1)real=1;
+    try{tick(real*TIME_MULT);}catch(e){ if(!G._tickErr)G._tickErr=String((e&&e.message)||e); try{if(typeof _logErr==='function')_logErr('tick',(e&&e.message)||e,(e&&e.stack)?e.stack.split('\n').slice(0,3).join('\n'):'');}catch(_){} }
+    try{updateFab();}catch(e){}
+    try{updateDispatchLive();}catch(e){}
+  },150);
+  setInterval(()=>{try{saveGame(false);}catch(e){}},20000);
   // KRIITTINEN: tallenna heti kun peli suljetaan tai ikkuna piilotetaan,
   // jotta yksiköiden hälytykset ja asetukset eivät katoa.
   // POIKKEUS: jos käyttäjä nollasi pelin (wipe), älä tallenna takaisin!
