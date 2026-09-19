@@ -26,15 +26,14 @@
     inertia: true
   }).setView([64.5, 26.5], 5);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd',
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
     minZoom: 4,
-    maxZoom: 20,
+    maxZoom: 19,
     detectRetina: false,
     updateWhenZooming: true,
     updateWhenIdle: false,
     keepBuffer: 4,
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, HERE, Garmin, OpenStreetMap contributors'
   }).addTo(map);
 
   function fixSize(){ map.invalidateSize(); }
